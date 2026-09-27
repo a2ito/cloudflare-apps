@@ -67,3 +67,16 @@ npm ci
 ```bash
 npm run dev
 ```
+
+## DB マイグレーション
+
+ローカル D1 への適用:
+
+```bash
+npm run db:migrate:local
+```
+
+本番 D1 への適用は Cloudflare Workers Builds が担当する。ダッシュボードの
+Deploy command は `npm run cf:deploy` のまま変えず、その中で
+`npm run db:migrate:remote` をデプロイより先に実行する。
+手動で本番へ適用する場合は `npm run db:migrate:remote` を実行する。

@@ -5,6 +5,7 @@ import type { Category, Product } from "@/db/schema";
 import { UNITS } from "@/db/schema";
 import { initialActionState, type ActionState } from "@/lib/form";
 import { imageUrl } from "@/lib/images";
+import { PRODUCT_IMAGE } from "@/lib/image-shrink";
 import { ImageInput } from "./image-input";
 import { VariantFields } from "./variant-form";
 import { Field, FormMessage, inputClass, LinkButton, SubmitButton } from "./ui";
@@ -67,7 +68,7 @@ export function ProductForm({ action, categories, makers, product }: Props) {
 			)}
 
 			<Field label="画像">
-				<ImageInput name="image" currentUrl={product?.imageKey ? imageUrl(product.imageKey) : null} />
+				<ImageInput name="image" profile={PRODUCT_IMAGE} currentUrl={product?.imageKey ? imageUrl(product.imageKey) : null} />
 			</Field>
 			{product?.imageKey && (
 				<label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">

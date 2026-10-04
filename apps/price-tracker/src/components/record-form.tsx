@@ -5,6 +5,7 @@ import type { PriceRecord, Unit } from "@/db/schema";
 import { initialActionState, type ActionState } from "@/lib/form";
 import { imageUrl } from "@/lib/images";
 import { formatAmount, todayIso } from "@/lib/price";
+import { RECORD_PHOTO } from "@/lib/image-shrink";
 import { ImageInput } from "./image-input";
 import { Field, FormMessage, inputClass, LinkButton, SubmitButton } from "./ui";
 
@@ -73,7 +74,7 @@ export function RecordForm({ action, productId, variantId, unit, amount, stores,
 			</Field>
 
 			<Field label="写真（値札やレシートなど・任意）">
-				<ImageInput key={imageResetKey} name="image" currentUrl={record?.imageKey ? imageUrl(record.imageKey) : null} />
+				<ImageInput key={imageResetKey} name="image" profile={RECORD_PHOTO} currentUrl={record?.imageKey ? imageUrl(record.imageKey) : null} />
 			</Field>
 			{record?.imageKey && (
 				<label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">

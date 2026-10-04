@@ -2,23 +2,26 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { extractImageFile, namePastedImage } from "@/lib/clipboard";
+import { planShrink, type ShrinkProfile } from "@/lib/image-shrink";
 import { inputClass } from "./ui";
 
-const MAX_EDGE = 1200;
 const JPEG_QUALITY = 0.85;
 
-/** スマホ写真をそのまま送らず、長辺 1200px の JPEG に縮小してからアップロードする */
-async function shrinkImage(file: File): Promise<File> {
+/** スマホ写真をそのまま送らず、用途に合った大きさの JPEG に縮小してからアップロードする */
+async function shrinkImage(file: File, profile: ShrinkProfile): Promise<File> {
 	if (!file.type.startsWith("image/") || file.type === "image/gif") return file;
 	const bitmap = await createImageBitmap(file);
-	const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
-	if (scale === 1 && file.size < 500 * 1024) return file;
+	const plan = planShrink({ type: file.type, size: file.size, width: bitmap.width, height: bitmap.height }, profile);
+	if (plan.kind === "keep") return file;
 
 	const canvas = document.createElement("canvas");
-	canvas.width = Math.round(bitmap.width * scale);
-	canvas.height = Math.round(bitmap.height * scale);
+	canvas.width = plan.width;
+	canvas.height = plan.height;
 	const ctx = canvas.getContext("2d");
 	if (!ctx) return file;
+	// JPEG は透過を持てず、透明な部分が黒くなるため白で下塗りする
+	ctx.fillStyle = "#fff";
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
 	ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 
 	const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
@@ -26,7 +29,7 @@ async function shrinkImage(file: File): Promise<File> {
 	return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
 }
 
-export function ImageInput({ name, currentUrl }: { name: string; currentUrl?: string | null }) {
+export function ImageInput({ name, currentUrl, profile }: { name: string; currentUrl?: string | null; profile: ShrinkProfile }) {
 	const [preview, setPreview] = useState<string | null>(currentUrl ?? null);
 	const [busy, setBusy] = useState(false);
 	const [notice, setNotice] = useState<string | null>(null);
@@ -56,7 +59,7 @@ export function ImageInput({ name, currentUrl }: { name: string; currentUrl?: st
 			setBusy(true);
 			setNotice(null);
 			try {
-				const shrunk = await shrinkImage(file);
+				const shrunk = await shrinkImage(file, profile);
 				// input.files はコードから直接代入できないため DataTransfer を経由する
 				const dt = new DataTransfer();
 				dt.items.add(shrunk);
@@ -70,7 +73,7 @@ export function ImageInput({ name, currentUrl }: { name: string; currentUrl?: st
 				setBusy(false);
 			}
 		},
-		[showPreview],
+		[showPreview, profile],
 	);
 
 	// どこにフォーカスがあっても貼り付けを受け取れるようにする。

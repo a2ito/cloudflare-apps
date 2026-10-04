@@ -1,5 +1,17 @@
 // 対応通貨の定義。decimals は最小単位(minor units)の小数桁数。
-export type CurrencyCode = "JPY" | "USD" | "EUR" | "GBP" | "KRW" | "CNY" | "TWD" | "THB";
+// TWD・MNT は ISO 4217 では 2 桁だが、実際の支払いでは小数を使わないので 0 にしている。
+export type CurrencyCode =
+  | "JPY"
+  | "USD"
+  | "EUR"
+  | "GBP"
+  | "KRW"
+  | "CNY"
+  | "TWD"
+  | "THB"
+  | "VND"
+  | "MNT"
+  | "AUD";
 
 export interface CurrencyInfo {
   code: CurrencyCode;
@@ -17,6 +29,9 @@ export const CURRENCIES: Record<CurrencyCode, CurrencyInfo> = {
   CNY: { code: "CNY", label: "人民元", symbol: "元", decimals: 2 },
   TWD: { code: "TWD", label: "台湾ドル", symbol: "NT$", decimals: 0 },
   THB: { code: "THB", label: "タイバーツ", symbol: "฿", decimals: 2 },
+  VND: { code: "VND", label: "ベトナムドン", symbol: "₫", decimals: 0 },
+  MNT: { code: "MNT", label: "モンゴルトゥグルグ", symbol: "₮", decimals: 0 },
+  AUD: { code: "AUD", label: "豪ドル", symbol: "A$", decimals: 2 },
 };
 
 export const CURRENCY_LIST: CurrencyInfo[] = Object.values(CURRENCIES);

@@ -44,6 +44,16 @@ describe("convertToBase", () => {
     expect(convertToBase(15000, "KRW", "JPY", "0.11")).toBe(1650);
   });
 
+  it("VND のように 1 単位が小さい通貨も換算できる", () => {
+    // 1,500,000 VND × 0.0060745 = 9111.75 円 → 9112
+    expect(convertToBase(1_500_000, "VND", "JPY", "0.0060745")).toBe(9112);
+  });
+
+  it("MNT(0 桁) を AUD(2 桁) に換算する", () => {
+    // 100,000 MNT × 0.00043898 = 43.898 AUD → 43.90
+    expect(convertToBase(100_000, "MNT", "AUD", "0.00043898")).toBe(4390);
+  });
+
   it("端数は四捨五入する", () => {
     // 1.00 USD × 100.5 = 100.5 → 101
     expect(convertToBase(100, "USD", "JPY", "100.5")).toBe(101);

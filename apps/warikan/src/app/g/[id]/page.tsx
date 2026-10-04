@@ -19,6 +19,7 @@ import { ShareLink } from "./ShareLink";
 import { MemberSection } from "./MemberSection";
 import { ExpenseSection } from "./ExpenseSection";
 import { RateSection } from "./RateSection";
+import { RememberGroup } from "./RememberGroup";
 
 export default async function GroupPage({
   params,
@@ -134,6 +135,7 @@ export default async function GroupPage({
 
   return (
     <div className="space-y-6">
+      <RememberGroup id={group.id} name={group.name} />
       <section className="space-y-1">
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-2xl font-bold">{group.name}</h1>

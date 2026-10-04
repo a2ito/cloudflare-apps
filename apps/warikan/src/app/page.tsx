@@ -1,5 +1,6 @@
 import { createGroup } from "./actions";
 import { CurrencyFields } from "./CurrencyFields";
+import { RecentGroups } from "./RecentGroups";
 
 export default function Home() {
   return (
@@ -14,6 +15,8 @@ export default function Home() {
           誰が誰にいくら払えばいいかを最小回数で自動計算します。
         </p>
       </section>
+
+      <RecentGroups />
 
       <section className="bg-white rounded-2xl shadow-sm border border-black/5 p-6">
         <h2 className="font-semibold mb-4">グループを作成</h2>

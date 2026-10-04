@@ -8,6 +8,13 @@
       "when": 1783242685246,
       "tag": "0000_colorful_machine_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791095256067,
+      "tag": "0001_multi_currency",
+      "breakpoints": true
     }
   ]
 }

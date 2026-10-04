@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { formatAmount, getCurrency } from "@/lib/currency";
+import { convertToBase } from "@/lib/exchange";
 import { calculateSettlement } from "@/lib/settlement";
 import {
   addMember,
@@ -9,10 +10,15 @@ import {
   addExpense,
   updateExpense,
   removeExpense,
+  addCurrency,
+  removeCurrency,
+  updateRate,
+  refreshGroupRates,
 } from "./actions";
 import { ShareLink } from "./ShareLink";
 import { MemberSection } from "./MemberSection";
 import { ExpenseSection } from "./ExpenseSection";
+import { RateSection } from "./RateSection";
 
 export default async function GroupPage({
   params,
@@ -51,28 +57,78 @@ export default async function GroupPage({
     participantsByExpense.set(p.expenseId, arr);
   }
 
+  const rates = await db.query.exchangeRates.findMany({
+    where: eq(schema.exchangeRates.groupId, id),
+  });
+  const rateByCurrency = new Map(rates.map((r) => [r.currency, r.rate]));
+
   const memberName = new Map(members.map((m) => [m.id, m.name]));
   const currency = getCurrency(group.currency);
 
+  // 各立替を精算通貨に換算する。レートが無い外貨の立替は精算から外す。
+  const baseAmountById = new Map<string, number | null>();
+  for (const e of expenses) {
+    const rate = rateByCurrency.get(e.currency);
+    baseAmountById.set(
+      e.id,
+      e.currency === group.currency
+        ? e.amount
+        : rate
+          ? convertToBase(e.amount, e.currency, group.currency, rate)
+          : null,
+    );
+  }
+
   const settlement = calculateSettlement(
     members.map((m) => ({ id: m.id, name: m.name })),
-    expenses.map((e) => ({
-      id: e.id,
-      payerId: e.payerId,
-      amount: e.amount,
-      participantIds: participantsByExpense.get(e.id) ?? [],
-    })),
+    expenses.flatMap((e) => {
+      const amount = baseAmountById.get(e.id);
+      if (amount == null) return [];
+      return [
+        {
+          id: e.id,
+          payerId: e.payerId,
+          amount,
+          participantIds: participantsByExpense.get(e.id) ?? [],
+        },
+      ];
+    }),
   );
 
   // client 用に整形した立替リスト
-  const expenseView = expenses.map((e) => ({
-    id: e.id,
-    payerId: e.payerId,
-    amount: e.amount,
-    amountLabel: formatAmount(e.amount, group.currency),
-    description: e.description,
-    participantIds: participantsByExpense.get(e.id) ?? [],
+  const expenseView = expenses.map((e) => {
+    const baseAmount = baseAmountById.get(e.id);
+    return {
+      id: e.id,
+      payerId: e.payerId,
+      amount: e.amount,
+      currency: e.currency,
+      amountLabel: formatAmount(e.amount, e.currency),
+      // 外貨の立替だけ、精算通貨での額を添える
+      baseAmountLabel:
+        e.currency === group.currency
+          ? null
+          : baseAmount == null
+            ? "レート未設定"
+            : `≈ ${formatAmount(baseAmount, group.currency)}`,
+      description: e.description,
+      participantIds: participantsByExpense.get(e.id) ?? [],
+    };
+  });
+
+  // 通貨欄には、グループに登録した外貨を並べる
+  const rateView = rates.map((r) => ({
+    currency: r.currency,
+    rate: r.rate,
+    rateSource: r.rateSource,
+    rateDate: r.rateDate,
+    expenseCount: expenses.filter((e) => e.currency === r.currency).length,
   }));
+  // 立替で選べる通貨（精算通貨が先頭）
+  const expenseCurrencies = [
+    group.currency,
+    ...rates.map((r) => r.currency),
+  ];
 
   const memberView = members.map((m) => ({ id: m.id, name: m.name }));
 
@@ -82,7 +138,7 @@ export default async function GroupPage({
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-2xl font-bold">{group.name}</h1>
           <span className="shrink-0 text-xs font-medium text-black/50 border border-black/10 rounded-full px-2.5 py-1">
-            {currency.symbol} {currency.code}
+            精算 {currency.symbol} {currency.code}
           </span>
         </div>
         <p className="text-sm text-black/50">
@@ -107,12 +163,21 @@ export default async function GroupPage({
 
       <ExpenseSection
         members={memberView}
-        currency={group.currency}
+        currencies={expenseCurrencies}
         expenses={expenseView}
         memberNames={Object.fromEntries(memberName)}
         addAction={addExpense.bind(null, id)}
         updateAction={updateExpense.bind(null, id)}
         removeAction={removeExpense.bind(null, id)}
+      />
+
+      <RateSection
+        baseCurrency={group.currency}
+        rates={rateView}
+        addAction={addCurrency.bind(null, id)}
+        removeAction={removeCurrency.bind(null, id)}
+        updateAction={updateRate.bind(null, id)}
+        refreshAction={refreshGroupRates.bind(null, id)}
       />
 
       <SettlementSection

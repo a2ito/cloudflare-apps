@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
-import { parseAmountToMinor } from "@/lib/currency";
+import { isCurrencyCode, parseAmountToMinor } from "@/lib/currency";
+import { parseRate } from "@/lib/exchange";
+import {
+  MAX_GROUP_CURRENCIES,
+  refreshRates,
+  registerCurrencies,
+} from "@/lib/group-currencies";
 
 async function getGroupOrThrow(groupId: string) {
   const db = getDb();
@@ -70,6 +76,7 @@ export async function removeMember(groupId: string, formData: FormData) {
 const expenseSchema = z.object({
   payerId: z.string().min(1, "支払った人を選択してください"),
   amount: z.string().min(1, "金額を入力してください"),
+  currency: z.string().refine(isCurrencyCode, "対応していない通貨です"),
   description: z.string().trim().max(100).optional().default(""),
   participantIds: z.array(z.string()).min(1, "割り勘対象を1人以上選択してください"),
 });
@@ -78,6 +85,7 @@ function parseExpenseForm(formData: FormData) {
   return expenseSchema.safeParse({
     payerId: formData.get("payerId"),
     amount: formData.get("amount"),
+    currency: formData.get("currency"),
     description: formData.get("description") ?? "",
     participantIds: formData.getAll("participantIds").map(String),
   });
@@ -97,6 +105,27 @@ async function assertMembersBelong(
   }
 }
 
+// 金額を立替の通貨の最小単位にする。通貨は精算通貨かグループに登録した外貨に限る。
+async function parseExpenseAmount(
+  db: ReturnType<typeof getDb>,
+  groupId: string,
+  baseCurrency: string,
+  data: z.infer<typeof expenseSchema>,
+): Promise<number> {
+  if (data.currency !== baseCurrency) {
+    const registered = await db.query.exchangeRates.findFirst({
+      where: and(
+        eq(schema.exchangeRates.groupId, groupId),
+        eq(schema.exchangeRates.currency, data.currency),
+      ),
+    });
+    if (!registered) throw new Error("このグループで使っていない通貨です");
+  }
+  const amount = parseAmountToMinor(data.amount, data.currency);
+  if (amount === null) throw new Error("金額が不正です");
+  return amount;
+}
+
 export async function addExpense(groupId: string, formData: FormData) {
   const parsed = parseExpenseForm(formData);
   if (!parsed.success) {
@@ -104,8 +133,12 @@ export async function addExpense(groupId: string, formData: FormData) {
   }
   const { db, group } = await getGroupOrThrow(groupId);
 
-  const amount = parseAmountToMinor(parsed.data.amount, group.currency);
-  if (amount === null) throw new Error("金額が不正です");
+  const amount = await parseExpenseAmount(
+    db,
+    groupId,
+    group.currency,
+    parsed.data,
+  );
 
   await assertMembersBelong(db, groupId, [
     parsed.data.payerId,
@@ -118,6 +151,7 @@ export async function addExpense(groupId: string, formData: FormData) {
     groupId,
     payerId: parsed.data.payerId,
     amount,
+    currency: parsed.data.currency,
     description: parsed.data.description,
     createdAt: new Date(),
   });
@@ -139,8 +173,12 @@ export async function updateExpense(groupId: string, formData: FormData) {
   }
   const { db, group } = await getGroupOrThrow(groupId);
 
-  const amount = parseAmountToMinor(parsed.data.amount, group.currency);
-  if (amount === null) throw new Error("金額が不正です");
+  const amount = await parseExpenseAmount(
+    db,
+    groupId,
+    group.currency,
+    parsed.data,
+  );
 
   const existing = await db.query.expenses.findFirst({
     where: and(
@@ -160,6 +198,7 @@ export async function updateExpense(groupId: string, formData: FormData) {
     .set({
       payerId: parsed.data.payerId,
       amount,
+      currency: parsed.data.currency,
       description: parsed.data.description,
     })
     .where(eq(schema.expenses.id, expenseId));
@@ -191,4 +230,111 @@ export async function removeExpense(groupId: string, formData: FormData) {
       ),
     );
   revalidatePath(`/g/${groupId}`);
+}
+
+// --- 通貨と為替レート ---
+
+const currencySchema = z
+  .string()
+  .refine(isCurrencyCode, "対応していない通貨です");
+
+export async function addCurrency(groupId: string, formData: FormData) {
+  const parsed = currencySchema.safeParse(formData.get("currency"));
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const { db, group } = await getGroupOrThrow(groupId);
+  if (parsed.data === group.currency) {
+    throw new Error("精算通貨はすでに使えます");
+  }
+  const registered = await db.query.exchangeRates.findMany({
+    where: eq(schema.exchangeRates.groupId, groupId),
+  });
+  if (registered.some((r) => r.currency === parsed.data)) {
+    throw new Error("この通貨はすでに追加されています");
+  }
+  if (registered.length >= MAX_GROUP_CURRENCIES) {
+    throw new Error(`外貨は ${MAX_GROUP_CURRENCIES} つまでです`);
+  }
+  await registerCurrencies(db, groupId, group.currency, [parsed.data]);
+  revalidatePath(`/g/${groupId}`);
+}
+
+export async function removeCurrency(groupId: string, formData: FormData) {
+  const parsed = currencySchema.safeParse(formData.get("currency"));
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const { db } = await getGroupOrThrow(groupId);
+  const used = await db.query.expenses.findFirst({
+    where: and(
+      eq(schema.expenses.groupId, groupId),
+      eq(schema.expenses.currency, parsed.data),
+    ),
+  });
+  if (used) {
+    throw new Error(
+      "この通貨の立替があるため外せません。先に該当の立替を削除してください。",
+    );
+  }
+  await db
+    .delete(schema.exchangeRates)
+    .where(
+      and(
+        eq(schema.exchangeRates.groupId, groupId),
+        eq(schema.exchangeRates.currency, parsed.data),
+      ),
+    );
+  revalidatePath(`/g/${groupId}`);
+}
+
+const rateSchema = z.object({
+  currency: currencySchema,
+  rate: z.string().min(1, "レートを入力してください"),
+});
+
+// レートを手入力で上書きする
+export async function updateRate(groupId: string, formData: FormData) {
+  const parsed = rateSchema.safeParse({
+    currency: formData.get("currency"),
+    rate: formData.get("rate"),
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const { db } = await getGroupOrThrow(groupId);
+  const rate = parseRate(parsed.data.rate);
+  if (rate === null) throw new Error("為替レートが不正です");
+  const updated = await db
+    .update(schema.exchangeRates)
+    .set({ rate, rateSource: "manual", rateDate: null, updatedAt: new Date() })
+    .where(
+      and(
+        eq(schema.exchangeRates.groupId, groupId),
+        eq(schema.exchangeRates.currency, parsed.data.currency),
+      ),
+    )
+    .returning();
+  if (updated.length === 0) throw new Error("このグループで使っていない通貨です");
+  revalidatePath(`/g/${groupId}`);
+}
+
+// 登録済みの外貨のレートをすべて最新に取り直す（手入力したレートも上書きする）
+export async function refreshGroupRates(groupId: string) {
+  const { db, group } = await getGroupOrThrow(groupId);
+  const registered = await db.query.exchangeRates.findMany({
+    where: eq(schema.exchangeRates.groupId, groupId),
+  });
+  const failed = await refreshRates(
+    db,
+    groupId,
+    group.currency,
+    registered.map((r) => r.currency),
+  );
+  revalidatePath(`/g/${groupId}`);
+  if (failed.length > 0) {
+    throw new Error(
+      `${failed.join(", ")} のレートを取得できませんでした。時間をおくか、手で入力してください。`,
+    );
+  }
 }

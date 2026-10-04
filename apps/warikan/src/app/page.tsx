@@ -1,5 +1,5 @@
-import { CURRENCY_LIST } from "@/lib/currency";
 import { createGroup } from "./actions";
+import { CurrencyFields } from "./CurrencyFields";
 
 export default function Home() {
   return (
@@ -32,23 +32,7 @@ export default function Home() {
               className="w-full rounded-lg border border-black/10 px-3 py-2.5 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>
-          <div className="space-y-1.5">
-            <label htmlFor="currency" className="text-sm font-medium">
-              通貨
-            </label>
-            <select
-              id="currency"
-              name="currency"
-              defaultValue="JPY"
-              className="w-full rounded-lg border border-black/10 px-3 py-2.5 bg-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-            >
-              {CURRENCY_LIST.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.symbol} {c.label} ({c.code})
-                </option>
-              ))}
-            </select>
-          </div>
+          <CurrencyFields />
           <button
             type="submit"
             className="w-full rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 transition-colors"

@@ -12,7 +12,9 @@ interface ExpenseView {
   id: string;
   payerId: string;
   amount: number;
+  currency: string;
   amountLabel: string;
+  baseAmountLabel: string | null;
   description: string;
   participantIds: string[];
 }
@@ -21,7 +23,7 @@ type Action = (formData: FormData) => Promise<void>;
 
 export function ExpenseSection({
   members,
-  currency,
+  currencies,
   expenses,
   memberNames,
   addAction,
@@ -29,7 +31,7 @@ export function ExpenseSection({
   removeAction,
 }: {
   members: MemberView[];
-  currency: string;
+  currencies: string[];
   expenses: ExpenseView[];
   memberNames: Record<string, string>;
   addAction: Action;
@@ -65,7 +67,7 @@ export function ExpenseSection({
         <div className="mb-4">
           <ExpenseForm
             members={members}
-            currency={currency}
+            currencies={currencies}
             action={addAction}
             onDone={() => setAdding(false)}
             submitLabel="記録する"
@@ -84,7 +86,7 @@ export function ExpenseSection({
               <li key={e.id}>
                 <ExpenseForm
                   members={members}
-                  currency={currency}
+                  currencies={currencies}
                   action={updateAction}
                   expense={e}
                   onDone={() => setEditingId(null)}
@@ -111,6 +113,11 @@ export function ExpenseSection({
                   </div>
                   <div className="ml-auto text-right shrink-0">
                     <div className="font-bold">{e.amountLabel}</div>
+                    {e.baseAmountLabel && (
+                      <div className="text-xs text-black/50">
+                        {e.baseAmountLabel}
+                      </div>
+                    )}
                     <div className="flex gap-2 justify-end mt-0.5">
                       <button
                         type="button"
@@ -163,19 +170,21 @@ function DeleteExpenseButton({
 
 function ExpenseForm({
   members,
-  currency,
+  currencies,
   action,
   expense,
   onDone,
   submitLabel,
 }: {
   members: MemberView[];
-  currency: string;
+  // 選べる通貨。先頭が精算通貨
+  currencies: string[];
   action: Action;
   expense?: ExpenseView;
   onDone: () => void;
   submitLabel: string;
 }) {
+  const [currency, setCurrency] = useState(expense?.currency ?? currencies[0]);
   const info = getCurrency(currency);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -183,6 +192,7 @@ function ExpenseForm({
   const defaultAmount = expense
     ? (expense.amount / 10 ** info.decimals).toFixed(info.decimals)
     : "";
+
   const defaultParticipants = new Set(
     expense ? expense.participantIds : members.map((m) => m.id),
   );
@@ -218,24 +228,48 @@ function ExpenseForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-black/60">
-            支払った人
-          </label>
-          <select
-            name="payerId"
-            required
-            defaultValue={expense?.payerId ?? members[0]?.id ?? ""}
-            className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm bg-white outline-none focus:border-emerald-500"
-          >
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="space-y-1">
+        <label className="text-xs font-medium text-black/60">支払った人</label>
+        <select
+          name="payerId"
+          required
+          defaultValue={expense?.payerId ?? members[0]?.id ?? ""}
+          className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm bg-white outline-none focus:border-emerald-500"
+        >
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div
+        className={
+          currencies.length > 1
+            ? "grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2"
+            : ""
+        }
+      >
+        {currencies.length > 1 ? (
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-black/60">通貨</label>
+            <select
+              name="currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm bg-white outline-none focus:border-emerald-500"
+            >
+              {currencies.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <input type="hidden" name="currency" value={currency} />
+        )}
         <div className="space-y-1">
           <label className="text-xs font-medium text-black/60">
             金額 ({info.symbol})

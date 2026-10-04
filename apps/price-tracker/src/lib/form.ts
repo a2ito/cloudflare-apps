@@ -45,4 +45,10 @@ export const optionalUrl = z.preprocess(
 		.optional(),
 );
 
+/** 荷姿の入力項目 */
+export const variantFields = {
+	amount: z.coerce.number().positive("容量は 0 より大きい値で入力してください"),
+	count: z.coerce.number().int("入数は整数で入力してください").positive("入数は 1 以上で入力してください").default(1),
+};
+
 export { optionalText };

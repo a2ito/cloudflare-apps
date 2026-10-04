@@ -55,6 +55,7 @@ export async function createTestEnv(opts: { upTo?: string } = {}) {
 			if (listed.objects.length > 0) await bucket.delete(listed.objects.map((o) => o.key));
 			await d1.batch([
 				d1.prepare("DELETE FROM price_records"),
+				d1.prepare("DELETE FROM variants"),
 				d1.prepare("DELETE FROM products"),
 				d1.prepare("DELETE FROM categories"),
 				d1.prepare("DELETE FROM sqlite_sequence"),

@@ -11,15 +11,16 @@ import { Field, FormMessage, inputClass, LinkButton, SubmitButton } from "./ui";
 type Props = {
 	action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
 	productId: number;
+	variantId: number;
 	unit: Unit;
-	/** 商品 1 パッケージの合計容量。表示にのみ使う */
+	/** 荷姿 1 パッケージの合計容量。表示にのみ使う */
 	amount: number;
 	stores: string[];
 	/** 渡すと編集フォームになる */
 	record?: PriceRecord;
 };
 
-export function RecordForm({ action, productId, unit, amount, stores, record }: Props) {
+export function RecordForm({ action, productId, variantId, unit, amount, stores, record }: Props) {
 	const [state, formAction] = useActionState(action, initialActionState);
 	const formRef = useRef<HTMLFormElement>(null);
 	// 記録するたびに画像入力を初期状態へ戻すための鍵
@@ -39,13 +40,14 @@ export function RecordForm({ action, productId, unit, amount, stores, record }: 
 	return (
 		<form ref={formRef} action={formAction} className="space-y-4">
 			<input type="hidden" name="productId" value={productId} />
+			<input type="hidden" name="variantId" value={variantId} />
 			{record && <input type="hidden" name="id" value={record.id} />}
 			<FormMessage state={state} />
 
 			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<Field label="店舗">
-					<input name="store" required list="store-suggestions" defaultValue={record?.store} className={inputClass} placeholder="例: OK ストア" />
-					<datalist id="store-suggestions">
+					<input name="store" required list={`store-suggestions-${variantId}`} defaultValue={record?.store} className={inputClass} placeholder="例: OK ストア" />
+					<datalist id={`store-suggestions-${variantId}`}>
 						{stores.map((s) => (
 							<option key={s} value={s} />
 						))}

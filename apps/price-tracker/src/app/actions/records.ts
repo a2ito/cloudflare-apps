@@ -1,18 +1,20 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { priceRecords } from "@/db/schema";
+import { priceRecords, variants } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { idFromForm, optionalText, optionalUrl, parseForm, type ActionState } from "@/lib/form";
 import { releaseImage } from "@/lib/image-cleanup";
 import { storeImage } from "@/lib/images";
 
 const recordSchema = z.object({
+	/** 再検証と遷移先にだけ使う。記録が紐づくのは荷姿 */
 	productId: idFromForm,
+	variantId: idFromForm,
 	store: z.string().trim().min(1, "店舗名を入力してください").max(100),
 	price: z.coerce.number().int("価格は整数で入力してください").positive("価格は 1 円以上で入力してください"),
 	quantity: z.coerce.number().int().positive().default(1),
@@ -31,6 +33,15 @@ export async function createRecord(_prev: ActionState, formData: FormData): Prom
 	const parsed = parseForm(recordSchema, formData);
 	if (!parsed.ok) return { error: parsed.error };
 
+	const db = await getDb();
+	// 別の商品の荷姿へ記録させない
+	const variant = await db
+		.select({ id: variants.id })
+		.from(variants)
+		.where(and(eq(variants.id, parsed.data.variantId), eq(variants.productId, parsed.data.productId)))
+		.limit(1);
+	if (variant.length === 0) return { error: "荷姿が見つかりません" };
+
 	let imageKey: string | null = null;
 	try {
 		imageKey = await storeImage(imageFile(formData));
@@ -38,9 +49,8 @@ export async function createRecord(_prev: ActionState, formData: FormData): Prom
 		return { error: e instanceof Error ? e.message : "画像の保存に失敗しました" };
 	}
 
-	const db = await getDb();
 	await db.insert(priceRecords).values({
-		productId: parsed.data.productId,
+		variantId: parsed.data.variantId,
 		store: parsed.data.store,
 		price: parsed.data.price,
 		quantity: parsed.data.quantity,
@@ -78,7 +88,7 @@ export async function updateRecord(_prev: ActionState, formData: FormData): Prom
 		.set({
 			store: parsed.data.store,
 			price: parsed.data.price,
-				quantity: parsed.data.quantity,
+			quantity: parsed.data.quantity,
 			recordedAt: parsed.data.recordedAt,
 			url: parsed.data.url ?? null,
 			imageKey,

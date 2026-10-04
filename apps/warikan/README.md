@@ -4,7 +4,7 @@
 
 - **Stack**: Next.js (App Router) / OpenNext on Cloudflare Workers / Cloudflare D1 + Drizzle ORM / Tailwind CSS
 - **本番ドメイン**: warikan.a2ito.work
-- **多通貨対応**（JPY / USD / EUR / GBP / KRW / CNY / TWD / THB）。グループで複数の通貨を使え、精算通貨へ為替レートで換算して精算する。レートは自動取得
+- **多通貨対応**（JPY / USD / EUR / GBP / KRW / CNY / TWD / THB / VND / MNT / AUD）。グループで複数の通貨を使え、精算通貨へ為替レートで換算して精算する。レートは自動取得
 
 ## 機能
 

@@ -16,11 +16,13 @@
   - 手入力で上書きもできる（カードや両替の実レートに合わせるとき）
 - 合計金額・各メンバーの受取/支払残高
 - 精算結果（最小回数の送金リスト）
+- 最近のグループ（この端末で開いたグループをトップに並べる。localStorage に保存し、サーバには送らない）
 
 ## インストール（PWA）
 
 ブラウザの「ホーム画面に追加」「アプリをインストール」から、単独のアプリとして
 起動できる。iOS Safari は共有メニューの「ホーム画面に追加」から。
+ホーム画面のアイコンからはトップが開くので、グループにはトップの「最近のグループ」から戻る。
 
 Service Worker は静的アセットとオフライン案内ページだけをキャッシュする。
 立替は他のメンバーの記録で変わり、古い精算結果を見せると払い間違いにつながるため、
@@ -102,6 +104,7 @@ npm run cf:deploy
 | `src/lib/exchange.ts` | 為替レートの検証と精算通貨への換算（BigInt で計算） |
 | `src/lib/rate-api.ts` | 為替レートの自動取得（[fawazahmed0/exchange-api](https://github.com/fawazahmed0/exchange-api)、キー不要） |
 | `src/lib/group-currencies.ts` | グループへの通貨登録とレートの取得・更新 |
+| `src/lib/recent-groups.ts` | この端末で開いたグループの一覧（localStorage） |
 | `src/lib/settlement.ts` | 均等割り + 最小送金の精算アルゴリズム（純粋関数） |
 | `src/app/page.tsx` | トップ（グループ作成） |
 | `src/app/g/[id]/` | グループ詳細ページ・Server Actions・クライアント UI |

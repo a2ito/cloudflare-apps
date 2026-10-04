@@ -36,3 +36,6 @@ CLAUDE.md
 !.claude/CLAUDE.md
 # 手元だけの設定は共有しない
 .claude/settings.local.json
+
+# 実 ID や公開ホスト名を含むため、雛形（wrangler.jsonc.example）のみ共有する
+wrangler.jsonc

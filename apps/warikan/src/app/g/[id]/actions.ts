@@ -218,6 +218,17 @@ export async function removeExpense(groupId: string, formData: FormData) {
   const expenseId = String(formData.get("expenseId") ?? "");
   if (!expenseId) throw new Error("立替が指定されていません");
   const { db } = await getGroupOrThrow(groupId);
+
+  // expense_participants は groupId を持たないので、先に立替がこのグループのものか確かめる。
+  // 確かめずに消すと、別のグループの立替 ID を送られたときにそちらの割り勘対象が消える
+  const existing = await db.query.expenses.findFirst({
+    where: and(
+      eq(schema.expenses.id, expenseId),
+      eq(schema.expenses.groupId, groupId),
+    ),
+  });
+  if (!existing) throw new Error("立替が見つかりません");
+
   await db
     .delete(schema.expenseParticipants)
     .where(eq(schema.expenseParticipants.expenseId, expenseId));

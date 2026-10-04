@@ -11,6 +11,7 @@
 - グループ作成（イベント名 + 精算通貨 + ほかに使う通貨、URL 共有）
 - メンバー追加・削除
 - 立替の記録・編集・削除（支払った人 / 通貨 / 金額 / 内容 / 割り勘対象の均等割り）
+  - オプションで傾斜をつけられる。立替ごとに、割り勘対象の人へ 0.5〜10 倍（0.5 刻み）の倍率を付け、その比で負担を分ける
 - 通貨の追加・削除と為替レート（グループ内で通貨ごとに 1 つ。変えると同じ通貨の立替がすべて換算し直される）
   - 通貨を追加すると最新のレートを自動取得する。「最新レートに更新」で取り直せる
   - 手入力で上書きもできる（カードや両替の実レートに合わせるとき）
@@ -113,7 +114,8 @@ npx wrangler d1 create warikan-db
 | `src/lib/rate-api.ts` | 為替レートの自動取得（[fawazahmed0/exchange-api](https://github.com/fawazahmed0/exchange-api)、キー不要） |
 | `src/lib/group-currencies.ts` | グループへの通貨登録とレートの取得・更新 |
 | `src/lib/recent-groups.ts` | この端末で開いたグループの一覧（localStorage） |
-| `src/lib/settlement.ts` | 均等割り + 最小送金の精算アルゴリズム（純粋関数） |
+| `src/lib/weight.ts` | 傾斜の倍率の検証と表示（保存は 10 倍した整数） |
+| `src/lib/settlement.ts` | 重み付きの割り勘 + 最小送金の精算アルゴリズム（純粋関数） |
 | `src/app/page.tsx` | トップ（グループ作成） |
 | `src/app/g/[id]/` | グループ詳細ページ・Server Actions・クライアント UI |
 

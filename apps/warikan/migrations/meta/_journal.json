@@ -15,6 +15,13 @@
       "when": 1791095256067,
       "tag": "0001_multi_currency",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791109226249,
+      "tag": "0002_weighted_split",
+      "breakpoints": true
     }
   ]
 }

@@ -16,13 +16,18 @@ jobs:
     # fork からの PR と、リポジトリ所有者以外が出した PR は対象にしない。
     # 外部の変更が人の目を通さず本番へ出るのを防ぐ。
     #
+    # 所有者はログイン名の一覧で見る。リポジトリは a2ito 組織の持ち物で、
+    # PR を出す個人アカウント (a2-ito) とログイン名が一致しないため、
+    # repository_owner との比較だと常に外れる。author_association は
+    # 組織のメンバー公開設定によって MEMBER にならないことがあり、当てにできない。
+    #
     # import ラベルの付いた PR も対象にしない。アプリを履歴ごと取り込む PR は
     # squash すると数十コミットが 1 つに潰れるため、merge commit で手動で
     # マージする。自動マージは squash 固定なので任せられない。
     if: >-
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login == github.repository_owner &&
+      contains(fromJSON('["a2-ito"]'), github.event.pull_request.user.login) &&
       !contains(github.event.pull_request.labels.*.name, 'import')
     runs-on: ubuntu-latest
     steps:

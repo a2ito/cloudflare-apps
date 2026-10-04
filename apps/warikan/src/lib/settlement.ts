@@ -30,10 +30,18 @@ export interface Transfer {
   amount: number;
 }
 
+// 立替 1 件のうち、メンバー 1 人が負担する額。精算結果の内訳に使う
+export interface Share {
+  expenseId: string;
+  memberId: string;
+  amount: number;
+}
+
 export interface SettlementResult {
   total: number;
   balances: Balance[];
   transfers: Transfer[];
+  shares: Share[]; // 立替の入力順。負担額 0 の行も含む
 }
 
 // 金額 amount を n 人で均等割りし、余りを先頭から1単位ずつ配分した配列を返す。
@@ -85,18 +93,20 @@ export function calculateSettlement(
   }
 
   let total = 0;
+  const shares: Share[] = [];
   for (const e of expenses) {
     total += e.amount;
     if (paid.has(e.payerId)) {
       paid.set(e.payerId, (paid.get(e.payerId) ?? 0) + e.amount);
     }
     const participants = e.participants.filter((p) => owed.has(p.memberId));
-    const shares = splitByWeight(
+    const amounts = splitByWeight(
       e.amount,
       participants.map((p) => p.weight),
     );
     participants.forEach((p, i) => {
-      owed.set(p.memberId, (owed.get(p.memberId) ?? 0) + shares[i]);
+      owed.set(p.memberId, (owed.get(p.memberId) ?? 0) + amounts[i]);
+      shares.push({ expenseId: e.id, memberId: p.memberId, amount: amounts[i] });
     });
   }
 
@@ -108,7 +118,7 @@ export function calculateSettlement(
 
   const transfers = minimizeTransfers(balances);
 
-  return { total, balances, transfers };
+  return { total, balances, transfers, shares };
 }
 
 // 貪欲法で送金回数を最小化する。最大の債務者と最大の債権者を順に相殺する。

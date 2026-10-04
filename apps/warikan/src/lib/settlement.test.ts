@@ -97,4 +97,82 @@ describe("calculateSettlement", () => {
     expect(result.balances.map((b) => b.owed)).toEqual([1000, 4000, 2000]);
     expect(result.total).toBe(7000);
   });
+
+  it("内訳として、立替ごとに各メンバーの負担額を返す", () => {
+    const result = calculateSettlement(members, [
+      {
+        id: "e1",
+        payerId: "a",
+        amount: 1000,
+        participants: [
+          { memberId: "a", weight: 10 },
+          { memberId: "b", weight: 10 },
+          { memberId: "c", weight: 10 },
+        ],
+      },
+      {
+        id: "e2",
+        payerId: "b",
+        amount: 4000,
+        participants: [
+          { memberId: "b", weight: 30 },
+          { memberId: "c", weight: 10 },
+        ],
+      },
+    ]);
+    expect(result.shares).toEqual([
+      { expenseId: "e1", memberId: "a", amount: 334 },
+      { expenseId: "e1", memberId: "b", amount: 333 },
+      { expenseId: "e1", memberId: "c", amount: 333 },
+      { expenseId: "e2", memberId: "b", amount: 3000 },
+      { expenseId: "e2", memberId: "c", amount: 1000 },
+    ]);
+  });
+
+  it("内訳の合計は各メンバーの負担額と一致する", () => {
+    const result = calculateSettlement(members, [
+      {
+        id: "e1",
+        payerId: "a",
+        amount: 1001,
+        participants: [
+          { memberId: "a", weight: 15 },
+          { memberId: "b", weight: 10 },
+          { memberId: "c", weight: 5 },
+        ],
+      },
+      {
+        id: "e2",
+        payerId: "c",
+        amount: 777,
+        participants: [
+          { memberId: "a", weight: 10 },
+          { memberId: "c", weight: 10 },
+        ],
+      },
+    ]);
+    for (const b of result.balances) {
+      const sum = result.shares
+        .filter((s) => s.memberId === b.memberId)
+        .reduce((acc, s) => acc + s.amount, 0);
+      expect(sum).toBe(b.owed);
+    }
+  });
+
+  it("グループにいないメンバーは内訳に含めない", () => {
+    const result = calculateSettlement(members, [
+      {
+        id: "e1",
+        payerId: "a",
+        amount: 2000,
+        participants: [
+          { memberId: "a", weight: 10 },
+          { memberId: "x", weight: 10 },
+        ],
+      },
+    ]);
+    expect(result.shares).toEqual([
+      { expenseId: "e1", memberId: "a", amount: 2000 },
+    ]);
+  });
 });

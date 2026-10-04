@@ -136,6 +136,29 @@ export default async function GroupPage({
 
   const memberView = members.map((m) => ({ id: m.id, name: m.name }));
 
+  // 精算結果の内訳。レートが無く精算から外れた立替は、明細にも出さない
+  const expenseById = new Map(expenses.map((e) => [e.id, e]));
+  const breakdownView = settlement.balances.map((b) => ({
+    memberId: b.memberId,
+    name: memberName.get(b.memberId) ?? "?",
+    paidLabel: formatAmount(b.paid, group.currency),
+    owedLabel: formatAmount(b.owed, group.currency),
+    net: b.net,
+    netLabel:
+      (b.net > 0 ? "+" : "") + formatAmount(b.net, group.currency),
+    items: settlement.shares
+      .filter((s) => s.memberId === b.memberId && s.amount > 0)
+      .map((s) => {
+        const e = expenseById.get(s.expenseId);
+        return {
+          expenseId: s.expenseId,
+          description: e?.description || "（内容なし）",
+          payerName: e ? (memberName.get(e.payerId) ?? "?") : "?",
+          amountLabel: formatAmount(s.amount, group.currency),
+        };
+      }),
+  }));
+
   return (
     <div className="space-y-6">
       <RememberGroup id={group.id} name={group.name} />
@@ -191,17 +214,35 @@ export default async function GroupPage({
           to: memberName.get(t.toId) ?? "?",
           amountLabel: formatAmount(t.amount, group.currency),
         }))}
+        breakdown={breakdownView}
         hasExpenses={expenses.length > 0}
       />
     </div>
   );
 }
 
+interface BreakdownView {
+  memberId: string;
+  name: string;
+  paidLabel: string;
+  owedLabel: string;
+  net: number;
+  netLabel: string;
+  items: {
+    expenseId: string;
+    description: string;
+    payerName: string;
+    amountLabel: string;
+  }[];
+}
+
 function SettlementSection({
   transfers,
+  breakdown,
   hasExpenses,
 }: {
   transfers: { from: string; to: string; amountLabel: string }[];
+  breakdown: BreakdownView[];
   hasExpenses: boolean;
 }) {
   return (
@@ -228,6 +269,78 @@ function SettlementSection({
           ))}
         </ul>
       )}
+      {hasExpenses && breakdown.length > 0 && (
+        <BreakdownTable breakdown={breakdown} />
+      )}
     </section>
+  );
+}
+
+// 送金額の根拠を確かめられるよう、メンバーごとの立替・負担・差引と、
+// 負担額がどの立替から来ているかを見せる。開閉は <details> に任せて JS を使わない
+function BreakdownTable({ breakdown }: { breakdown: BreakdownView[] }) {
+  return (
+    <div className="mt-5">
+      <h3 className="text-sm font-semibold mb-2">内訳</h3>
+      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 px-3 pb-1 text-xs text-black/40">
+        <span>メンバー</span>
+        <span className="w-16 text-right">立替</span>
+        <span className="w-16 text-right">負担</span>
+        <span className="w-16 text-right">差引</span>
+      </div>
+      <ul className="space-y-1.5">
+        {breakdown.map((b) => (
+          <li key={b.memberId}>
+            <details className="group rounded-lg border border-black/5">
+              <summary className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center px-3 py-2 text-sm cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                <span className="font-medium truncate">
+                  <span className="inline-block w-3 text-black/30 transition-transform group-open:rotate-90">
+                    ▸
+                  </span>
+                  {b.name}
+                </span>
+                <span className="w-16 text-right tabular-nums">
+                  {b.paidLabel}
+                </span>
+                <span className="w-16 text-right tabular-nums">
+                  {b.owedLabel}
+                </span>
+                <span
+                  className={
+                    "w-16 text-right tabular-nums font-medium " +
+                    (b.net > 0
+                      ? "text-emerald-600"
+                      : b.net < 0
+                        ? "text-rose-500"
+                        : "text-black/40")
+                  }
+                >
+                  {b.netLabel}
+                </span>
+              </summary>
+              {b.items.length === 0 ? (
+                <p className="px-3 pb-2 pl-6 text-xs text-black/40">
+                  負担する立替はありません。
+                </p>
+              ) : (
+                <ul className="px-3 pb-2 pl-6 space-y-1 text-xs text-black/60">
+                  {b.items.map((item) => (
+                    <li key={item.expenseId} className="flex gap-2">
+                      <span className="truncate">{item.description}</span>
+                      <span className="shrink-0 text-black/40">
+                        （{item.payerName}が立替）
+                      </span>
+                      <span className="ml-auto shrink-0 tabular-nums">
+                        {item.amountLabel}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </details>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

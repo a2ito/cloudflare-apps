@@ -3,8 +3,8 @@
 // 浮動小数を通さず BigInt で計算し、換算結果は精算通貨の最小単位の整数にする。
 import { getCurrency } from "./currency";
 
-// レートの小数部の最大桁数
-export const RATE_MAX_DECIMALS = 6;
+// レートの小数部の最大桁数（1 KRW = 0.000724 USD のような小さいレートでも有効桁を残す）
+export const RATE_MAX_DECIMALS = 10;
 // レートの整数部の最大桁数（1 BTC 相当でも収まる程度）
 const RATE_MAX_INT_DIGITS = 9;
 

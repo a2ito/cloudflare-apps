@@ -48,7 +48,8 @@ export const expenseParticipants = sqliteTable(
   (t) => [primaryKey({ columns: [t.expenseId, t.memberId] })],
 );
 
-// グループ内の外貨レート。rate は外貨 1 単位あたりの精算通貨の額（10 進数の文字列）。
+// グループで使う外貨と、その為替レート。行があればその通貨で立替を記録できる。
+// rate は外貨 1 単位あたりの精算通貨の額（10 進数の文字列）。取得に失敗した通貨は null。
 // 同じ通貨の立替はすべてこのレートで換算するため、変更すると精算結果も変わる。
 export const exchangeRates = sqliteTable(
   "exchange_rates",
@@ -57,7 +58,13 @@ export const exchangeRates = sqliteTable(
       .notNull()
       .references(() => groups.id, { onDelete: "cascade" }),
     currency: text("currency").notNull(),
-    rate: text("rate").notNull(),
+    rate: text("rate"),
+    // "auto" は API から取得、"manual" は手入力
+    rateSource: text("rate_source", { enum: ["auto", "manual"] })
+      .notNull()
+      .default("auto"),
+    // 自動取得したレートの基準日 (YYYY-MM-DD)。手入力なら null。
+    rateDate: text("rate_date"),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.groupId, t.currency] })],

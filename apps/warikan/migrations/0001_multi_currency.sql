@@ -1,7 +1,9 @@
 CREATE TABLE `exchange_rates` (
 	`group_id` text NOT NULL,
 	`currency` text NOT NULL,
-	`rate` text NOT NULL,
+	`rate` text,
+	`rate_source` text DEFAULT 'auto' NOT NULL,
+	`rate_date` text,
 	`updated_at` integer NOT NULL,
 	PRIMARY KEY(`group_id`, `currency`),
 	FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON UPDATE no action ON DELETE cascade

@@ -19,7 +19,7 @@ describe("parseRate", () => {
   });
 
   it("桁数の上限を超えると null", () => {
-    expect(parseRate("0.1234567")).toBeNull();
+    expect(parseRate("0.12345678901")).toBeNull();
     expect(parseRate("1234567890")).toBeNull();
   });
 });

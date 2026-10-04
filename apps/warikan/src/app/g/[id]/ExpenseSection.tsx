@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CURRENCY_LIST, getCurrency } from "@/lib/currency";
+import { getCurrency } from "@/lib/currency";
 
 interface MemberView {
   id: string;
@@ -23,8 +23,7 @@ type Action = (formData: FormData) => Promise<void>;
 
 export function ExpenseSection({
   members,
-  baseCurrency,
-  rates,
+  currencies,
   expenses,
   memberNames,
   addAction,
@@ -32,8 +31,7 @@ export function ExpenseSection({
   removeAction,
 }: {
   members: MemberView[];
-  baseCurrency: string;
-  rates: Record<string, string>;
+  currencies: string[];
   expenses: ExpenseView[];
   memberNames: Record<string, string>;
   addAction: Action;
@@ -69,8 +67,7 @@ export function ExpenseSection({
         <div className="mb-4">
           <ExpenseForm
             members={members}
-            baseCurrency={baseCurrency}
-            rates={rates}
+            currencies={currencies}
             action={addAction}
             onDone={() => setAdding(false)}
             submitLabel="記録する"
@@ -89,8 +86,7 @@ export function ExpenseSection({
               <li key={e.id}>
                 <ExpenseForm
                   members={members}
-                  baseCurrency={baseCurrency}
-                  rates={rates}
+                  currencies={currencies}
                   action={updateAction}
                   expense={e}
                   onDone={() => setEditingId(null)}
@@ -174,26 +170,22 @@ function DeleteExpenseButton({
 
 function ExpenseForm({
   members,
-  baseCurrency,
-  rates,
+  currencies,
   action,
   expense,
   onDone,
   submitLabel,
 }: {
   members: MemberView[];
-  baseCurrency: string;
-  rates: Record<string, string>;
+  // 選べる通貨。先頭が精算通貨
+  currencies: string[];
   action: Action;
   expense?: ExpenseView;
   onDone: () => void;
   submitLabel: string;
 }) {
-  const [currency, setCurrency] = useState(expense?.currency ?? baseCurrency);
-  const [rate, setRate] = useState(rates[currency] ?? "");
+  const [currency, setCurrency] = useState(expense?.currency ?? currencies[0]);
   const info = getCurrency(currency);
-  const base = getCurrency(baseCurrency);
-  const isForeign = currency !== baseCurrency;
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -201,10 +193,6 @@ function ExpenseForm({
     ? (expense.amount / 10 ** info.decimals).toFixed(info.decimals)
     : "";
 
-  function changeCurrency(next: string) {
-    setCurrency(next);
-    setRate(rates[next] ?? "");
-  }
   const defaultParticipants = new Set(
     expense ? expense.participantIds : members.map((m) => m.id),
   );
@@ -256,22 +244,32 @@ function ExpenseForm({
         </select>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2">
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-black/60">通貨</label>
-          <select
-            name="currency"
-            value={currency}
-            onChange={(e) => changeCurrency(e.target.value)}
-            className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm bg-white outline-none focus:border-emerald-500"
-          >
-            {CURRENCY_LIST.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.code}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div
+        className={
+          currencies.length > 1
+            ? "grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2"
+            : ""
+        }
+      >
+        {currencies.length > 1 ? (
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-black/60">通貨</label>
+            <select
+              name="currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm bg-white outline-none focus:border-emerald-500"
+            >
+              {currencies.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <input type="hidden" name="currency" value={currency} />
+        )}
         <div className="space-y-1">
           <label className="text-xs font-medium text-black/60">
             金額 ({info.symbol})
@@ -287,28 +285,6 @@ function ExpenseForm({
           />
         </div>
       </div>
-
-      {isForeign && (
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-black/60">
-            為替レート（1 {info.code} = ? {base.code}）
-          </label>
-          <input
-            name="rate"
-            type="text"
-            inputMode="decimal"
-            required
-            value={rate}
-            onChange={(e) => setRate(e.target.value)}
-            placeholder="例: 150.25"
-            className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm bg-white outline-none focus:border-emerald-500"
-          />
-          <p className="text-xs text-black/40">
-            このグループの {info.code} の立替はすべてこのレートで {base.code}{" "}
-            に換算して精算します。
-          </p>
-        </div>
-      )}
 
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-black/60">

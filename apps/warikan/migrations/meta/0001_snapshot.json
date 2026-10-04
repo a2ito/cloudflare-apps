@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ca2bedf9-8eb8-48ca-9422-e67e03720ee3",
+  "id": "5a6b8032-539f-42be-a536-d89738ed8761",
   "prevId": "53800384-03b5-44fd-9a4d-723bf9b05974",
   "tables": {
     "exchange_rates": {
@@ -25,7 +25,22 @@
           "name": "rate",
           "type": "text",
           "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "rate_source": {
+          "name": "rate_source",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true,
+          "autoincrement": false,
+          "default": "'auto'"
+        },
+        "rate_date": {
+          "name": "rate_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "updated_at": {

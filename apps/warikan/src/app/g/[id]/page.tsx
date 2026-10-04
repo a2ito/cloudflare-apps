@@ -10,7 +10,10 @@ import {
   addExpense,
   updateExpense,
   removeExpense,
+  addCurrency,
+  removeCurrency,
   updateRate,
+  refreshGroupRates,
 } from "./actions";
 import { ShareLink } from "./ShareLink";
 import { MemberSection } from "./MemberSection";
@@ -113,15 +116,19 @@ export default async function GroupPage({
     };
   });
 
-  // レート欄には、レートを設定済みの通貨と立替で使っている外貨を並べる
-  const foreignCurrencies = [
-    ...new Set([...rates.map((r) => r.currency), ...expenses.map((e) => e.currency)]),
-  ].filter((c) => c !== group.currency);
-  const rateView = foreignCurrencies.map((c) => ({
-    currency: c,
-    rate: rateByCurrency.get(c) ?? null,
-    expenseCount: expenses.filter((e) => e.currency === c).length,
+  // 通貨欄には、グループに登録した外貨を並べる
+  const rateView = rates.map((r) => ({
+    currency: r.currency,
+    rate: r.rate,
+    rateSource: r.rateSource,
+    rateDate: r.rateDate,
+    expenseCount: expenses.filter((e) => e.currency === r.currency).length,
   }));
+  // 立替で選べる通貨（精算通貨が先頭）
+  const expenseCurrencies = [
+    group.currency,
+    ...rates.map((r) => r.currency),
+  ];
 
   const memberView = members.map((m) => ({ id: m.id, name: m.name }));
 
@@ -156,8 +163,7 @@ export default async function GroupPage({
 
       <ExpenseSection
         members={memberView}
-        baseCurrency={group.currency}
-        rates={Object.fromEntries(rateByCurrency)}
+        currencies={expenseCurrencies}
         expenses={expenseView}
         memberNames={Object.fromEntries(memberName)}
         addAction={addExpense.bind(null, id)}
@@ -165,13 +171,14 @@ export default async function GroupPage({
         removeAction={removeExpense.bind(null, id)}
       />
 
-      {rateView.length > 0 && (
-        <RateSection
-          baseCurrency={group.currency}
-          rates={rateView}
-          updateAction={updateRate.bind(null, id)}
-        />
-      )}
+      <RateSection
+        baseCurrency={group.currency}
+        rates={rateView}
+        addAction={addCurrency.bind(null, id)}
+        removeAction={removeCurrency.bind(null, id)}
+        updateAction={updateRate.bind(null, id)}
+        refreshAction={refreshGroupRates.bind(null, id)}
+      />
 
       <SettlementSection
         transfers={settlement.transfers.map((t) => ({

@@ -4,13 +4,14 @@
 
 - **Stack**: Next.js (App Router) / OpenNext on Cloudflare Workers / Cloudflare D1 + Drizzle ORM / Tailwind CSS
 - **本番ドメイン**: warikan.a2ito.work
-- **多通貨対応**（JPY / USD / EUR / GBP / KRW / CNY / TWD / THB）
+- **多通貨対応**（JPY / USD / EUR / GBP / KRW / CNY / TWD / THB）。立替ごとに通貨を選べ、グループの精算通貨へ為替レートで換算して精算する
 
 ## 機能
 
-- グループ作成（イベント名 + 通貨、URL 共有）
+- グループ作成（イベント名 + 精算通貨、URL 共有）
 - メンバー追加・削除
-- 立替の記録・編集・削除（支払った人 / 金額 / 内容 / 割り勘対象の均等割り）
+- 立替の記録・編集・削除（支払った人 / 通貨 / 金額 / 内容 / 割り勘対象の均等割り）
+- 外貨の為替レート設定（グループ内で通貨ごとに 1 つ。変えると同じ通貨の立替がすべて換算し直される）
 - 合計金額・各メンバーの受取/支払残高
 - 精算結果（最小回数の送金リスト）
 
@@ -34,6 +35,7 @@ npm run db:generate        # schema.ts からマイグレーション SQL 生成
 npm run db:migrate:local   # ローカル D1 に適用
 
 npm run dev                # http://localhost:3000
+npm test                   # vitest（換算ロジックのテスト）
 ```
 
 `next dev` でも `initOpenNextCloudflareForDev()` によりローカル D1 バインディングが有効になります。
@@ -81,11 +83,14 @@ npm run cf:deploy
 
 | パス | 役割 |
 | --- | --- |
-| `src/db/schema.ts` | Drizzle スキーマ（groups / members / expenses / expense_participants） |
+| `src/db/schema.ts` | Drizzle スキーマ（groups / members / expenses / expense_participants / exchange_rates） |
 | `src/lib/db.ts` | D1 バインディングから Drizzle クライアント取得 |
 | `src/lib/currency.ts` | 通貨定義・最小単位(minor units)変換・整形 |
+| `src/lib/exchange.ts` | 為替レートの検証と精算通貨への換算（BigInt で計算） |
 | `src/lib/settlement.ts` | 均等割り + 最小送金の精算アルゴリズム（純粋関数） |
 | `src/app/page.tsx` | トップ（グループ作成） |
 | `src/app/g/[id]/` | グループ詳細ページ・Server Actions・クライアント UI |
 
 金額は通貨の最小単位の整数で保持し、精算計算を整数で行うことで丸め誤差を回避しています。
+外貨の立替は元の通貨のまま保存し、表示のたびにグループのレートで精算通貨へ換算します
+（1 件ごとに四捨五入）。レートは自動取得せず、両替やカードの実レートを手で入れる想定です。

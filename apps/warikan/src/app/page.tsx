@@ -34,7 +34,7 @@ export default function Home() {
           </div>
           <div className="space-y-1.5">
             <label htmlFor="currency" className="text-sm font-medium">
-              通貨
+              精算通貨
             </label>
             <select
               id="currency"
@@ -48,6 +48,9 @@ export default function Home() {
                 </option>
               ))}
             </select>
+            <p className="text-xs text-black/50">
+              精算はこの通貨で行います。立替はほかの通貨でも記録でき、為替レートで換算します。
+            </p>
           </div>
           <button
             type="submit"

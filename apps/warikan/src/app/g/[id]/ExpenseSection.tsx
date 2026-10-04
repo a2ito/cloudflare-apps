@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { getCurrency } from "@/lib/currency";
+import { CURRENCY_LIST, getCurrency } from "@/lib/currency";
 
 interface MemberView {
   id: string;
@@ -12,7 +12,9 @@ interface ExpenseView {
   id: string;
   payerId: string;
   amount: number;
+  currency: string;
   amountLabel: string;
+  baseAmountLabel: string | null;
   description: string;
   participantIds: string[];
 }
@@ -21,7 +23,8 @@ type Action = (formData: FormData) => Promise<void>;
 
 export function ExpenseSection({
   members,
-  currency,
+  baseCurrency,
+  rates,
   expenses,
   memberNames,
   addAction,
@@ -29,7 +32,8 @@ export function ExpenseSection({
   removeAction,
 }: {
   members: MemberView[];
-  currency: string;
+  baseCurrency: string;
+  rates: Record<string, string>;
   expenses: ExpenseView[];
   memberNames: Record<string, string>;
   addAction: Action;
@@ -65,7 +69,8 @@ export function ExpenseSection({
         <div className="mb-4">
           <ExpenseForm
             members={members}
-            currency={currency}
+            baseCurrency={baseCurrency}
+            rates={rates}
             action={addAction}
             onDone={() => setAdding(false)}
             submitLabel="記録する"
@@ -84,7 +89,8 @@ export function ExpenseSection({
               <li key={e.id}>
                 <ExpenseForm
                   members={members}
-                  currency={currency}
+                  baseCurrency={baseCurrency}
+                  rates={rates}
                   action={updateAction}
                   expense={e}
                   onDone={() => setEditingId(null)}
@@ -111,6 +117,11 @@ export function ExpenseSection({
                   </div>
                   <div className="ml-auto text-right shrink-0">
                     <div className="font-bold">{e.amountLabel}</div>
+                    {e.baseAmountLabel && (
+                      <div className="text-xs text-black/50">
+                        {e.baseAmountLabel}
+                      </div>
+                    )}
                     <div className="flex gap-2 justify-end mt-0.5">
                       <button
                         type="button"
@@ -163,26 +174,37 @@ function DeleteExpenseButton({
 
 function ExpenseForm({
   members,
-  currency,
+  baseCurrency,
+  rates,
   action,
   expense,
   onDone,
   submitLabel,
 }: {
   members: MemberView[];
-  currency: string;
+  baseCurrency: string;
+  rates: Record<string, string>;
   action: Action;
   expense?: ExpenseView;
   onDone: () => void;
   submitLabel: string;
 }) {
+  const [currency, setCurrency] = useState(expense?.currency ?? baseCurrency);
+  const [rate, setRate] = useState(rates[currency] ?? "");
   const info = getCurrency(currency);
+  const base = getCurrency(baseCurrency);
+  const isForeign = currency !== baseCurrency;
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const defaultAmount = expense
     ? (expense.amount / 10 ** info.decimals).toFixed(info.decimals)
     : "";
+
+  function changeCurrency(next: string) {
+    setCurrency(next);
+    setRate(rates[next] ?? "");
+  }
   const defaultParticipants = new Set(
     expense ? expense.participantIds : members.map((m) => m.id),
   );
@@ -218,20 +240,34 @@ function ExpenseForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="space-y-1">
+        <label className="text-xs font-medium text-black/60">支払った人</label>
+        <select
+          name="payerId"
+          required
+          defaultValue={expense?.payerId ?? members[0]?.id ?? ""}
+          className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm bg-white outline-none focus:border-emerald-500"
+        >
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-black/60">
-            支払った人
-          </label>
+          <label className="text-xs font-medium text-black/60">通貨</label>
           <select
-            name="payerId"
-            required
-            defaultValue={expense?.payerId ?? members[0]?.id ?? ""}
+            name="currency"
+            value={currency}
+            onChange={(e) => changeCurrency(e.target.value)}
             className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm bg-white outline-none focus:border-emerald-500"
           >
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
+            {CURRENCY_LIST.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code}
               </option>
             ))}
           </select>
@@ -251,6 +287,28 @@ function ExpenseForm({
           />
         </div>
       </div>
+
+      {isForeign && (
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-black/60">
+            為替レート（1 {info.code} = ? {base.code}）
+          </label>
+          <input
+            name="rate"
+            type="text"
+            inputMode="decimal"
+            required
+            value={rate}
+            onChange={(e) => setRate(e.target.value)}
+            placeholder="例: 150.25"
+            className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm bg-white outline-none focus:border-emerald-500"
+          />
+          <p className="text-xs text-black/40">
+            このグループの {info.code} の立替はすべてこのレートで {base.code}{" "}
+            に換算して精算します。
+          </p>
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-black/60">

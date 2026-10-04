@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { expectRedirect, revalidated } from "@/test/action-mocks";
 import { createTestEnv, fakeImage, formData, type TestEnv } from "@/test/d1";
@@ -15,7 +16,7 @@ vi.mock("next/navigation", async () => {
 	const { RedirectSignal } = await import("@/test/action-mocks");
 	return { redirect: (to: string) => { throw new RedirectSignal(to); } };
 });
-const { createProduct, deleteProduct, updateProduct } = await import("./products");
+const { createProduct, deleteProduct, mergeProduct, updateProduct } = await import("./products");
 
 beforeAll(async () => {
 	t = await createTestEnv();
@@ -232,5 +233,69 @@ describe("deleteProduct", () => {
 
 	it("存在しない商品でもエラーにならず一覧へ戻る", async () => {
 		expect(await expectRedirect(() => deleteProduct(formData({ id: 42 })))).toBe("/");
+	});
+});
+
+describe("mergeProduct", () => {
+	beforeEach(async () => {
+		await t.bucket.put("products/target.jpg", new Uint8Array(3));
+		await t.bucket.put("products/source.jpg", new Uint8Array(3));
+		await t.db.insert(products).values([
+			{ name: "かのか", unit: "ml", maker: "アサヒ", imageKey: "products/target.jpg" },
+			{ name: "かのか", unit: "ml", imageKey: "products/source.jpg" },
+			{ name: "グラム売り", unit: "g" },
+		]);
+		await t.db.insert(variants).values([
+			{ productId: 1, amount: 1800, count: 1 },
+			{ productId: 2, amount: 1800, count: 6 },
+			{ productId: 3, amount: 100 },
+		]);
+		await t.db.insert(priceRecords).values([
+			{ variantId: 1, store: "やまや", price: 1188, quantity: 1, recordedAt: "2026-09-12" },
+			{ variantId: 2, store: "Amazon", price: 6980, quantity: 1, recordedAt: "2026-09-12" },
+		]);
+	});
+
+	it("荷姿と価格記録を統合先へ移し、元の商品を消して統合先へ戻る", async () => {
+		const to = await expectRedirect(() => mergeProduct(formData({ id: 2, targetId: 1 })));
+		expect(to).toBe("/products/1");
+		expect(await getProduct(t.db, 2)).toBeNull();
+		expect((await listVariants(t.db, 1)).map((v) => [v.id, v.count])).toEqual([
+			[1, 1],
+			[2, 6],
+		]);
+		expect(await listRecords(t.db, 2)).toMatchObject([{ store: "Amazon" }]);
+		// 名前などは統合先のものが残る
+		expect(await getProduct(t.db, 1)).toMatchObject({ name: "かのか", maker: "アサヒ", imageKey: "products/target.jpg" });
+		expect(revalidated).toEqual(expect.arrayContaining(["/", "/products/1"]));
+	});
+
+	it("元の商品の画像は R2 から消える", async () => {
+		await expectRedirect(() => mergeProduct(formData({ id: 2, targetId: 1 })));
+		expect(await r2Keys()).toEqual(["products/target.jpg"]);
+	});
+
+	it("元の商品の画像を統合先が使っていれば消さない", async () => {
+		await t.db.update(products).set({ imageKey: "products/target.jpg" }).where(eq(products.id, 2));
+		await expectRedirect(() => mergeProduct(formData({ id: 2, targetId: 1 })));
+		expect((await r2Keys()).sort()).toEqual(["products/source.jpg", "products/target.jpg"]);
+	});
+
+	it("単位が違う商品へは統合しない", async () => {
+		await expect(mergeProduct(formData({ id: 3, targetId: 1 }))).rejects.toThrow(/単位が違う/);
+		expect(await listVariants(t.db, 3)).toHaveLength(1);
+	});
+
+	it("自分自身へは統合しない", async () => {
+		await expect(mergeProduct(formData({ id: 1, targetId: 1 }))).rejects.toThrow(/同じ商品/);
+		expect(await getProduct(t.db, 1)).not.toBeNull();
+	});
+
+	it.each([
+		["統合元", { id: 999, targetId: 1 }],
+		["統合先", { id: 2, targetId: 999 }],
+	])("%sが無ければ何も変えない", async (_label, fields) => {
+		await expect(mergeProduct(formData(fields))).rejects.toThrow(/商品が見つかりません/);
+		expect(await listVariants(t.db, 2)).toHaveLength(1);
 	});
 });

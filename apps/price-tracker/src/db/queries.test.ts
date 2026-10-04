@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createTestEnv, type TestEnv } from "@/test/d1";
-import { getProduct, getRecord, getVariant, listCategories, listMakers, listProducts, listRecords, listStores, listVariants } from "./queries";
+import { getProduct, getRecord, getVariant, listCategories, listMakers, listMergeTargets, listProducts, listRecords, listStores, listVariants } from "./queries";
 import { categories, priceRecords, products, variants } from "./schema";
 
 let t: TestEnv;
@@ -138,6 +138,21 @@ describe("listProducts", () => {
 
 	it("空の DB では空配列", async () => {
 		expect(await listProducts(t.db)).toEqual([]);
+	});
+});
+
+describe("listMergeTargets", () => {
+	it("自分以外の同じ単位の商品を名前順で返す", async () => {
+		await t.db.insert(products).values([
+			{ name: "豆乳", unit: "ml" },
+			{ name: "牛乳", unit: "ml", maker: "明治" },
+			{ name: "米", unit: "g" },
+			{ name: "アーモンドミルク", unit: "ml" },
+		]);
+		expect(await listMergeTargets(t.db, { id: 1, unit: "ml" })).toEqual([
+			{ id: 4, name: "アーモンドミルク", maker: null },
+			{ id: 2, name: "牛乳", maker: "明治" },
+		]);
 	});
 });
 

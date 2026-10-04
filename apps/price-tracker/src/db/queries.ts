@@ -1,4 +1,4 @@
-import { asc, desc, eq, isNotNull, like, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, like, ne, sql, type SQL } from "drizzle-orm";
 import type { Db } from "./index";
 import { categories, priceRecords, products, variants, type Category, type PriceRecord, type Product, type Variant } from "./schema";
 
@@ -86,6 +86,15 @@ export async function getProduct(db: Db, id: number): Promise<(Product & { categ
 		.limit(1);
 	const row = rows[0];
 	return row ? { ...row.product, categoryName: row.categoryName } : null;
+}
+
+/** 統合先の候補。単位が違うと荷姿どうしで単価を比べられないため、同じ単位の商品に限る */
+export async function listMergeTargets(db: Db, product: Pick<Product, "id" | "unit">): Promise<Pick<Product, "id" | "name" | "maker">[]> {
+	return db
+		.select({ id: products.id, name: products.name, maker: products.maker })
+		.from(products)
+		.where(and(eq(products.unit, product.unit), ne(products.id, product.id)))
+		.orderBy(asc(products.name), asc(products.id));
 }
 
 /** 商品の荷姿を合計容量の小さい順に返す */

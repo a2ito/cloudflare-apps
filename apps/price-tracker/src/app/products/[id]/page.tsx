@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { deleteProduct } from "@/app/actions/products";
+import { deleteProduct, mergeProduct } from "@/app/actions/products";
 import { createRecord, deleteRecord } from "@/app/actions/records";
 import { createVariant, deleteVariant } from "@/app/actions/variants";
 import { RecordForm } from "@/components/record-form";
 import { VariantForm } from "@/components/variant-form";
-import { ConfirmForm, DangerButton, LinkButton } from "@/components/ui";
+import { ConfirmForm, DangerButton, inputClass, LinkButton } from "@/components/ui";
 import { getDb } from "@/db";
-import { getProduct, listRecords, listStores, listVariants } from "@/db/queries";
+import { getProduct, listMergeTargets, listRecords, listStores, listVariants } from "@/db/queries";
 import type { PriceRecord, Product, Variant } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { imageUrl } from "@/lib/images";
@@ -177,7 +177,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 	const db = await getDb();
 	const product = await getProduct(db, id);
 	if (!product) notFound();
-	const [variants, stores] = await Promise.all([listVariants(db, id), listStores(db)]);
+	const [variants, stores, mergeTargets] = await Promise.all([listVariants(db, id), listStores(db), listMergeTargets(db, product)]);
 	const recordsByVariant = await Promise.all(variants.map((v) => listRecords(db, v.id)));
 
 	return (
@@ -223,6 +223,31 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 				<p className="text-xs text-zinc-500">同じ商品で容量や入数が違うものは、荷姿として追加すると最安値を別々に比べられます</p>
 				<VariantForm action={createVariant} productId={product.id} unit={product.unit} />
 			</section>
+
+			{mergeTargets.length > 0 && (
+				<section className="space-y-3 rounded-lg border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
+					<h2 className="font-semibold">別の商品へ統合</h2>
+					<p className="text-xs text-zinc-500">
+						同じ商品を別々に登録してしまったときに使います。この商品の荷姿と価格記録を統合先へ移し、この商品は削除します。
+						名前や画像は統合先のものが残ります。選べるのは単位が同じ（{product.unit}）商品だけです
+					</p>
+					<ConfirmForm action={mergeProduct} message={`「${product.name}」を統合先へまとめて削除しますか？`} className="flex flex-col gap-2 sm:flex-row">
+						<input type="hidden" name="id" value={product.id} />
+						<select name="targetId" required defaultValue="" aria-label="統合先の商品" className={inputClass}>
+							<option value="" disabled>
+								統合先を選ぶ
+							</option>
+							{mergeTargets.map((t) => (
+								<option key={t.id} value={t.id}>
+									{t.name}
+									{t.maker ? `（${t.maker}）` : ""}
+								</option>
+							))}
+						</select>
+						<DangerButton>統合する</DangerButton>
+					</ConfirmForm>
+				</section>
+			)}
 		</div>
 	);
 }

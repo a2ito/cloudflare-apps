@@ -64,6 +64,13 @@
       "when": 1791111002350,
       "tag": "0008_group_variants",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791153327309,
+      "tag": "0009_add_health_category",
+      "breakpoints": true
     }
   ]
 }

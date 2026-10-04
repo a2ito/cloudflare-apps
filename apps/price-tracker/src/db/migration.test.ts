@@ -327,3 +327,18 @@ describe("荷姿を切り出してまとめる移行", () => {
 		]);
 	});
 });
+
+describe("健康食品・サプリのカテゴリを足す移行", () => {
+	it("カテゴリが 1 件増える", async () => {
+		t = await createTestEnvUpTo("0008");
+		await t.applyMigration("0009");
+		expect(await query("SELECT name FROM categories")).toEqual([{ name: "健康食品・サプリ" }]);
+	});
+
+	it("同じ名前が先にあっても失敗せず、重複もしない", async () => {
+		t = await createTestEnvUpTo("0008");
+		await t.d1.prepare("INSERT INTO categories (name) VALUES ('健康食品・サプリ')").run();
+		await t.applyMigration("0009");
+		expect(await query("SELECT COUNT(*) AS n FROM categories")).toEqual([{ n: 1 }]);
+	});
+});

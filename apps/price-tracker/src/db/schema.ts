@@ -24,11 +24,8 @@ export const products = sqliteTable(
 		/** メーカー・ブランド名 */
 		maker: text("maker"),
 		categoryId: integer("category_id").references(() => categories.id, { onDelete: "set null" }),
+		/** 荷姿どうしで単価を比べられるよう、単位は商品が持つ */
 		unit: text("unit", { enum: UNITS }).notNull().default("g"),
-		/** 1 個あたりの容量。荷姿が違えば別の商品として扱う */
-		amount: real("amount").notNull().default(1),
-		/** 1 パッケージに入っている個数。350ml × 6 本なら 6 */
-		count: integer("count").notNull().default(1),
 		imageKey: text("image_key"),
 		memo: text("memo"),
 		createdAt: timestamp("created_at"),
@@ -37,13 +34,33 @@ export const products = sqliteTable(
 	(t) => [index("products_category_idx").on(t.categoryId)],
 );
 
-export const priceRecords = sqliteTable(
-	"price_records",
+/**
+ * 荷姿。同じ商品でも容量や入数が違えば別の荷姿として、最安値を別々に判定する。
+ * まとめ買いの割安さで大容量が常に勝ってしまい、同じ荷姿どうしの比較ができなくなるのを避けるため
+ */
+export const variants = sqliteTable(
+	"variants",
 	{
 		id: integer("id").primaryKey({ autoIncrement: true }),
 		productId: integer("product_id")
 			.notNull()
 			.references(() => products.id, { onDelete: "cascade" }),
+		/** 1 個あたりの容量 */
+		amount: real("amount").notNull(),
+		/** 1 パッケージに入っている個数。350ml × 6 本なら 6 */
+		count: integer("count").notNull().default(1),
+		createdAt: timestamp("created_at"),
+	},
+	(t) => [index("variants_product_idx").on(t.productId)],
+);
+
+export const priceRecords = sqliteTable(
+	"price_records",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		variantId: integer("variant_id")
+			.notNull()
+			.references(() => variants.id, { onDelete: "cascade" }),
 		store: text("store").notNull(),
 		/** 税込価格（円） */
 		price: integer("price").notNull(),
@@ -58,9 +75,10 @@ export const priceRecords = sqliteTable(
 		memo: text("memo"),
 		createdAt: timestamp("created_at"),
 	},
-	(t) => [index("price_records_product_idx").on(t.productId)],
+	(t) => [index("price_records_variant_idx").on(t.variantId)],
 );
 
 export type Category = typeof categories.$inferSelect;
 export type Product = typeof products.$inferSelect;
+export type Variant = typeof variants.$inferSelect;
 export type PriceRecord = typeof priceRecords.$inferSelect;

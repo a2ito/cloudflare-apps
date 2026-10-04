@@ -57,6 +57,13 @@
       "when": 1789295522951,
       "tag": "0007_add_product_count",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791111002350,
+      "tag": "0008_group_variants",
+      "breakpoints": true
     }
   ]
 }

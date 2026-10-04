@@ -1,56 +1,79 @@
-import { asc, desc, eq, isNotNull, like, sql } from "drizzle-orm";
+import { asc, desc, eq, isNotNull, like, sql, type SQL } from "drizzle-orm";
 import type { Db } from "./index";
-import { categories, priceRecords, products, type Category, type PriceRecord, type Product } from "./schema";
+import { categories, priceRecords, products, variants, type Category, type PriceRecord, type Product, type Variant } from "./schema";
 
 /** 単価（1 unit あたり）の SQL 式。price_records のカラムを参照する */
-const unitCostExpr = sql<number>`${priceRecords.price} * 1.0 / ((SELECT p.amount * p.count FROM products p WHERE p.id = ${priceRecords.productId}) * ${priceRecords.quantity})`;
+const unitCostExpr = sql<number>`${priceRecords.price} * 1.0 / ((SELECT v.amount * v.count FROM variants v WHERE v.id = ${priceRecords.variantId}) * ${priceRecords.quantity})`;
 
 export type BestRecord = Pick<PriceRecord, "id" | "store" | "price" | "quantity" | "recordedAt">;
-export type ProductListItem = Product & { categoryName: string | null; best: BestRecord | null };
+export type VariantWithBest = Variant & { best: BestRecord | null };
+export type ProductListItem = Product & { categoryName: string | null; variants: VariantWithBest[] };
 
 export async function listCategories(db: Db): Promise<Category[]> {
 	return db.select().from(categories).orderBy(asc(categories.name));
 }
 
-export async function listProducts(
-	db: Db,
-	filter: { categoryId?: number; query?: string } = {},
-): Promise<ProductListItem[]> {
-	// 商品ごとに単価最小（同率なら新しい記録）の 1 件を結合する
+/**
+ * 荷姿ごとに単価最小（同率なら新しい記録）の 1 件を結合して返す。合計容量の小さい順。
+ * 商品 ID を IN で渡すと D1 のバインド変数の上限（100）に当たるため、商品と同じ条件で絞り込む
+ */
+async function listVariantsWithBest(db: Db, where: SQL | undefined): Promise<VariantWithBest[]> {
 	const bestId = sql`(
 		SELECT r.id FROM price_records r
-		WHERE r.product_id = ${products.id}
-		ORDER BY r.price * 1.0 / (${products.amount} * ${products.count} * r.quantity) ASC, r.recorded_at DESC, r.id DESC
+		WHERE r.variant_id = ${variants.id}
+		ORDER BY r.price * 1.0 / (${variants.amount} * ${variants.count} * r.quantity) ASC, r.recorded_at DESC, r.id DESC
 		LIMIT 1
 	)`;
 
-	const conditions = [];
-	if (filter.categoryId !== undefined) conditions.push(eq(products.categoryId, filter.categoryId));
-	if (filter.query) conditions.push(like(products.name, `%${filter.query}%`));
-
 	const rows = await db
 		.select({
-			product: products,
-			categoryName: categories.name,
+			variant: variants,
 			bestId: priceRecords.id,
 			bestStore: priceRecords.store,
 			bestPrice: priceRecords.price,
 			bestQuantity: priceRecords.quantity,
 			bestRecordedAt: priceRecords.recordedAt,
 		})
-		.from(products)
-		.leftJoin(categories, eq(categories.id, products.categoryId))
+		.from(variants)
+		.innerJoin(products, eq(products.id, variants.productId))
 		.leftJoin(priceRecords, eq(priceRecords.id, bestId))
-		.where(conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined)
-		.orderBy(asc(categories.name), asc(products.name));
+		.where(where)
+		.orderBy(asc(sql`${variants.amount} * ${variants.count}`), asc(variants.id));
 
 	return rows.map((r) => ({
-		...r.product,
-		categoryName: r.categoryName,
+		...r.variant,
 		best:
 			r.bestId !== null && r.bestStore !== null && r.bestPrice !== null && r.bestQuantity !== null && r.bestRecordedAt !== null
 				? { id: r.bestId, store: r.bestStore, price: r.bestPrice, quantity: r.bestQuantity, recordedAt: r.bestRecordedAt }
 				: null,
+	}));
+}
+
+export async function listProducts(
+	db: Db,
+	filter: { categoryId?: number; query?: string } = {},
+): Promise<ProductListItem[]> {
+	const conditions = [];
+	if (filter.categoryId !== undefined) conditions.push(eq(products.categoryId, filter.categoryId));
+	if (filter.query) conditions.push(like(products.name, `%${filter.query}%`));
+
+	const where = conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
+
+	const [rows, allVariants] = await Promise.all([
+		db
+			.select({ product: products, categoryName: categories.name })
+			.from(products)
+			.leftJoin(categories, eq(categories.id, products.categoryId))
+			.where(where)
+			.orderBy(asc(categories.name), asc(products.name)),
+		listVariantsWithBest(db, where),
+	]);
+	const byProduct = new Map<number, VariantWithBest[]>();
+	for (const v of allVariants) byProduct.set(v.productId, [...(byProduct.get(v.productId) ?? []), v]);
+	return rows.map((r) => ({
+		...r.product,
+		categoryName: r.categoryName,
+		variants: byProduct.get(r.product.id) ?? [],
 	}));
 }
 
@@ -65,11 +88,25 @@ export async function getProduct(db: Db, id: number): Promise<(Product & { categ
 	return row ? { ...row.product, categoryName: row.categoryName } : null;
 }
 
-export async function listRecords(db: Db, productId: number): Promise<PriceRecord[]> {
+/** 商品の荷姿を合計容量の小さい順に返す */
+export async function listVariants(db: Db, productId: number): Promise<Variant[]> {
+	return db
+		.select()
+		.from(variants)
+		.where(eq(variants.productId, productId))
+		.orderBy(asc(sql`${variants.amount} * ${variants.count}`), asc(variants.id));
+}
+
+export async function getVariant(db: Db, id: number): Promise<Variant | null> {
+	const rows = await db.select().from(variants).where(eq(variants.id, id)).limit(1);
+	return rows[0] ?? null;
+}
+
+export async function listRecords(db: Db, variantId: number): Promise<PriceRecord[]> {
 	return db
 		.select()
 		.from(priceRecords)
-		.where(eq(priceRecords.productId, productId))
+		.where(eq(priceRecords.variantId, variantId))
 		.orderBy(asc(unitCostExpr), desc(priceRecords.recordedAt));
 }
 

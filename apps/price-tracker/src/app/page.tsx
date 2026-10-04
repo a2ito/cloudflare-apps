@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDb } from "@/db";
-import { listCategories, listProducts, type ProductListItem } from "@/db/queries";
+import { listCategories, listProducts, type ProductListItem, type VariantWithBest } from "@/db/queries";
+import type { Unit } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { imageUrl } from "@/lib/images";
 import { formatAmount, formatPackage, formatYen, packageAmount, unitBaseLabel, unitPrice } from "@/lib/price";
@@ -12,12 +13,37 @@ function parseCategoryId(value: string | string[] | undefined): number | undefin
 	return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
-function ProductCard({ item }: { item: ProductListItem }) {
-	const best = item.best;
-	const perUnit = best
-		? unitPrice({ price: best.price, amount: item.amount, count: item.count, quantity: best.quantity, unit: item.unit })
-		: null;
+function VariantRow({ variant, unit }: { variant: VariantWithBest; unit: Unit }) {
+	const best = variant.best;
+	return (
+		<li className="py-1.5">
+			<p className="truncate text-xs text-zinc-500">{formatPackage(variant.amount, variant.count, unit)}</p>
+			{best ? (
+				<>
+					<p className="flex flex-wrap items-baseline gap-x-2">
+						<span className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+							{formatYen(unitPrice({ price: best.price, amount: variant.amount, count: variant.count, quantity: best.quantity, unit }))}
+							<span className="ml-0.5 text-xs font-normal text-zinc-500">/ {unitBaseLabel(unit)}</span>
+						</span>
+						<span className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+							{formatYen(best.price, 0)}
+							<span className="ml-0.5 text-xs font-normal text-zinc-500">
+								/ {formatAmount(packageAmount(variant.amount, variant.count), best.quantity, unit)}
+							</span>
+						</span>
+					</p>
+					<p className="truncate text-xs text-zinc-500">
+						{best.store} ・ {best.recordedAt}
+					</p>
+				</>
+			) : (
+				<p className="text-sm text-zinc-400">価格未登録</p>
+			)}
+		</li>
+	);
+}
 
+function ProductCard({ item }: { item: ProductListItem }) {
 	return (
 		<Link
 			href={`/products/${item.id}`}
@@ -36,27 +62,15 @@ function ProductCard({ item }: { item: ProductListItem }) {
 					{item.maker && <span className="ml-1 text-zinc-400">・{item.maker}</span>}
 				</p>
 				<h2 className="truncate font-semibold">{item.name}</h2>
-				<p className="truncate text-xs text-zinc-500">{formatPackage(item.amount, item.count, item.unit)}</p>
-				{best && perUnit !== null ? (
-					<div className="mt-1">
-						<p className="flex flex-wrap items-baseline gap-x-2">
-							<span className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
-								{formatYen(perUnit)}
-								<span className="ml-0.5 text-xs font-normal text-zinc-500">/ {unitBaseLabel(item.unit)}</span>
-							</span>
-							<span className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-								{formatYen(best.price, 0)}
-								<span className="ml-0.5 text-xs font-normal text-zinc-500">
-									/ {formatAmount(packageAmount(item.amount, item.count), best.quantity, item.unit)}
-								</span>
-							</span>
-						</p>
-						<p className="truncate text-xs text-zinc-500">
-							{best.store} ・ {best.recordedAt}
-						</p>
-					</div>
+				{/* 最安値は荷姿ごとに判定する。大容量のまとめ買いが常に勝って比較にならないのを避けるため */}
+				{item.variants.length === 0 ? (
+					<p className="mt-1 text-sm text-zinc-400">荷姿未登録</p>
 				) : (
-					<p className="mt-1 text-sm text-zinc-400">価格未登録</p>
+					<ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+						{item.variants.map((v) => (
+							<VariantRow key={v.id} variant={v} unit={item.unit} />
+						))}
+					</ul>
 				)}
 			</div>
 		</Link>

@@ -6,6 +6,7 @@ import { UNITS } from "@/db/schema";
 import { initialActionState, type ActionState } from "@/lib/form";
 import { imageUrl } from "@/lib/images";
 import { ImageInput } from "./image-input";
+import { VariantFields } from "./variant-form";
 import { Field, FormMessage, inputClass, LinkButton, SubmitButton } from "./ui";
 
 type Props = {
@@ -47,7 +48,7 @@ export function ProductForm({ action, categories, makers, product }: Props) {
 						))}
 					</select>
 				</Field>
-				<Field label="容量の単位" hint="g / ml は 100 あたり、それ以外は 1 あたりの単価を表示します">
+				<Field label="容量の単位" hint="荷姿すべてに共通。g / ml は 100 あたり、それ以外は 1 あたりの単価を表示します">
 					<select name="unit" defaultValue={product?.unit ?? "g"} className={inputClass}>
 						{UNITS.map((u) => (
 							<option key={u} value={u}>
@@ -56,13 +57,14 @@ export function ProductForm({ action, categories, makers, product }: Props) {
 						))}
 					</select>
 				</Field>
-				<Field label="1 個あたりの容量" hint="荷姿が違えば別の商品として登録する">
-					<input name="amount" type="number" inputMode="decimal" min={0.01} step="any" required defaultValue={product?.amount ?? ""} className={inputClass} placeholder="例: 350" />
-				</Field>
-				<Field label="入数" hint="6 缶パックなら 6。単品なら 1">
-					<input name="count" type="number" inputMode="numeric" min={1} step={1} defaultValue={product?.count ?? 1} className={inputClass} />
-				</Field>
 			</div>
+
+			{/* 荷姿は商品の登録時に最初の 1 件だけ受け取る。以降の追加・編集は商品ページで行う */}
+			{!product && (
+				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<VariantFields />
+				</div>
+			)}
 
 			<Field label="画像">
 				<ImageInput name="image" currentUrl={product?.imageKey ? imageUrl(product.imageKey) : null} />

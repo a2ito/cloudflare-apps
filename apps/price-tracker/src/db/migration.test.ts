@@ -156,3 +156,174 @@ describe("容量を商品へ移す移行", () => {
 		]);
 	});
 });
+
+/**
+ * 荷姿を商品から切り出し、荷姿違いを 1 つの商品にまとめる移行（0008）の検証。
+ */
+async function seedBefore0008(
+	products: { id: number; name: string; unit: string; amount: number; count?: number; maker?: string; imageKey?: string }[],
+	records: { productId: number; store: string; price: number; quantity?: number }[],
+) {
+	t = await createTestEnvUpTo("0007");
+	for (const p of products) {
+		await t.d1
+			.prepare("INSERT INTO products (id, name, unit, amount, count, maker, image_key) VALUES (?, ?, ?, ?, ?, ?, ?)")
+			.bind(p.id, p.name, p.unit, p.amount, p.count ?? 1, p.maker ?? null, p.imageKey ?? null)
+			.run();
+	}
+	for (const r of records) {
+		await t.d1
+			.prepare("INSERT INTO price_records (product_id, store, price, quantity, recorded_at) VALUES (?, ?, ?, ?, '2026-09-12')")
+			.bind(r.productId, r.store, r.price, r.quantity ?? 1)
+			.run();
+	}
+}
+
+/** 商品ごとの荷姿と、荷姿ごとの記録の店舗を並べる */
+async function variantSummary(): Promise<Row[]> {
+	return query(`
+		SELECT p.id AS productId, p.name, v.amount, v.count, group_concat(r.store, ',') AS stores
+		FROM products p
+		JOIN variants v ON v.product_id = p.id
+		LEFT JOIN price_records r ON r.variant_id = v.id
+		GROUP BY v.id
+		ORDER BY p.id, v.amount * v.count
+	`);
+}
+
+describe("荷姿を切り出してまとめる移行", () => {
+	it("荷姿が 1 つの商品は、名前を変えずに荷姿 1 件を持つ", async () => {
+		await seedBefore0008(
+			[{ id: 1, name: "金麦", unit: "ml", amount: 350, count: 6 }],
+			[{ productId: 1, store: "イオン", price: 833 }],
+		);
+		await t.applyMigration("0008");
+
+		expect(await variantSummary()).toEqual([{ productId: 1, name: "金麦", amount: 350, count: 6, stores: "イオン" }]);
+	});
+
+	it("容量付きの名前で分かれた商品を 1 つにまとめ、名前から容量を外す", async () => {
+		await seedBefore0008(
+			[
+				{ id: 1, name: "リステリン 1000ml", unit: "ml", amount: 1000, maker: "J&J", imageKey: "products/a.jpg" },
+				{ id: 2, name: "リステリン 2000ml", unit: "ml", amount: 2000, imageKey: "products/a.jpg" },
+				{ id: 3, name: "リステリン 3000ml", unit: "ml", amount: 3000 },
+			],
+			[
+				{ productId: 1, store: "アオキ", price: 1078 },
+				{ productId: 2, store: "スギ薬局", price: 1840 },
+				{ productId: 3, store: "コストコ", price: 2728 },
+			],
+		);
+		await t.applyMigration("0008");
+
+		expect(await variantSummary()).toEqual([
+			{ productId: 1, name: "リステリン", amount: 1000, count: 1, stores: "アオキ" },
+			{ productId: 1, name: "リステリン", amount: 2000, count: 1, stores: "スギ薬局" },
+			{ productId: 1, name: "リステリン", amount: 3000, count: 1, stores: "コストコ" },
+		]);
+		// まとめ先（id が最小の商品）の属性が残る
+		expect(await query("SELECT maker, image_key FROM products")).toEqual([{ maker: "J&J", image_key: "products/a.jpg" }]);
+	});
+
+	it("小数の容量で分かれた商品もまとめる", async () => {
+		await seedBefore0008(
+			[
+				{ id: 1, name: "だし 7.5g", unit: "g", amount: 7.5 },
+				{ id: 2, name: "だし 15g", unit: "g", amount: 15 },
+			],
+			[],
+		);
+		await t.applyMigration("0008");
+		expect((await variantSummary()).map((r) => [r.name, r.amount])).toEqual([
+			["だし", 7.5],
+			["だし", 15],
+		]);
+	});
+
+	it("容量付きの名前が 1 件しか無ければ、利用者の付けた名前として残す", async () => {
+		await seedBefore0008([{ id: 1, name: "牛乳 1000ml", unit: "ml", amount: 1000 }], []);
+		await t.applyMigration("0008");
+		expect(await query("SELECT name FROM products")).toEqual([{ name: "牛乳 1000ml" }]);
+	});
+
+	it("単位が違うものはまとめない", async () => {
+		await seedBefore0008(
+			[
+				{ id: 1, name: "米 5個", unit: "個", amount: 5 },
+				{ id: 2, name: "米 5g", unit: "g", amount: 5 },
+			],
+			[],
+		);
+		await t.applyMigration("0008");
+		expect(await query("SELECT name FROM products ORDER BY id")).toEqual([{ name: "米 5個" }, { name: "米 5g" }]);
+	});
+
+	it("名前の末尾が自分の容量と合わないものはまとめない", async () => {
+		// 荷姿を後から編集して容量と名前がずれた商品
+		await seedBefore0008(
+			[
+				{ id: 1, name: "豆乳 1000ml", unit: "ml", amount: 1000 },
+				{ id: 2, name: "豆乳 200ml", unit: "ml", amount: 250 },
+			],
+			[],
+		);
+		await t.applyMigration("0008");
+		expect(await query("SELECT name FROM products ORDER BY id")).toEqual([{ name: "豆乳 1000ml" }, { name: "豆乳 200ml" }]);
+	});
+
+	it("容量を外した名前が既存の別商品と同じでも、そちらは巻き込まない", async () => {
+		await seedBefore0008(
+			[
+				{ id: 1, name: "豆乳", unit: "ml", amount: 1000 },
+				{ id: 2, name: "豆乳 200ml", unit: "ml", amount: 200 },
+				{ id: 3, name: "豆乳 500ml", unit: "ml", amount: 500 },
+			],
+			[],
+		);
+		await t.applyMigration("0008");
+		expect((await variantSummary()).map((r) => [r.productId, r.name, r.amount])).toEqual([
+			[1, "豆乳", 1000],
+			[2, "豆乳", 200],
+			[2, "豆乳", 500],
+		]);
+	});
+
+	it("価格記録の id と内容はそのまま残る", async () => {
+		await seedBefore0008(
+			[{ id: 1, name: "卵", unit: "個", amount: 10 }],
+			[
+				{ productId: 1, store: "ライフ", price: 258, quantity: 2 },
+				{ productId: 1, store: "OK", price: 238 },
+			],
+		);
+		await t.applyMigration("0008");
+		expect(await query("SELECT id, variant_id, store, price, quantity FROM price_records ORDER BY id")).toEqual([
+			{ id: 1, variant_id: 1, store: "ライフ", price: 258, quantity: 2 },
+			{ id: 2, variant_id: 1, store: "OK", price: 238, quantity: 1 },
+		]);
+	});
+
+	it("移行後に追加した荷姿は既存の id と重ならない", async () => {
+		await seedBefore0008([{ id: 5, name: "卵", unit: "個", amount: 10 }], []);
+		await t.applyMigration("0008");
+		await t.d1.prepare("INSERT INTO variants (product_id, amount) VALUES (5, 6)").run();
+		expect(await query("SELECT id FROM variants ORDER BY id")).toEqual([{ id: 5 }, { id: 6 }]);
+	});
+
+	it("0005 で分けた商品が、0008 で元の 1 商品に戻る", async () => {
+		await seedBeforeMigration(
+			[{ id: 1, name: "リステリン", unit: "ml" }],
+			[
+				{ productId: 1, store: "アオキ", price: 1078, amount: 1000 },
+				{ productId: 1, store: "スギ薬局", price: 1840, amount: 2000 },
+			],
+		);
+		for (const m of ["0004", "0005", "0006", "0007", "0008"]) await t.applyMigration(m);
+
+		expect(await variantSummary()).toEqual([
+			{ productId: 1, name: "リステリン", amount: 1000, count: 1, stores: "アオキ" },
+			{ productId: 1, name: "リステリン", amount: 2000, count: 1, stores: "スギ薬局" },
+		]);
+	});
+});

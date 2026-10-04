@@ -3,8 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { expectRedirect, revalidated } from "@/test/action-mocks";
 import { createTestEnv, fakeImage, formData, type TestEnv } from "@/test/d1";
 import { listRecords } from "@/db/queries";
-import { isForeignKeyViolation } from "@/lib/errors";
-import { priceRecords, products } from "@/db/schema";
+import { priceRecords, products, variants } from "@/db/schema";
 
 let t: TestEnv;
 vi.mock("@/lib/auth", async () => ({ requireUser: async () => (await import("@/test/action-mocks")).fakeUser }));
@@ -25,11 +24,19 @@ beforeAll(async () => {
 afterAll(() => t.dispose());
 beforeEach(async () => {
 	await t.truncate();
-	await t.db.insert(products).values({ name: "豆乳", unit: "ml", amount: 1000 });
+	await t.db.insert(products).values([
+		{ name: "豆乳", unit: "ml" },
+		{ name: "別の商品", unit: "ml" },
+	]);
+	await t.db.insert(variants).values([
+		{ productId: 1, amount: 1000 },
+		{ productId: 1, amount: 200 },
+		{ productId: 2, amount: 500 },
+	]);
 	revalidated.length = 0;
 });
 
-const valid = { productId: 1, store: "OKストア", price: 198, quantity: 1, recordedAt: "2026-09-12" };
+const valid = { productId: 1, variantId: 1, store: "OKストア", price: 198, quantity: 1, recordedAt: "2026-09-12" };
 
 describe("createRecord", () => {
 	it("記録して成功メッセージを返す", async () => {
@@ -56,8 +63,22 @@ describe("createRecord", () => {
 		expect(await listRecords(t.db, 1)).toEqual([]);
 	});
 
-	it("存在しない商品への記録は外部キー制約で失敗する", async () => {
-		await expect(createRecord({}, formData({ ...valid, productId: 999 }))).rejects.toSatisfy(isForeignKeyViolation);
+	it("指定した荷姿にだけ記録する", async () => {
+		await createRecord({}, formData({ ...valid, variantId: 2 }));
+		expect(await listRecords(t.db, 1)).toEqual([]);
+		expect(await listRecords(t.db, 2)).toMatchObject([{ store: "OKストア", variantId: 2 }]);
+	});
+
+	it("存在しない荷姿へは記録しない", async () => {
+		const state = await createRecord({}, formData({ ...valid, variantId: 999 }));
+		expect(state).toEqual({ error: "荷姿が見つかりません" });
+	});
+
+	it("別の商品の荷姿へは記録せず、写真も R2 に置かない", async () => {
+		const state = await createRecord({}, formData({ ...valid, variantId: 3, image: fakeImage() }));
+		expect(state).toEqual({ error: "荷姿が見つかりません" });
+		expect(await listRecords(t.db, 3)).toEqual([]);
+		expect((await t.bucket.list()).objects).toEqual([]);
 	});
 });
 
@@ -99,7 +120,7 @@ describe("画像", () => {
 describe("updateRecord", () => {
 	async function seedRecord(extra: Record<string, unknown> = {}) {
 		await t.db.insert(priceRecords).values({
-			productId: 1,
+			variantId: 1,
 			store: "旧店",
 			price: 300,
 			quantity: 1,
@@ -179,8 +200,8 @@ describe("updateRecord", () => {
 describe("deleteRecord", () => {
 	it("指定の記録だけ削除する", async () => {
 		await t.db.insert(priceRecords).values([
-			{ productId: 1, store: "A", price: 100, quantity: 1, recordedAt: "2026-09-01" },
-			{ productId: 1, store: "B", price: 200, quantity: 1, recordedAt: "2026-09-02" },
+			{ variantId: 1, store: "A", price: 100, quantity: 1, recordedAt: "2026-09-01" },
+			{ variantId: 1, store: "B", price: 200, quantity: 1, recordedAt: "2026-09-02" },
 		]);
 		await deleteRecord(formData({ id: 1, productId: 1 }));
 		expect((await listRecords(t.db, 1)).map((r) => r.store)).toEqual(["B"]);

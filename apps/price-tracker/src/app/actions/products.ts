@@ -1,13 +1,13 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { priceRecords, products, UNITS } from "@/db/schema";
+import { priceRecords, products, UNITS, variants } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { idFromForm, optionalIdFromForm, optionalText, parseForm, type ActionState } from "@/lib/form";
+import { idFromForm, optionalIdFromForm, optionalText, parseForm, variantFields, type ActionState } from "@/lib/form";
 import { releaseImage } from "@/lib/image-cleanup";
 import { storeImage } from "@/lib/images";
 
@@ -16,8 +16,6 @@ const productSchema = z.object({
 	maker: optionalText,
 	categoryId: optionalIdFromForm,
 	unit: z.enum(UNITS),
-	amount: z.coerce.number().positive("容量は 0 より大きい値で入力してください"),
-	count: z.coerce.number().int("入数は整数で入力してください").positive("入数は 1 以上で入力してください").default(1),
 	memo: optionalText,
 });
 
@@ -28,7 +26,8 @@ function imageFile(formData: FormData): File | null {
 
 export async function createProduct(_prev: ActionState, formData: FormData): Promise<ActionState> {
 	await requireUser();
-	const parsed = parseForm(productSchema, formData);
+	// 最初の荷姿もあわせて受け取る
+	const parsed = parseForm(productSchema.extend(variantFields), formData);
 	if (!parsed.ok) return { error: parsed.error };
 
 	let imageKey: string | null = null;
@@ -46,8 +45,6 @@ export async function createProduct(_prev: ActionState, formData: FormData): Pro
 			maker: parsed.data.maker ?? null,
 			categoryId: parsed.data.categoryId ?? null,
 			unit: parsed.data.unit,
-			amount: parsed.data.amount,
-			count: parsed.data.count,
 			memo: parsed.data.memo ?? null,
 			imageKey,
 		})
@@ -55,6 +52,7 @@ export async function createProduct(_prev: ActionState, formData: FormData): Pro
 
 	const id = inserted[0]?.id;
 	if (id === undefined) return { error: "商品の登録に失敗しました" };
+	await db.insert(variants).values({ productId: id, amount: parsed.data.amount, count: parsed.data.count });
 
 	revalidatePath("/");
 	redirect(`/products/${id}`);
@@ -85,8 +83,6 @@ export async function updateProduct(_prev: ActionState, formData: FormData): Pro
 			maker: parsed.data.maker ?? null,
 			categoryId: parsed.data.categoryId ?? null,
 			unit: parsed.data.unit,
-			amount: parsed.data.amount,
-			count: parsed.data.count,
 			memo: parsed.data.memo ?? null,
 			imageKey,
 			updatedAt: new Date().toISOString().replace("T", " ").slice(0, 19),
@@ -112,7 +108,12 @@ export async function deleteProduct(formData: FormData): Promise<void> {
 		const records = await db
 			.select({ imageKey: priceRecords.imageKey })
 			.from(priceRecords)
-			.where(eq(priceRecords.productId, parsed.data.id));
+			.where(
+				inArray(
+					priceRecords.variantId,
+					db.select({ id: variants.id }).from(variants).where(eq(variants.productId, parsed.data.id)),
+				),
+			);
 		// 行は ON DELETE CASCADE で消えるが R2 の画像は残る。
 		// 他の商品と共有しているキーを巻き添えにしないよう、行を消したあとに片付ける
 		await db.delete(products).where(eq(products.id, parsed.data.id));

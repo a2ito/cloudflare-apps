@@ -14,8 +14,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply warikan-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply warikan-db --remote",
-    "cf:build": "opennextjs-cloudflare build",
-    "cf:deploy": "npm run db:migrate:remote && opennextjs-cloudflare deploy"
+    "cf:config": "node scripts/gen-wrangler-config.mjs",
+    "cf:build": "npm run cf:config && opennextjs-cloudflare build",
+    "cf:deploy": "npm run cf:config && npm run db:migrate:remote && opennextjs-cloudflare deploy"
   },
   "keywords": [],
   "author": "",

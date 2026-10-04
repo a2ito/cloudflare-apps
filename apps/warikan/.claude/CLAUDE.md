@@ -49,6 +49,15 @@ npm run lint && npm test && npm run build
 - Vitest。拾うのは `src/**/*.test.ts` のみ
 - 計算や変換は純粋関数として `src/lib/` に切り出し、そこをテストする
 
+## デプロイ設定
+
+- **`wrangler.jsonc` はコミットしない**。設定を変えるときは `wrangler.jsonc.example` を直す。
+  実 ID と公開ホスト名は Workers Builds の Build variables から `cf:config` が埋める
+- 手元で `dev`・`db:migrate:local`・`preview` を使うには `wrangler.jsonc` が要る。
+  無ければ `D1_DATABASE_ID=local APP_HOSTNAME=localhost npm run cf:config` で作る
+- 新しいプレースホルダを足したら、`scripts/gen-wrangler-config.mjs`・README の表・
+  ダッシュボードの Build variables をそろえる。どれかが欠けるとデプロイが落ちる
+
 ## スキーマ変更
 
 - `npm run db:generate` で生成する。`migrations/` の SQL とスナップショットは手で書かない

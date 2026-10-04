@@ -41,9 +41,11 @@ HTML と Server Actions はキャッシュしない。
 npm ci
 ```
 
-以降はこのディレクトリで作業する。
+以降はこのディレクトリで作業する。`wrangler.jsonc` は追跡していないので、初回は雛形から作る
+（本番の値でなくてよい。ローカル D1 は ID を見ない）。
 
 ```bash
+D1_DATABASE_ID=local APP_HOSTNAME=localhost npm run cf:config
 
 # ローカル D1 にマイグレーション適用（初回・スキーマ変更時）
 npm run db:generate        # schema.ts からマイグレーション SQL 生成
@@ -63,36 +65,42 @@ npm run preview   # opennextjs-cloudflare build && preview
 
 ## デプロイ（Cloudflare）
 
-> 初回のみ `1`〜`3` を実施。以降は `4` を繰り返す。
+main への push を Cloudflare Workers Builds が検知し、ビルドしてデプロイする。
+**通常のデプロイは手で流さない。** GitHub 側にデプロイ用の認証情報は置かない。
+
+Workers Builds の設定は Cloudflare ダッシュボードの **Settings > Build** で行う。
+モノレポなので **root directory にこのアプリのディレクトリを指す**。Worker 名は
+Wrangler 設定の `name`（`warikan`）と一致していなければビルドが落ちる。
+
+| 項目 | 値 |
+| --- | --- |
+| Root directory | `apps/warikan` |
+| Build command | `npm run cf:build` |
+| Deploy command | `npm run cf:deploy` |
+| Git branch | `main` |
+| Build watch paths | `apps/warikan/*`、`package-lock.json` |
+| Build variables | `D1_DATABASE_ID`, `APP_HOSTNAME` |
+
+`wrangler.jsonc` は実 ID と公開ホスト名を含むため追跡していない。`npm run cf:config` が
+雛形 `wrangler.jsonc.example` のプレースホルダを Build variables の値で埋めて生成する。
+手元に `wrangler.jsonc` がある場合は上書きしない。
+
+マイグレーションは `npm run cf:deploy` の中でデプロイより先に適用されるので、手で流す必要はない。
+`&&` で繋いでいるため、適用に失敗したらデプロイも行われず、古いコードが動き続ける。
+
+### 本番 D1 を作り直すとき
 
 ```bash
-# 1. Cloudflare にログイン
-npx wrangler login
-
-# 2. 本番 D1 を作成し、出力された database_id を wrangler.jsonc の
-#    d1_databases[0].database_id に反映する
 npx wrangler d1 create warikan-db
-
-# 3. ビルド & デプロイ（cf:deploy が本番 D1 へのマイグレーション適用も行う）
-npm run cf:build
-npm run cf:deploy
 ```
 
-**通常のデプロイは手で流さない。** main への merge を Cloudflare Workers Builds が
-検知して、ビルドとデプロイを行う。上の手順は本番 D1 を作り直すときのもの。
+出力された `database_id` を Build variables の `D1_DATABASE_ID` に設定し直す。
 
-### カスタムドメイン warikan.a2ito.work
+### カスタムドメイン
 
-`a2ito.work` ゾーンが Cloudflare 管理下にある前提で、以下のいずれか:
-
-- Cloudflare ダッシュボード → Workers & Pages → `warikan` → Settings → Domains & Routes → **Add Custom Domain** に `warikan.a2ito.work` を追加
-- もしくは `wrangler.jsonc` に `routes` を追加して再デプロイ:
-
-  ```jsonc
-  "routes": [
-    { "pattern": "warikan.a2ito.work", "custom_domain": true }
-  ]
-  ```
+公開ホスト名は Build variables の `APP_HOSTNAME` で決まる。`wrangler.jsonc` の `routes` に
+`custom_domain: true` で入るので、デプロイ時に Cloudflare がドメインを割り当てる
+（`a2ito.work` ゾーンが Cloudflare 管理下にある前提）。
 
 ## 構成
 

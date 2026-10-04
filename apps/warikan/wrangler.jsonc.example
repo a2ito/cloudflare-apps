@@ -1,3 +1,7 @@
+/**
+ * wrangler.jsonc の雛形。実 ID と公開ホスト名を含む wrangler.jsonc は追跡しない。
+ * `npm run cf:config` で環境変数 D1_DATABASE_ID / APP_HOSTNAME を埋めて生成する。
+ */
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "warikan",
@@ -10,7 +14,7 @@
   },
   "routes": [
     {
-      "pattern": "warikan.a2ito.work",
+      "pattern": "__APP_HOSTNAME__",
       "custom_domain": true
     }
   ],
@@ -18,7 +22,7 @@
     {
       "binding": "DB",
       "database_name": "warikan-db",
-      "database_id": "87667068-6e33-40ab-89de-bb2dba8ccf34",
+      "database_id": "__D1_DATABASE_ID__",
       "migrations_dir": "migrations"
     }
   ],

@@ -1,11 +1,21 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "warikan | みんなで割り勘",
   description:
     "ログイン不要。旅行やイベントの立替を記録して、最小回数で精算できる割り勘アプリ。",
+  applicationName: "warikan",
+  // iOS はマニフェストの display を見ないため、こちらで単独起動を指定する
+  appleWebApp: { capable: true, title: "warikan", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#10b981",
+  // ホーム画面から起動したときに端末の表示領域いっぱいに広げる
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -32,6 +42,7 @@ export default function RootLayout({
             warikan — みんなで割り勘
           </footer>
         </div>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
 import { isCurrencyCode, parseAmountToMinor } from "@/lib/currency";
 import { parseRate } from "@/lib/exchange";
+import { DEFAULT_WEIGHT, parseWeight } from "@/lib/weight";
 import {
   MAX_GROUP_CURRENCIES,
   refreshRates,
@@ -91,6 +92,23 @@ function parseExpenseForm(formData: FormData) {
   });
 }
 
+// 割り勘対象ごとの重み。「傾斜をつける」が外れていれば全員 1 倍（均等割り）にする。
+// 傾斜の入力欄はフォームに残っていても、チェックを外したら使わない。
+function parseParticipantWeights(
+  formData: FormData,
+  participantIds: string[],
+): { memberId: string; weight: number }[] {
+  const weighted = formData.get("weighted") === "on";
+  return participantIds.map((memberId) => {
+    if (!weighted) return { memberId, weight: DEFAULT_WEIGHT };
+    const weight = parseWeight(String(formData.get(`weight:${memberId}`) ?? ""));
+    if (weight === null) {
+      throw new Error("傾斜は 0.5 から 10 までの 0.5 刻みで入力してください");
+    }
+    return { memberId, weight };
+  });
+}
+
 async function assertMembersBelong(
   db: ReturnType<typeof getDb>,
   groupId: string,
@@ -144,6 +162,10 @@ export async function addExpense(groupId: string, formData: FormData) {
     parsed.data.payerId,
     ...parsed.data.participantIds,
   ]);
+  const participants = parseParticipantWeights(
+    formData,
+    parsed.data.participantIds,
+  );
 
   const expenseId = crypto.randomUUID();
   await db.insert(schema.expenses).values({
@@ -156,9 +178,10 @@ export async function addExpense(groupId: string, formData: FormData) {
     createdAt: new Date(),
   });
   await db.insert(schema.expenseParticipants).values(
-    parsed.data.participantIds.map((memberId) => ({
+    participants.map(({ memberId, weight }) => ({
       expenseId,
       memberId,
+      weight,
     })),
   );
   revalidatePath(`/g/${groupId}`);
@@ -192,6 +215,10 @@ export async function updateExpense(groupId: string, formData: FormData) {
     parsed.data.payerId,
     ...parsed.data.participantIds,
   ]);
+  const participants = parseParticipantWeights(
+    formData,
+    parsed.data.participantIds,
+  );
 
   await db
     .update(schema.expenses)
@@ -206,9 +233,10 @@ export async function updateExpense(groupId: string, formData: FormData) {
     .delete(schema.expenseParticipants)
     .where(eq(schema.expenseParticipants.expenseId, expenseId));
   await db.insert(schema.expenseParticipants).values(
-    parsed.data.participantIds.map((memberId) => ({
+    participants.map(({ memberId, weight }) => ({
       expenseId,
       memberId,
+      weight,
     })),
   );
   revalidatePath(`/g/${groupId}`);

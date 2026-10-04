@@ -1,0 +1,1 @@
+ALTER TABLE `expense_participants` ADD `weight` integer DEFAULT 10 NOT NULL;

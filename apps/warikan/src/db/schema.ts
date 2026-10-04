@@ -34,7 +34,8 @@ export const expenses = sqliteTable("expenses", {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
-// 立替の割り勘対象メンバー（均等割り）
+// 立替の割り勘対象メンバー。weight の比で負担を分ける（全員同じなら均等割り）。
+// weight は倍率を 10 倍した整数（10 = 1 倍、15 = 1.5 倍）。src/lib/weight.ts を参照。
 export const expenseParticipants = sqliteTable(
   "expense_participants",
   {
@@ -44,6 +45,7 @@ export const expenseParticipants = sqliteTable(
     memberId: text("member_id")
       .notNull()
       .references(() => members.id, { onDelete: "restrict" }),
+    weight: integer("weight").notNull().default(10),
   },
   (t) => [primaryKey({ columns: [t.expenseId, t.memberId] })],
 );

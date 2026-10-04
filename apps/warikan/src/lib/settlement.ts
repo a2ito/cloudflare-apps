@@ -9,7 +9,12 @@ export interface SettlementExpense {
   id: string;
   payerId: string;
   amount: number; // minor units
-  participantIds: string[]; // 割り勘対象(均等割り)
+  participants: SettlementParticipant[]; // 割り勘対象
+}
+
+export interface SettlementParticipant {
+  memberId: string;
+  weight: number; // 傾斜の重み（src/lib/weight.ts）。全員同じなら均等割り
 }
 
 export interface Balance {
@@ -40,6 +45,34 @@ export function splitEqually(amount: number, n: number): number[] {
   return Array.from({ length: n }, (_, i) => base + (i < remainder ? 1 : 0));
 }
 
+// 金額 amount を重み weights の比で分けた配列を返す。合計は必ず amount と一致する。
+// 端数は、切り捨てた余りの大きい人から 1 単位ずつ配る（同じなら先頭から）。
+// 重みが全員同じなら splitEqually と同じ結果になる。
+// 金額 × 重みは安全な整数の範囲を超えうるので BigInt で計算する。
+export function splitByWeight(amount: number, weights: number[]): number[] {
+  const total = weights.reduce((sum, w) => sum + BigInt(w), 0n);
+  if (total <= 0n) return weights.map(() => 0);
+  const a = BigInt(amount);
+  const parts = weights.map((w, index) => {
+    const product = a * BigInt(w);
+    return { index, share: product / total, remainder: product % total };
+  });
+  let leftover = a - parts.reduce((sum, p) => sum + p.share, 0n);
+  const byRemainder = [...parts].sort((x, y) =>
+    x.remainder === y.remainder
+      ? x.index - y.index
+      : x.remainder > y.remainder
+        ? -1
+        : 1,
+  );
+  for (const p of byRemainder) {
+    if (leftover <= 0n) break;
+    p.share += 1n;
+    leftover -= 1n;
+  }
+  return parts.map((p) => Number(p.share));
+}
+
 export function calculateSettlement(
   members: SettlementMember[],
   expenses: SettlementExpense[],
@@ -57,10 +90,13 @@ export function calculateSettlement(
     if (paid.has(e.payerId)) {
       paid.set(e.payerId, (paid.get(e.payerId) ?? 0) + e.amount);
     }
-    const participants = e.participantIds.filter((id) => owed.has(id));
-    const shares = splitEqually(e.amount, participants.length);
-    participants.forEach((id, i) => {
-      owed.set(id, (owed.get(id) ?? 0) + shares[i]);
+    const participants = e.participants.filter((p) => owed.has(p.memberId));
+    const shares = splitByWeight(
+      e.amount,
+      participants.map((p) => p.weight),
+    );
+    participants.forEach((p, i) => {
+      owed.set(p.memberId, (owed.get(p.memberId) ?? 0) + shares[i]);
     });
   }
 

@@ -3,7 +3,10 @@ import { asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { formatAmount, getCurrency } from "@/lib/currency";
 import { convertToBase } from "@/lib/exchange";
-import { calculateSettlement } from "@/lib/settlement";
+import {
+  calculateSettlement,
+  type SettlementParticipant,
+} from "@/lib/settlement";
 import {
   addMember,
   removeMember,
@@ -51,10 +54,10 @@ export default async function GroupPage({
       })
     : [];
 
-  const participantsByExpense = new Map<string, string[]>();
+  const participantsByExpense = new Map<string, SettlementParticipant[]>();
   for (const p of participants) {
     const arr = participantsByExpense.get(p.expenseId) ?? [];
-    arr.push(p.memberId);
+    arr.push({ memberId: p.memberId, weight: p.weight });
     participantsByExpense.set(p.expenseId, arr);
   }
 
@@ -90,7 +93,7 @@ export default async function GroupPage({
           id: e.id,
           payerId: e.payerId,
           amount,
-          participantIds: participantsByExpense.get(e.id) ?? [],
+          participants: participantsByExpense.get(e.id) ?? [],
         },
       ];
     }),
@@ -113,7 +116,7 @@ export default async function GroupPage({
             ? "レート未設定"
             : `≈ ${formatAmount(baseAmount, group.currency)}`,
       description: e.description,
-      participantIds: participantsByExpense.get(e.id) ?? [],
+      participants: participantsByExpense.get(e.id) ?? [],
     };
   });
 

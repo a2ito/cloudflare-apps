@@ -124,3 +124,35 @@ export async function deleteProduct(formData: FormData): Promise<void> {
 	revalidatePath("/");
 	redirect("/");
 }
+
+/**
+ * 商品を別の商品へ統合する。荷姿（と紐づく価格記録）をすべて統合先へ移し、元の商品を消す。
+ * 名前・メーカー・画像などは統合先のものが残る
+ */
+export async function mergeProduct(formData: FormData): Promise<void> {
+	await requireUser();
+	const parsed = parseForm(z.object({ id: idFromForm, targetId: idFromForm }), formData);
+	if (!parsed.ok) throw new Error(parsed.error);
+	const { id, targetId } = parsed.data;
+	if (id === targetId) throw new Error("同じ商品へは統合できません");
+
+	const db = await getDb();
+	const [source, target] = await Promise.all([
+		db.select().from(products).where(eq(products.id, id)).limit(1),
+		db.select().from(products).where(eq(products.id, targetId)).limit(1),
+	]);
+	if (!source[0] || !target[0]) throw new Error("商品が見つかりません");
+	if (source[0].unit !== target[0].unit) throw new Error("単位が違う商品へは統合できません");
+
+	// 荷姿を移す前に商品が消えると CASCADE で記録まで消えるため、1 つのトランザクションで順に流す
+	await db.batch([
+		db.update(variants).set({ productId: targetId }).where(eq(variants.productId, id)),
+		db.delete(products).where(eq(products.id, id)),
+	]);
+	// 参照が切れたことを確かめてから消すため、DB を更新したあとに片付ける
+	await releaseImage(db, source[0].imageKey);
+
+	revalidatePath("/");
+	revalidatePath(`/products/${targetId}`);
+	redirect(`/products/${targetId}`);
+}

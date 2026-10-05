@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAmount, formatPackage, formatYen, packageAmount, unitBase, unitBaseLabel, unitPrice } from "./price";
+import { formatAmount, formatPackage, formatYen, metricLabel, metricUnitPrice, packageAmount, productMetric, unitBase, unitBaseLabel, unitPrice } from "./price";
 
 describe("unitBase / unitBaseLabel", () => {
 	it("g と ml は 100 あたり、それ以外は 1 あたり", () => {
@@ -87,5 +87,44 @@ describe("formatAmount", () => {
 	});
 	it("小数の容量も表示できる", () => {
 		expect(formatAmount(1.5, 1, "g")).toBe("1.5g");
+	});
+});
+
+describe("productMetric", () => {
+	const full = { metricName: "タンパク質", metricUnit: "g", metricBasis: 30, metricAmount: 21 };
+
+	it("4 項目そろっていれば軸を返す", () => {
+		expect(productMetric(full)).toEqual({ name: "タンパク質", unit: "g", basis: 30, amount: 21 });
+	});
+
+	it.each([
+		["名前", { metricName: null }],
+		["単位", { metricUnit: "" }],
+		["基準量", { metricBasis: null }],
+		["含有量", { metricAmount: 0 }],
+	])("%sが欠けていれば null", (_label, patch) => {
+		expect(productMetric({ ...full, ...patch })).toBeNull();
+	});
+});
+
+describe("metricUnitPrice", () => {
+	const protein = { name: "タンパク質", unit: "g", basis: 30, amount: 21 };
+
+	it("含有量 1 単位あたりの価格を計算する", () => {
+		// 1kg のうちタンパク質は 1000 × 21 / 30 = 700g
+		expect(metricUnitPrice({ price: 3980, amount: 1000, metric: protein })).toBeCloseTo(5.6857, 3);
+	});
+
+	it("入数とまとめ買いも掛ける", () => {
+		// 30g × 10 袋を 2 パッケージ = 600g、タンパク質 420g
+		expect(metricUnitPrice({ price: 2100, amount: 30, count: 10, quantity: 2, metric: protein })).toBeCloseTo(5, 5);
+	});
+
+	it("含有量が 0 なら NaN", () => {
+		expect(metricUnitPrice({ price: 100, amount: 0, metric: protein })).toBeNaN();
+	});
+
+	it("ラベルは「名前 1単位」", () => {
+		expect(metricLabel(protein)).toBe("タンパク質 1g");
 	});
 });

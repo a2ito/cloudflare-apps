@@ -67,6 +67,28 @@ export function ProductForm({ action, categories, makers, product }: Props) {
 				</div>
 			)}
 
+			<fieldset className="space-y-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+				<legend className="px-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">比較軸（任意）</legend>
+				<p className="text-xs text-zinc-500">
+					単価とは別に比べたい成分があれば、栄養表示をそのまま入れる。プロテインなら「30g あたり タンパク質 21g」。
+					すべて入れるか、すべて空にする
+				</p>
+				<div className="grid grid-cols-2 gap-3">
+					<Field label="名前">
+						<input name="metricName" maxLength={20} defaultValue={product?.metricName ?? ""} className={inputClass} placeholder="例: タンパク質" />
+					</Field>
+					<Field label="単位">
+						<input name="metricUnit" maxLength={10} defaultValue={product?.metricUnit ?? ""} className={inputClass} placeholder="例: g" />
+					</Field>
+					<Field label="基準量" hint="商品の単位で。30g あたりなら 30">
+						<input name="metricBasis" type="number" inputMode="decimal" min={0.01} step="any" defaultValue={product?.metricBasis ?? ""} className={inputClass} placeholder="例: 30" />
+					</Field>
+					<Field label="含有量" hint="基準量あたりの量">
+						<input name="metricAmount" type="number" inputMode="decimal" min={0.01} step="any" defaultValue={product?.metricAmount ?? ""} className={inputClass} placeholder="例: 21" />
+					</Field>
+				</div>
+			</fieldset>
+
 			<Field label="画像">
 				<ImageInput name="image" profile={PRODUCT_IMAGE} currentUrl={product?.imageKey ? imageUrl(product.imageKey) : null} />
 			</Field>

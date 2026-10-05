@@ -4,7 +4,7 @@ import { listCategories, listProducts, type ProductListItem, type VariantWithBes
 import type { Unit } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { imageUrl } from "@/lib/images";
-import { formatAmount, formatPackage, formatYen, packageAmount, unitBaseLabel, unitPrice } from "@/lib/price";
+import { formatAmount, formatPackage, formatYen, metricLabel, metricUnitPrice, packageAmount, productMetric, unitBaseLabel, unitPrice, type Metric } from "@/lib/price";
 import { inputClass } from "@/components/ui";
 
 function parseCategoryId(value: string | string[] | undefined): number | undefined {
@@ -13,7 +13,7 @@ function parseCategoryId(value: string | string[] | undefined): number | undefin
 	return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
-function VariantRow({ variant, unit }: { variant: VariantWithBest; unit: Unit }) {
+function VariantRow({ variant, unit, metric }: { variant: VariantWithBest; unit: Unit; metric: Metric | null }) {
 	const best = variant.best;
 	return (
 		<li className="py-1.5">
@@ -32,6 +32,14 @@ function VariantRow({ variant, unit }: { variant: VariantWithBest; unit: Unit })
 							</span>
 						</span>
 					</p>
+					{metric && (
+						<p className="truncate text-xs text-zinc-600 dark:text-zinc-400">
+							{metricLabel(metric)}{" "}
+							<span className="font-semibold">
+								{formatYen(metricUnitPrice({ price: best.price, amount: variant.amount, count: variant.count, quantity: best.quantity, metric }), 2)}
+							</span>
+						</p>
+					)}
 					<p className="truncate text-xs text-zinc-500">
 						{best.store} ・ {best.recordedAt}
 					</p>
@@ -44,6 +52,7 @@ function VariantRow({ variant, unit }: { variant: VariantWithBest; unit: Unit })
 }
 
 function ProductCard({ item }: { item: ProductListItem }) {
+	const metric = productMetric(item);
 	return (
 		<Link
 			href={`/products/${item.id}`}
@@ -68,7 +77,7 @@ function ProductCard({ item }: { item: ProductListItem }) {
 				) : (
 					<ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
 						{item.variants.map((v) => (
-							<VariantRow key={v.id} variant={v} unit={item.unit} />
+							<VariantRow key={v.id} variant={v} unit={item.unit} metric={metric} />
 						))}
 					</ul>
 				)}

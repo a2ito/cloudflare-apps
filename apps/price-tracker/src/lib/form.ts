@@ -45,6 +45,14 @@ export const optionalUrl = z.preprocess(
 		.optional(),
 );
 
+/** 空欄可の正の数。空欄は undefined にする */
+export function optionalPositiveNumber(label: string) {
+	return z.preprocess(
+		(v) => (v === "" || v === undefined || v === null ? undefined : v),
+		z.coerce.number().positive(`${label}は 0 より大きい値で入力してください`).optional(),
+	);
+}
+
 /** 荷姿の入力項目 */
 export const variantFields = {
 	amount: z.coerce.number().positive("容量は 0 より大きい値で入力してください"),

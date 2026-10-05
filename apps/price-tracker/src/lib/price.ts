@@ -45,6 +45,35 @@ export function formatPackage(amount: number, count: number, unit: Unit): string
 	return `${each} × ${times} = ${total}${unit}`;
 }
 
+/** 単価とは別の比較軸。「basis（商品の単位）あたり amount（unit）」を含む */
+export type Metric = { name: string; unit: string; basis: number; amount: number };
+
+/** 商品の比較軸。4 項目のどれかが欠けていれば軸なしとして扱う */
+export function productMetric(p: {
+	metricName: string | null;
+	metricUnit: string | null;
+	metricBasis: number | null;
+	metricAmount: number | null;
+}): Metric | null {
+	if (!p.metricName || !p.metricUnit || !p.metricBasis || !p.metricAmount) return null;
+	return { name: p.metricName, unit: p.metricUnit, basis: p.metricBasis, amount: p.metricAmount };
+}
+
+/**
+ * 比較軸 1 単位あたりの価格（円）。タンパク質なら 1g あたり。
+ * 含有量 = 合計容量 × 購入数 × amount / basis
+ */
+export function metricUnitPrice({ price, amount, count = 1, quantity = 1, metric }: Omit<PriceInput, "unit"> & { metric: Metric }): number {
+	const content = (packageAmount(amount, count) * quantity * metric.amount) / metric.basis;
+	if (content <= 0) return Number.NaN;
+	return price / content;
+}
+
+/** 比較軸の単価の表記ラベル。「タンパク質 1g」 */
+export function metricLabel(metric: Metric): string {
+	return `${metric.name} 1${metric.unit}`;
+}
+
 export function formatYen(value: number, fractionDigits = 1): string {
 	if (!Number.isFinite(value)) return "-";
 	return `¥${value.toLocaleString("ja-JP", { maximumFractionDigits: fractionDigits })}`;

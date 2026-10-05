@@ -28,6 +28,15 @@ export const products = sqliteTable(
 		unit: text("unit", { enum: UNITS }).notNull().default("g"),
 		imageKey: text("image_key"),
 		memo: text("memo"),
+		/**
+		 * 単価とは別の比較軸（任意）。プロテインのタンパク質量など。
+		 * 栄養表示をそのまま写せるよう「metricBasis（商品の単位）あたり metricAmount（metricUnit）」で持つ。
+		 * 4 つとも入っているか、4 つとも空かのどちらか
+		 */
+		metricName: text("metric_name"),
+		metricUnit: text("metric_unit"),
+		metricBasis: real("metric_basis"),
+		metricAmount: real("metric_amount"),
 		createdAt: timestamp("created_at"),
 		updatedAt: timestamp("updated_at"),
 	},

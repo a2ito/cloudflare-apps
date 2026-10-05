@@ -236,6 +236,42 @@ describe("deleteProduct", () => {
 	});
 });
 
+describe("比較軸", () => {
+	const protein = { metricName: "タンパク質", metricUnit: "g", metricBasis: 30, metricAmount: 21 };
+
+	it("登録時に 4 項目を保存する", async () => {
+		await expectRedirect(() => createProduct({}, formData({ name: "ホエイ", unit: "g", amount: 1000, ...protein })));
+		expect(await getProduct(t.db, 1)).toMatchObject(protein);
+	});
+
+	it("すべて空なら null で保存する", async () => {
+		await expectRedirect(() =>
+			createProduct({}, formData({ name: "ホエイ", unit: "g", amount: 1000, metricName: "", metricUnit: "", metricBasis: "", metricAmount: "" })),
+		);
+		expect(await getProduct(t.db, 1)).toMatchObject({ metricName: null, metricUnit: null, metricBasis: null, metricAmount: null });
+	});
+
+	it("一部だけ入れると検証エラーで商品を作らない", async () => {
+		const state = await createProduct({}, formData({ name: "ホエイ", unit: "g", amount: 1000, metricName: "タンパク質", metricAmount: 21 }));
+		expect(state.error).toMatch(/すべて入れるか、すべて空/);
+		expect(await t.db.select().from(products)).toEqual([]);
+	});
+
+	it("基準量が 0 なら検証エラー", async () => {
+		const state = await createProduct({}, formData({ name: "ホエイ", unit: "g", amount: 1000, ...protein, metricBasis: 0 }));
+		expect(state.error).toMatch(/基準量は 0 より大きい/);
+	});
+
+	it("編集で変更でき、すべて空にすれば外せる", async () => {
+		await t.db.insert(products).values({ name: "ホエイ", unit: "g", ...protein });
+		await expectRedirect(() => updateProduct({}, formData({ id: 1, name: "ホエイ", unit: "g", ...protein, metricAmount: 24 })));
+		expect((await getProduct(t.db, 1))?.metricAmount).toBe(24);
+
+		await expectRedirect(() => updateProduct({}, formData({ id: 1, name: "ホエイ", unit: "g" })));
+		expect(await getProduct(t.db, 1)).toMatchObject({ metricName: null, metricBasis: null });
+	});
+});
+
 describe("mergeProduct", () => {
 	beforeEach(async () => {
 		await t.bucket.put("products/target.jpg", new Uint8Array(3));

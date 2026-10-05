@@ -7,7 +7,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { priceRecords, products, UNITS, variants } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { idFromForm, optionalIdFromForm, optionalText, parseForm, variantFields, type ActionState } from "@/lib/form";
+import { idFromForm, optionalIdFromForm, optionalPositiveNumber, optionalText, parseForm, variantFields, type ActionState } from "@/lib/form";
 import { releaseImage } from "@/lib/image-cleanup";
 import { storeImage } from "@/lib/images";
 
@@ -17,7 +17,37 @@ const productSchema = z.object({
 	categoryId: optionalIdFromForm,
 	unit: z.enum(UNITS),
 	memo: optionalText,
+	metricName: optionalText,
+	metricUnit: optionalText,
+	metricBasis: optionalPositiveNumber("基準量"),
+	metricAmount: optionalPositiveNumber("含有量"),
 });
+
+type MetricInput = Pick<z.infer<typeof productSchema>, "metricName" | "metricUnit" | "metricBasis" | "metricAmount">;
+type MetricColumns = { metricName: string | null; metricUnit: string | null; metricBasis: number | null; metricAmount: number | null };
+
+/**
+ * 比較軸の 4 項目は、全部入れるか全部空にするかのどちらか。
+ * 一部だけだと単価を出せないのに、入れたつもりの値が黙って無視されるため弾く
+ */
+function metricColumns(input: MetricInput): { ok: true; value: MetricColumns } | { ok: false; error: string } {
+	const values = [input.metricName, input.metricUnit, input.metricBasis, input.metricAmount];
+	if (values.every((v) => v === undefined)) {
+		return { ok: true, value: { metricName: null, metricUnit: null, metricBasis: null, metricAmount: null } };
+	}
+	if (values.some((v) => v === undefined)) {
+		return { ok: false, error: "比較軸は、名前・単位・基準量・含有量をすべて入れるか、すべて空にしてください" };
+	}
+	return {
+		ok: true,
+		value: {
+			metricName: input.metricName ?? null,
+			metricUnit: input.metricUnit ?? null,
+			metricBasis: input.metricBasis ?? null,
+			metricAmount: input.metricAmount ?? null,
+		},
+	};
+}
 
 function imageFile(formData: FormData): File | null {
 	const value = formData.get("image");
@@ -29,6 +59,8 @@ export async function createProduct(_prev: ActionState, formData: FormData): Pro
 	// 最初の荷姿もあわせて受け取る
 	const parsed = parseForm(productSchema.extend(variantFields), formData);
 	if (!parsed.ok) return { error: parsed.error };
+	const metric = metricColumns(parsed.data);
+	if (!metric.ok) return { error: metric.error };
 
 	let imageKey: string | null = null;
 	try {
@@ -46,6 +78,7 @@ export async function createProduct(_prev: ActionState, formData: FormData): Pro
 			categoryId: parsed.data.categoryId ?? null,
 			unit: parsed.data.unit,
 			memo: parsed.data.memo ?? null,
+			...metric.value,
 			imageKey,
 		})
 		.returning({ id: products.id });
@@ -62,6 +95,8 @@ export async function updateProduct(_prev: ActionState, formData: FormData): Pro
 	await requireUser();
 	const parsed = parseForm(productSchema.extend({ id: idFromForm, removeImage: z.string().optional() }), formData);
 	if (!parsed.ok) return { error: parsed.error };
+	const metric = metricColumns(parsed.data);
+	if (!metric.ok) return { error: metric.error };
 
 	const db = await getDb();
 	const current = (await db.select().from(products).where(eq(products.id, parsed.data.id)).limit(1))[0];
@@ -84,6 +119,7 @@ export async function updateProduct(_prev: ActionState, formData: FormData): Pro
 			categoryId: parsed.data.categoryId ?? null,
 			unit: parsed.data.unit,
 			memo: parsed.data.memo ?? null,
+			...metric.value,
 			imageKey,
 			updatedAt: new Date().toISOString().replace("T", " ").slice(0, 19),
 		})

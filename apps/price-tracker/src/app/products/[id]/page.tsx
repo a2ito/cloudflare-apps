@@ -11,7 +11,7 @@ import { getProduct, listMergeTargets, listRecords, listStores, listVariants } f
 import type { PriceRecord, Product, Variant } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { imageUrl } from "@/lib/images";
-import { formatAmount, formatPackage, formatYen, packageAmount, unitBaseLabel, unitPrice } from "@/lib/price";
+import { formatAmount, formatPackage, formatYen, metricLabel, metricUnitPrice, packageAmount, productMetric, unitBaseLabel, unitPrice, type Metric } from "@/lib/price";
 import { isSafeExternalUrl, linkHostname } from "@/lib/url";
 
 /** リンクがあれば店舗名を外部リンクにする。危険な形式は素のテキストに落とす */
@@ -55,6 +55,9 @@ function VariantSection({ product, variant, records, stores, deletable, formOpen
 	const total = packageAmount(variant.amount, variant.count);
 	const perUnit = (r: PriceRecord) =>
 		unitPrice({ price: r.price, amount: variant.amount, count: variant.count, quantity: r.quantity, unit: product.unit });
+	const metric = productMetric(product);
+	const perMetric = (r: PriceRecord, m: Metric) =>
+		metricUnitPrice({ price: r.price, amount: variant.amount, count: variant.count, quantity: r.quantity, metric: m });
 
 	return (
 		<section className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
@@ -89,6 +92,11 @@ function VariantSection({ product, variant, records, stores, deletable, formOpen
 							<span className="ml-1 text-sm font-normal">/ {formatAmount(total, best.quantity, product.unit)}</span>
 						</span>
 					</p>
+					{metric && (
+						<p className="text-sm text-emerald-800 dark:text-emerald-200">
+							{metricLabel(metric)} <span className="font-semibold">{formatYen(perMetric(best, metric), 2)}</span>
+						</p>
+					)}
 					<p className="text-sm text-emerald-800 dark:text-emerald-200">
 						<StoreLabel store={best.store} url={best.url} /> ・ {best.recordedAt}
 					</p>
@@ -112,6 +120,7 @@ function VariantSection({ product, variant, records, stores, deletable, formOpen
 							<thead className="bg-zinc-50 text-left text-xs text-zinc-500 dark:bg-zinc-900">
 								<tr>
 									<th className="px-3 py-2">単価 / {unitBaseLabel(product.unit)}</th>
+									{metric && <th className="px-3 py-2">{metricLabel(metric)}</th>}
 									<th className="px-3 py-2">店舗</th>
 									<th className="px-3 py-2">価格</th>
 									<th className="px-3 py-2">容量</th>
@@ -125,6 +134,7 @@ function VariantSection({ product, variant, records, stores, deletable, formOpen
 								{records.map((r, i) => (
 									<tr key={r.id} className={i === 0 ? "bg-emerald-50/60 dark:bg-emerald-950/40" : undefined}>
 										<td className="px-3 py-2 font-semibold">{formatYen(perUnit(r))}</td>
+										{metric && <td className="px-3 py-2">{formatYen(perMetric(r, metric), 2)}</td>}
 										<td className="px-3 py-2">
 											<StoreLabel store={r.store} url={r.url} />
 										</td>
@@ -179,6 +189,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 	if (!product) notFound();
 	const [variants, stores, mergeTargets] = await Promise.all([listVariants(db, id), listStores(db), listMergeTargets(db, product)]);
 	const recordsByVariant = await Promise.all(variants.map((v) => listRecords(db, v.id)));
+	const metric = productMetric(product);
 
 	return (
 		<div className="space-y-8">
@@ -194,6 +205,13 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 					<p className="text-sm text-zinc-500">{product.categoryName ?? "未分類"}</p>
 					<h1 className="text-2xl font-bold">{product.name}</h1>
 					{product.maker && <p className="text-sm text-zinc-600 dark:text-zinc-400">{product.maker}</p>}
+					{metric && (
+						<p className="text-sm text-zinc-600 dark:text-zinc-400">
+							{metric.basis.toLocaleString("ja-JP")}
+							{product.unit} あたり {metric.name} {metric.amount.toLocaleString("ja-JP")}
+							{metric.unit}
+						</p>
+					)}
 					{product.memo && <p className="whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-400">{product.memo}</p>}
 					<div className="flex flex-wrap gap-2 pt-2">
 						<LinkButton href={`/products/${product.id}/edit`}>編集</LinkButton>

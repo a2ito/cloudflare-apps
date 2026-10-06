@@ -78,12 +78,18 @@ Cloudflare Workers Builds が main への push で動く。設定はダッシュ
 | Build command | `npm run cf:build` |
 | Deploy command | `npm run cf:deploy` |
 | Build watch paths | `apps/<name>/*`、`package-lock.json` |
+| Non-production branch builds | 無効 |
 
 **ルートディレクトリはアプリのディレクトリを指す。** Worker 名は、そこに置かれた
 Wrangler 設定の `name` と一致していなければビルドが落ちる。
 
 **build watch paths に `package-lock.json` を含める。** アプリ配下だけを見ていると、
 依存をまとめて更新したときに再デプロイされない。
+
+**non-production branch builds は無効にする。** PR 段階の検証は GitHub Actions が
+やっているので Cloudflare 側で二重に回す必要がない。加えて `wrangler.jsonc` を組み立てる
+`cf:config` は `D1_DATABASE_ID` などの環境変数を要求するが、これらは production 環境にしか
+入っていないため、PR ブランチのビルドは環境変数が未設定で落ちる。
 
 アプリを追加したら、その Worker にも同じ設定を入れる。入れ忘れると、
 リポジトリは繋がっているのにデプロイだけ起きないという状態になる。

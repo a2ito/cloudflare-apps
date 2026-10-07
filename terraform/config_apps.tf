@@ -24,9 +24,7 @@ locals {
       trigger_uuid          = "ec3367cd-31ef-4a31-b260-400532e66b17"
     }
     "exam-lab" = {
-      # Auth.js に移す途中。GOOGLE_CLIENT_ID は今のコード（ID トークン方式）が使っているので、
-      # Auth.js 版がデプロイされるまで残す
-      secrets               = concat(["GOOGLE_CLIENT_ID"], local.google_login_secrets)
+      secrets               = local.google_login_secrets
       build_variables       = ["APP_HOSTNAME"]
       build_token_uuid      = local.build_tokens.cloudflare_apps
       build_caching_enabled = false

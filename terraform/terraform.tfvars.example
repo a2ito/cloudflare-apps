@@ -16,7 +16,11 @@ secrets = {
     GOOGLE_CLIENT_SECRET = "FILL_ME"
   }
   "exam-lab" = {
-    GOOGLE_CLIENT_ID = "FILL_ME"
+    GOOGLE_CLIENT_ID   = "FILL_ME"
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
   }
   "kcalog" = {
     ALLOWED_EMAILS     = "FILL_ME"

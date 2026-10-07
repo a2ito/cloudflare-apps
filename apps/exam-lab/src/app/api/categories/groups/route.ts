@@ -1,9 +1,13 @@
+import { requireApiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { getDB } from "@/db";
 import { groups } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
+  const user = await requireApiUser();
+  if (user instanceof NextResponse) return user;
+
   const examId = Number(new URL(request.url).searchParams.get("examId"));
   const db = getDB();
 
@@ -13,6 +17,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await requireApiUser();
+  if (user instanceof NextResponse) return user;
+
   const { examId, name } = (await request.json()) as {
     examId?: number;
     name?: string;

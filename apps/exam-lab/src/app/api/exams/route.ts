@@ -1,3 +1,4 @@
+import { requireApiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { getDB } from "@/db";
 import { exams } from "@/db/schema";
@@ -5,6 +6,9 @@ import { eq } from "drizzle-orm";
 
 /** 一覧取得 */
 export async function GET(request: NextRequest) {
+  const user = await requireApiUser();
+  if (user instanceof NextResponse) return user;
+
   const db = getDB();
 
   const items = await db.select().from(exams);
@@ -14,6 +18,9 @@ export async function GET(request: NextRequest) {
 
 /** 登録 */
 export async function POST(request: NextRequest) {
+  const user = await requireApiUser();
+  if (user instanceof NextResponse) return user;
+
   const body = await request.json();
   const { name } = body as {
     name?: string;

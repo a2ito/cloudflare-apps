@@ -14,9 +14,16 @@ Next.js + Cloudflare Workers + D1 を使った
 
 ### 🔐 認証
 
-- Google 認証
-- 事前に許可されたユーザのみログイン可能
-- middleware によるページガード
+- Google 認証（Auth.js。kcalog などと同じ認可コード方式）
+- `ALLOWED_EMAILS` に載っているアカウントだけログインできる
+- API（`/api/*`）は全て `requireApiUser()` でセッションを検証し、未ログインなら 401 を返す
+- middleware は未ログインならログイン画面（`/`）へ送るだけ。データは API からしか取れないので、守りの本体は API 側
+
+Secret（`AUTH_SECRET`・`AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`・`ALLOWED_EMAILS`）はリポジトリ直下の
+[terraform/](../../terraform) で管理する。Google の OAuth クライアントには、承認済みのリダイレクト URI として
+`https://<ホスト名>/api/auth/callback/google` を登録する。
+
+ローカルでは `.dev.vars` に同じ名前で置く。
 
 ### 📝 問題管理
 
@@ -47,7 +54,7 @@ Next.js + Cloudflare Workers + D1 を使った
 | 実行環境       | Cloudflare Workers     |
 | DB             | Cloudflare D1 (SQLite) |
 | ORM            | Drizzle ORM            |
-| 認証           | Google OAuth           |
+| 認証           | Auth.js（Google）      |
 | デプロイ       | Cloudflare Workers Builds |
 | スタイル       | Tailwind CSS           |
 

@@ -1,3 +1,6 @@
 interface Env {
-  GOOGLE_CLIENT_ID: string;
+  AUTH_SECRET: string;
+  AUTH_GOOGLE_ID: string;
+  AUTH_GOOGLE_SECRET: string;
+  ALLOWED_EMAILS: string;
 }

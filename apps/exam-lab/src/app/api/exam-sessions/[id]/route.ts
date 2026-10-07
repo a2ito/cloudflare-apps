@@ -1,3 +1,4 @@
+import { requireApiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { getDB } from "@/db";
 import { examSessions } from "@/db/schema";
@@ -10,6 +11,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const user = await requireApiUser();
+  if (user instanceof NextResponse) return user;
+
   const { id } = await params;
   const idNum = Number(id);
   const body = (await request.json()) as {
@@ -30,6 +34,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const user = await requireApiUser();
+  if (user instanceof NextResponse) return user;
+
   const { id } = await params;
   const idNum = Number(id);
   const db = getDB();

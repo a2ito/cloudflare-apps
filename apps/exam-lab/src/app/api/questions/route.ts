@@ -1,3 +1,4 @@
+import { requireApiUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { getDB } from "@/db";
 import {
@@ -25,6 +26,9 @@ type QuestionInput = {
 };
 
 export async function POST(request: NextRequest) {
+  const user = await requireApiUser();
+  if (user instanceof NextResponse) return user;
+
   try {
     const body = (await request.json()) as QuestionInput;
 
@@ -132,6 +136,9 @@ export async function POST(request: NextRequest) {
  * 問題一覧取得
  */
 export async function GET() {
+  const user = await requireApiUser();
+  if (user instanceof NextResponse) return user;
+
   try {
     const db = getDB();
 

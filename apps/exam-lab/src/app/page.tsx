@@ -1,10 +1,26 @@
-"use client";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { signInWithGoogle } from "./actions";
 
-import { GoogleLogin } from "@react-oauth/google";
-import { useRouter } from "next/navigation";
+const ERROR_MESSAGES: Record<string, string> = {
+  AccessDenied: "このアカウントにはアクセス権がありません",
+  Configuration: "認証の設定に問題があります。管理者に連絡してください",
+  Default: "ログインに失敗しました。もう一度お試しください",
+};
 
-export default function Home() {
-  const router = useRouter();
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const session = await auth();
+  if (session?.user?.email) redirect("/dashboard");
+
+  const { error } = await searchParams;
+  const errorKey = typeof error === "string" ? error : undefined;
+  const message = errorKey
+    ? (ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.Default)
+    : null;
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-100">
@@ -20,27 +36,23 @@ export default function Home() {
               このアプリは、事前に許可されたユーザーのみ利用できます。
             </p>
 
-            <div className="flex justify-center">
-              <GoogleLogin
-                theme="filled_black"
-                size="large"
-                shape="pill"
-                onSuccess={async (cred) => {
-                  const res = await fetch("/api/auth/google", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ idToken: cred.credential }),
-                  });
+            {message && (
+              <p
+                role="alert"
+                className="rounded-md border border-red-900 bg-red-950 px-3 py-2 text-sm text-red-300 text-center"
+              >
+                {message}
+              </p>
+            )}
 
-                  if (res.ok) {
-                    router.push("/dashboard");
-                  } else {
-                    alert("アクセス権がありません");
-                  }
-                }}
-                onError={() => alert("ログインに失敗しました")}
-              />
-            </div>
+            <form action={signInWithGoogle} className="flex justify-center">
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-full bg-zinc-800 px-6 py-3 text-sm font-semibold text-zinc-100 hover:bg-zinc-700 transition"
+              >
+                Google でログイン
+              </button>
+            </form>
           </section>
         </div>
 

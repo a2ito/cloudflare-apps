@@ -1,27 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { signOutToTop } from "@/app/actions";
 import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
   const pathname = usePathname();
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-
-      if (response.ok) {
-        router.push("/");
-        router.refresh();
-      }
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  };
 
   // Hide header on homepage (login page)
   if (pathname === "/") {
@@ -63,12 +48,14 @@ export function Header() {
             カテゴリ管理
           </Link>
           <ThemeToggle />
-          <button
-            onClick={handleLogout}
-            className="text-sm text-zinc-600 hover:text-zinc-900 transition dark:text-zinc-400 dark:hover:text-zinc-200 light:text-zinc-600 light:hover:text-zinc-900"
-          >
-            ログアウト
-          </button>
+          <form action={signOutToTop}>
+            <button
+              type="submit"
+              className="text-sm text-zinc-600 hover:text-zinc-900 transition dark:text-zinc-400 dark:hover:text-zinc-200 light:text-zinc-600 light:hover:text-zinc-900"
+            >
+              ログアウト
+            </button>
+          </form>
         </nav>
       </div>
     </header>

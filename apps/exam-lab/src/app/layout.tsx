@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Header } from "@/components/Header";
 import "./globals.css";
 
@@ -18,17 +17,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "";
-
   return (
     <html lang="ja">
       <body className="bg-white text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100 transition-colors duration-200">
-        <GoogleOAuthProvider clientId={googleClientId}>
-          <div className="min-h-screen">
-            <Header />
-            <main className="main-content">{children}</main>
-          </div>
-        </GoogleOAuthProvider>
+        <div className="min-h-screen">
+          <Header />
+          <main className="main-content">{children}</main>
+        </div>
       </body>
     </html>
   );

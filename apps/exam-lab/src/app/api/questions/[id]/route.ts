@@ -1,3 +1,4 @@
+import { requireApiUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { getDB } from "@/db";
 import { questions, choices } from "@/db/schema";
@@ -11,6 +12,9 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const user = await requireApiUser();
+  if (user instanceof NextResponse) return user;
+
   try {
     const { id } = await context.params;
     const questionId = Number(id);
@@ -68,6 +72,9 @@ export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const user = await requireApiUser();
+  if (user instanceof NextResponse) return user;
+
   try {
     const { id } = await context.params;
     const questionId = Number(id);
@@ -155,6 +162,9 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const user = await requireApiUser();
+  if (user instanceof NextResponse) return user;
+
   try {
     const { id } = await context.params;
     const questionId = Number(id);

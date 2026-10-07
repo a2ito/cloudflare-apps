@@ -9,11 +9,6 @@ export const users = sqliteTable("users", {
   createdAt: integer("created_at").notNull(),
 });
 
-export const allowedUsers = sqliteTable("allowed_users", {
-  email: text("email").primaryKey(),
-  createdAt: integer("created_at").notNull(),
-});
-
 export const exams = sqliteTable("exams", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),

@@ -25,14 +25,21 @@ Cloudflare Workers で動く Next.js アプリ群のモノレポ。アプリは 
   - scripts の `cf:build` / `cf:deploy`。**D1 を使うなら `cf:deploy` に `db:migrate:remote` を含める**
 - ルート README のアプリ一覧に行を足す
 
+### Terraform に足すもの
+
+Worker の Secret と Workers Builds の設定は `terraform/` で管理する（`terraform/README.md`）。
+
+- `terraform/config_apps.tf` の `apps` に行を足す。Root directory・Build command・
+  Deploy command（`npm run cf:deploy`）・watch paths は全アプリ共通で、`main.tf` が組み立てる
+- Secret と Build variables の名前を `config_apps.tf` に書き、値は人に `terraform.tfvars` へ書いてもらう
+- **`wrangler secret put` は使わない。** Terraform の外で変えた Secret は差分にならず、次の apply で戻る
+- `make plan` までは自分で確かめてよいが、`make apply` は人が実行する
+
 ### ダッシュボードで人がやること
 
 リポジトリに残らないので、コマンドや値を提示して手でやってもらう。
 
-- Workers Builds: Root directory `apps/<name>`、Build command `npm run cf:build`、
-  **Deploy command は `npm run cf:deploy` のまま変えない**、Build watch paths に
-  `apps/<name>/*` と `package-lock.json`、Build variables
-- `wrangler d1 create`・`wrangler secret put`、Google OAuth の承認済みリダイレクト URI の登録
+- `wrangler d1 create`、Google OAuth の承認済みリダイレクト URI の登録
 - Worker 名は Wrangler 設定の `name` と一致させる
 
 ### 最初のデプロイの後

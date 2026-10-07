@@ -1,0 +1,111 @@
+# terraform.tfvars の雛形。コピーして値を埋める（terraform.tfvars はコミットしない）。
+#
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# secrets: Worker の Secret。Cloudflare からは値を読めないので、今の値（Google OAuth の
+#   クライアント ID / シークレットなど）を集めて書く。AUTH_SECRET は作り直してもよい
+#   （openssl rand -base64 32。ログイン中のセッションが切れるだけ）。
+# build_variables: Workers Builds の Build variables。ダッシュボードの
+#   Settings > Builds > Variables and secrets にある値。
+#
+# 名前は config_apps.tf と一致させる（一致しないと plan の precondition で止まる）。
+
+secrets = {
+  "account-book" = {
+    GOOGLE_CLIENT_ID     = "FILL_ME"
+    GOOGLE_CLIENT_SECRET = "FILL_ME"
+  }
+  "exam-lab" = {
+    GOOGLE_CLIENT_ID = "FILL_ME"
+  }
+  "kcalog" = {
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
+  }
+  "lifelog" = {
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
+  }
+  "liftlog" = {
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
+  }
+  "price-tracker" = {
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
+  }
+  "sakelog" = {
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
+  }
+  "tabilog" = {
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
+  }
+}
+
+build_variables = {
+  "account-book" = {
+    APP_HOSTNAME   = "FILL_ME"
+    D1_DATABASE_ID = "FILL_ME"
+  }
+  "dev-toolbox" = {
+    APP_HOSTNAME = "FILL_ME"
+  }
+  "exam-lab" = {
+    APP_HOSTNAME = "FILL_ME"
+  }
+  "kcalog" = {
+    APP_HOSTNAME   = "FILL_ME"
+    D1_DATABASE_ID = "FILL_ME"
+  }
+  "lifelog" = {
+    APP_HOSTNAME   = "FILL_ME"
+    D1_DATABASE_ID = "FILL_ME"
+  }
+  "liftlog" = {
+    APP_HOSTNAME   = "FILL_ME"
+    D1_DATABASE_ID = "FILL_ME"
+  }
+  "number-logic" = {
+    APP_HOSTNAME = "FILL_ME"
+  }
+  "planning-porker" = {
+    APP_HOSTNAME   = "FILL_ME"
+    D1_DATABASE_ID = "FILL_ME"
+  }
+  "price-tracker" = {
+    APP_HOSTNAME                = "FILL_ME"
+    D1_DATABASE_ID              = "FILL_ME"
+    NEXT_PUBLIC_IMAGES_BASE_URL = "FILL_ME"
+  }
+  "sakelog" = {
+    APP_HOSTNAME                = "FILL_ME"
+    D1_DATABASE_ID              = "FILL_ME"
+    NEXT_PUBLIC_PHOTOS_BASE_URL = "FILL_ME"
+  }
+  "tabilog" = {
+    APP_HOSTNAME                = "FILL_ME"
+    D1_DATABASE_ID              = "FILL_ME"
+    NEXT_PUBLIC_PHOTOS_BASE_URL = "FILL_ME"
+  }
+  "warikan" = {
+    APP_HOSTNAME   = "FILL_ME"
+    D1_DATABASE_ID = "FILL_ME"
+  }
+  "wordle" = {
+    APP_HOSTNAME = "FILL_ME"
+  }
+}

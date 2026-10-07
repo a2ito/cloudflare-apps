@@ -4,8 +4,6 @@ import { getDB } from "@/db";
 import { categories } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-export const runtime = "edge";
-
 export async function GET(request: NextRequest) {
   const user = await requireApiUser();
   if (user instanceof NextResponse) return user;

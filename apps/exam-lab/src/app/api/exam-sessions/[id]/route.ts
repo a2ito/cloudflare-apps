@@ -4,8 +4,6 @@ import { getDB } from "@/db";
 import { examSessions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-export const runtime = "edge";
-
 /** 更新 */
 export async function PUT(
   request: NextRequest,

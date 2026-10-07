@@ -66,9 +66,9 @@ npm run typecheck
 
 ## デプロイ
 
-Cloudflare Workers Builds が main への push で動く。設定はダッシュボードの
-**Workers & Pages > 各 Worker > Settings > Builds** にあり、リポジトリには
-残らないため、ここに控えておく。
+Cloudflare Workers Builds が main への push で動く。設定（下の表）と各 Worker の Secret は
+[terraform/](terraform) で管理している。ダッシュボードの
+**Workers & Pages > 各 Worker > Settings > Builds** で変えても、次の apply で戻る。
 
 | 項目 | 値 |
 | --- | --- |
@@ -91,7 +91,7 @@ Wrangler 設定の `name` と一致していなければビルドが落ちる。
 `cf:config` は `D1_DATABASE_ID` などの環境変数を要求するが、これらは production 環境にしか
 入っていないため、PR ブランチのビルドは環境変数が未設定で落ちる。
 
-アプリを追加したら、その Worker にも同じ設定を入れる。入れ忘れると、
+アプリを追加したら `terraform/config_apps.tf` に足す。足し忘れると、
 リポジトリは繋がっているのにデプロイだけ起きないという状態になる。
 
 **Worker 名は Wrangler 設定の `name` と一致していなければならない。** 一致しないと
@@ -124,4 +124,5 @@ Deploy command をアプリごとに変えると、ダッシュボードの設�
 ## wrangler.jsonc
 
 実 ID と公開ホスト名を含むため追跡していない。各アプリの
-`wrangler.jsonc.example` を雛形として使う。
+`wrangler.jsonc.example` を雛形として使う。`cf:config` が埋める値（`D1_DATABASE_ID`・`APP_HOSTNAME` など）は
+Workers Builds の Build variables で、同じ理由で `terraform/terraform.tfvars`（追跡しない）に書く。

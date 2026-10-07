@@ -1,0 +1,6 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+# Secret と、実 ID・公開ホスト名を含む Build variables の値
+terraform.tfvars

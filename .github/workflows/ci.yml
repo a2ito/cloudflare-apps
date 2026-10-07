@@ -57,12 +57,14 @@ jobs:
             echo "$changed" | sed 's/^/  /'
 
             # apps/ の外 (ルートの package.json、workflow など) が変わったら
-            # 影響範囲が読めないので全アプリを回す。
-            if echo "$changed" | grep -qv '^apps/'; then
+            # 影響範囲が読めないので全アプリを回す。terraform/ はアプリのビルドに関わらないので除く
+            # （terraform ジョブが見る）。
+            changed=$(echo "$changed" | grep -v '^terraform/' || true)
+            if echo "$changed" | grep -v '^$' | grep -qv '^apps/'; then
               echo 'apps/ の外に変更があるため全アプリを対象にする'
               apps=$(all_apps)
             else
-              apps=$(echo "$changed" | cut -d/ -f2 | sort -u)
+              apps=$(echo "$changed" | grep '^apps/' | cut -d/ -f2 | sort -u || true)
             fi
           fi
 
@@ -70,7 +72,8 @@ jobs:
           existing=$(for a in $apps; do [ -d "apps/$a" ] && echo "$a"; done)
 
           echo "対象アプリ: ${existing:-なし}"
-          json=$(printf '%s\n' $existing | jq -R . | jq -sc .)
+          # 空のまま printf に渡すと [""] になる（terraform/ だけの変更で起きる）ため、空行を落とす。
+          json=$(printf '%s\n' $existing | jq -R . | jq -sc 'map(select(. != ""))')
           echo "apps=$json" >> "$GITHUB_OUTPUT"
 
   quality:
@@ -130,12 +133,28 @@ jobs:
       # cf:build が wrangler.jsonc と型定義の生成まで面倒を見る
       - run: npm run cf:build -w apps/${{ matrix.app }}
 
+  # terraform/ の整形と構文。state と Cloudflare には触らない（plan / apply は手元で行う）。
+  terraform:
+    name: terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - run: terraform fmt -check -diff
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate
+
   # ruleset の必須チェックに指定する集約ジョブ。quality と build は変更のあった
   # アプリだけ matrix で作るためジョブ名が毎回変わり、必須チェックに指定できない。
   # 対象アプリが無く両方が skipped になった場合は成功として扱う。
   ci-result:
     name: ci-result
-    needs: [changes, quality, build]
+    needs: [changes, quality, build, terraform]
     if: always()
     runs-on: ubuntu-latest
     steps:

@@ -51,12 +51,23 @@ describe("createRecord", () => {
 		expect((await listRecords(t.db, 1))[0].quantity).toBe(1);
 	});
 
+	it("容量を空欄にすると上書きせず、荷姿の容量を継承する", async () => {
+		await createRecord({}, formData({ ...valid, amount: "" }));
+		expect((await listRecords(t.db, 1))[0].amount).toBeNull();
+	});
+
+	it("容量を入力するとその記録だけ上書きする", async () => {
+		await createRecord({}, formData({ ...valid, amount: 1200 }));
+		expect((await listRecords(t.db, 1))[0].amount).toBe(1200);
+	});
+
 	it.each([
 		["店舗が空", { store: "" }, /店舗名を入力/],
 		["価格が 0", { price: 0 }, /1 円以上/],
 		["価格が小数", { price: "19.8" }, /整数/],
 		["日付形式が不正", { recordedAt: "2026/09/12" }, /日付の形式/],
 		["個数が 0", { quantity: 0 }, /^quantity:/],
+		["容量が 0", { amount: 0 }, /容量は 0 より大きい/],
 	])("%s なら検証エラー", async (_label, patch, pattern) => {
 		const state = await createRecord({}, formData({ ...valid, ...patch }));
 		expect(state.error).toMatch(pattern);
@@ -142,6 +153,14 @@ describe("updateRecord", () => {
 		expect(to).toBe("/products/1");
 		expect((await listRecords(t.db, 1))[0]).toMatchObject({ store: "新店", price: 199, quantity: 2, memo: "改" });
 		expect(revalidated).toEqual(expect.arrayContaining(["/", "/products/1"]));
+	});
+
+	it("容量の上書きを付け外しできる", async () => {
+		const record = await seedRecord();
+		await expectRedirect(() => updateRecord({}, formData({ ...valid, id: record.id, amount: 900 })));
+		expect((await listRecords(t.db, 1))[0].amount).toBe(900);
+		await expectRedirect(() => updateRecord({}, formData({ ...valid, id: record.id, amount: "" })));
+		expect((await listRecords(t.db, 1))[0].amount).toBeNull();
 	});
 
 	it("リンクとメモを空にできる", async () => {

@@ -4,7 +4,7 @@ import { RecordForm } from "@/components/record-form";
 import { getDb } from "@/db";
 import { getProduct, getRecord, getVariant, listStores } from "@/db/queries";
 import { requireUser } from "@/lib/auth";
-import { formatPackage, packageAmount } from "@/lib/price";
+import { formatPackage } from "@/lib/price";
 
 function parseId(raw: string): number | null {
 	const n = Number(raw);
@@ -38,7 +38,7 @@ export default async function EditRecordPage({ params }: PageProps<"/products/[i
 				productId={productId}
 				variantId={variant.id}
 				unit={product.unit}
-				amount={packageAmount(variant.amount, variant.count)}
+				variant={variant}
 				stores={stores}
 				record={record}
 			/>

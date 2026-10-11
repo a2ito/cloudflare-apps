@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAmount, formatPackage, formatYen, metricLabel, metricUnitPrice, packageAmount, productMetric, unitBase, unitBaseLabel, unitPrice } from "./price";
+import { amountChangeLabel, effectiveAmount, formatAmount, formatPackage, formatYen, metricLabel, metricUnitPrice, packageAmount, productMetric, unitBase, unitBaseLabel, unitPrice } from "./price";
 
 describe("unitBase / unitBaseLabel", () => {
 	it("g と ml は 100 あたり、それ以外は 1 あたり", () => {
@@ -53,6 +53,29 @@ describe("formatPackage", () => {
 	});
 	it("入数が 0 以下でも 1 として扱う", () => {
 		expect(formatPackage(100, 0, "g")).toBe("100g × 1");
+	});
+});
+
+describe("effectiveAmount", () => {
+	it("記録に容量があればそれを使う", () => {
+		expect(effectiveAmount(600, 500)).toBe(600);
+	});
+
+	it("記録に容量が無ければ荷姿の容量を継承する", () => {
+		expect(effectiveAmount(null, 500)).toBe(500);
+		expect(effectiveAmount(undefined, 500)).toBe(500);
+	});
+});
+
+describe("amountChangeLabel", () => {
+	it("荷姿より多ければ増量、少なければ減量", () => {
+		expect(amountChangeLabel(600, 500)).toBe("増量");
+		expect(amountChangeLabel(450, 500)).toBe("減量");
+	});
+
+	it("上書きなしや荷姿と同じ容量なら印を付けない", () => {
+		expect(amountChangeLabel(null, 500)).toBeNull();
+		expect(amountChangeLabel(500, 500)).toBeNull();
 	});
 });
 

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { priceRecords, variants } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { idFromForm, optionalText, optionalUrl, parseForm, type ActionState } from "@/lib/form";
+import { idFromForm, optionalPositiveNumber, optionalText, optionalUrl, parseForm, type ActionState } from "@/lib/form";
 import { releaseImage } from "@/lib/image-cleanup";
 import { storeImage } from "@/lib/images";
 
@@ -18,6 +18,8 @@ const recordSchema = z.object({
 	store: z.string().trim().min(1, "店舗名を入力してください").max(100),
 	price: z.coerce.number().int("価格は整数で入力してください").positive("価格は 1 円以上で入力してください"),
 	quantity: z.coerce.number().int().positive().default(1),
+	/** 1 個あたりの容量の上書き。空欄なら荷姿の容量を使う */
+	amount: optionalPositiveNumber("容量"),
 	recordedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付の形式が不正です"),
 	url: optionalUrl,
 	memo: optionalText,
@@ -54,6 +56,7 @@ export async function createRecord(_prev: ActionState, formData: FormData): Prom
 		store: parsed.data.store,
 		price: parsed.data.price,
 		quantity: parsed.data.quantity,
+		amount: parsed.data.amount ?? null,
 		recordedAt: parsed.data.recordedAt,
 		url: parsed.data.url ?? null,
 		imageKey,
@@ -89,6 +92,7 @@ export async function updateRecord(_prev: ActionState, formData: FormData): Prom
 			store: parsed.data.store,
 			price: parsed.data.price,
 			quantity: parsed.data.quantity,
+			amount: parsed.data.amount ?? null,
 			recordedAt: parsed.data.recordedAt,
 			url: parsed.data.url ?? null,
 			imageKey,

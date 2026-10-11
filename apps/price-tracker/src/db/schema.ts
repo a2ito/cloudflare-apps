@@ -75,6 +75,11 @@ export const priceRecords = sqliteTable(
 		price: integer("price").notNull(),
 		/** 購入個数（同じ荷姿をまとめ買いした場合） */
 		quantity: integer("quantity").notNull().default(1),
+		/**
+		 * 1 個あたりの容量の上書き（任意）。増量キャンペーンや内容量の変更に使う。
+		 * null なら荷姿の容量を使う。入数は荷姿のまま
+		 */
+		amount: real("amount"),
 		/** 記録日 YYYY-MM-DD */
 		recordedAt: text("recorded_at").notNull(),
 		/** 商品ページやチラシへのリンク（http/https のみ） */

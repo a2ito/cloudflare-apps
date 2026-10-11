@@ -2,10 +2,10 @@ import { and, asc, desc, eq, isNotNull, like, ne, sql, type SQL } from "drizzle-
 import type { Db } from "./index";
 import { categories, priceRecords, products, variants, type Category, type PriceRecord, type Product, type Variant } from "./schema";
 
-/** 単価（1 unit あたり）の SQL 式。price_records のカラムを参照する */
-const unitCostExpr = sql<number>`${priceRecords.price} * 1.0 / ((SELECT v.amount * v.count FROM variants v WHERE v.id = ${priceRecords.variantId}) * ${priceRecords.quantity})`;
+/** 単価（1 unit あたり）の SQL 式。price_records のカラムを参照する。容量は記録の上書きがあればそちらを使う */
+const unitCostExpr = sql<number>`${priceRecords.price} * 1.0 / ((SELECT COALESCE(${priceRecords.amount}, v.amount) * v.count FROM variants v WHERE v.id = ${priceRecords.variantId}) * ${priceRecords.quantity})`;
 
-export type BestRecord = Pick<PriceRecord, "id" | "store" | "price" | "quantity" | "recordedAt">;
+export type BestRecord = Pick<PriceRecord, "id" | "store" | "price" | "quantity" | "amount" | "recordedAt">;
 export type VariantWithBest = Variant & { best: BestRecord | null };
 export type ProductListItem = Product & { categoryName: string | null; variants: VariantWithBest[] };
 
@@ -21,7 +21,7 @@ async function listVariantsWithBest(db: Db, where: SQL | undefined): Promise<Var
 	const bestId = sql`(
 		SELECT r.id FROM price_records r
 		WHERE r.variant_id = ${variants.id}
-		ORDER BY r.price * 1.0 / (${variants.amount} * ${variants.count} * r.quantity) ASC, r.recorded_at DESC, r.id DESC
+		ORDER BY r.price * 1.0 / (COALESCE(r.amount, ${variants.amount}) * ${variants.count} * r.quantity) ASC, r.recorded_at DESC, r.id DESC
 		LIMIT 1
 	)`;
 
@@ -32,6 +32,7 @@ async function listVariantsWithBest(db: Db, where: SQL | undefined): Promise<Var
 			bestStore: priceRecords.store,
 			bestPrice: priceRecords.price,
 			bestQuantity: priceRecords.quantity,
+			bestAmount: priceRecords.amount,
 			bestRecordedAt: priceRecords.recordedAt,
 		})
 		.from(variants)
@@ -44,7 +45,7 @@ async function listVariantsWithBest(db: Db, where: SQL | undefined): Promise<Var
 		...r.variant,
 		best:
 			r.bestId !== null && r.bestStore !== null && r.bestPrice !== null && r.bestQuantity !== null && r.bestRecordedAt !== null
-				? { id: r.bestId, store: r.bestStore, price: r.bestPrice, quantity: r.bestQuantity, recordedAt: r.bestRecordedAt }
+				? { id: r.bestId, store: r.bestStore, price: r.bestPrice, quantity: r.bestQuantity, amount: r.bestAmount, recordedAt: r.bestRecordedAt }
 				: null,
 	}));
 }

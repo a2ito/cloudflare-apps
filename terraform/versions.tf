@@ -12,7 +12,7 @@ terraform {
     # リソースの種類名が自作と同じ cloudflare_ で始まるため、各リソースで provider を明示する
     cloudflare-official = {
       source  = "cloudflare/cloudflare"
-      version = "~> 5.26.0"
+      version = "~> 5.27.0"
     }
   }
 }

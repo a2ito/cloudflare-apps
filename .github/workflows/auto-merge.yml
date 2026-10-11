@@ -6,9 +6,9 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
 
+# 自動マージは GitHub App（a2ito-auto-merge）のトークンで予約するので、GITHUB_TOKEN に書き込み権限は要らない
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   enable-auto-merge:
@@ -31,8 +31,20 @@ jobs:
       !contains(github.event.pull_request.labels.*.name, 'import')
     runs-on: ubuntu-latest
     steps:
+      # GITHUB_TOKEN で予約すると、マージが github-actions の操作になる。GitHub は GITHUB_TOKEN が
+      # 起こした push でワークフローを起動しないため、main への push で動く CI と terraform-apply.yml が
+      # 走らない。head ブランチも消えずに残る。App として予約すれば、マージは App の操作になる。
+      # App の ID と鍵は github-management の auto_merge.tf が配る
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          # 配られているのは App ID（client-id ではない）。app-id は非推奨だが v3 でも使える
+          app-id: ${{ vars.AUTO_MERGE_APP_ID }}
+          private-key: ${{ secrets.AUTO_MERGE_APP_PRIVATE_KEY }}
+
       - name: Enable auto merge
         run: gh pr merge --auto --squash "$PR_URL"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}

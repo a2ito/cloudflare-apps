@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import type { PriceRecord, Unit } from "@/db/schema";
+import type { PriceRecord, Unit, Variant } from "@/db/schema";
 import { initialActionState, type ActionState } from "@/lib/form";
 import { imageUrl } from "@/lib/images";
-import { formatAmount, todayIso } from "@/lib/price";
+import { formatAmount, formatPackage, todayIso } from "@/lib/price";
 import { RECORD_PHOTO } from "@/lib/image-shrink";
 import { ImageInput } from "./image-input";
 import { Field, FormMessage, inputClass, LinkButton, SubmitButton } from "./ui";
@@ -14,14 +14,14 @@ type Props = {
 	productId: number;
 	variantId: number;
 	unit: Unit;
-	/** 荷姿 1 パッケージの合計容量。表示にのみ使う */
-	amount: number;
+	/** 容量の初期値と入力欄の説明に使う */
+	variant: Pick<Variant, "amount" | "count">;
 	stores: string[];
 	/** 渡すと編集フォームになる */
 	record?: PriceRecord;
 };
 
-export function RecordForm({ action, productId, variantId, unit, amount, stores, record }: Props) {
+export function RecordForm({ action, productId, variantId, unit, variant, stores, record }: Props) {
 	const [state, formAction] = useActionState(action, initialActionState);
 	const formRef = useRef<HTMLFormElement>(null);
 	// 記録するたびに画像入力を初期状態へ戻すための鍵
@@ -31,7 +31,7 @@ export function RecordForm({ action, productId, variantId, unit, amount, stores,
 	// 新規登録が成功したら入力欄を空にして、続けて別の店を記録できるようにする
 	useEffect(() => {
 		if (isEdit || !state.success || !formRef.current) return;
-		for (const name of ["price", "url", "memo"]) {
+		for (const name of ["price", "amount", "url", "memo"]) {
 			const el = formRef.current.elements.namedItem(name);
 			if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.value = "";
 		}
@@ -60,8 +60,20 @@ export function RecordForm({ action, productId, variantId, unit, amount, stores,
 				<Field label="税込価格（円）">
 					<input name="price" type="number" inputMode="numeric" min={1} step={1} required defaultValue={record?.price} className={inputClass} />
 				</Field>
-				<Field label="個数" hint={`1 個 = ${formatAmount(amount, 1, unit)}。まとめ買いした場合は個数を増やす`}>
+				<Field label="個数" hint={`1 個 = ${formatPackage(variant.amount, variant.count, unit)}。まとめ買いした場合は個数を増やす`}>
 					<input name="quantity" type="number" inputMode="numeric" min={1} step={1} defaultValue={record?.quantity ?? 1} className={inputClass} />
+				</Field>
+				<Field label={`1 個あたりの容量（${unit}・任意）`} hint={`増量や内容量の変更があったときだけ入力する。空欄なら荷姿の ${formatAmount(variant.amount, 1, unit)}`}>
+					<input
+						name="amount"
+						type="number"
+						inputMode="decimal"
+						min={0.01}
+						step="any"
+						defaultValue={record?.amount ?? ""}
+						className={inputClass}
+						placeholder={String(variant.amount)}
+					/>
 				</Field>
 			</div>
 

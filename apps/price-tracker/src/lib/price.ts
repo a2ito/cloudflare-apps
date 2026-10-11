@@ -14,6 +14,17 @@ export function packageAmount(amount: number, count: number): number {
 	return amount * count;
 }
 
+/** 記録時の 1 個あたりの容量。記録に上書きが無ければ荷姿の容量を継承する */
+export function effectiveAmount(recordAmount: number | null | undefined, variantAmount: number): number {
+	return recordAmount ?? variantAmount;
+}
+
+/** 容量を上書きした記録の印。荷姿と同じか上書きなしなら null */
+export function amountChangeLabel(recordAmount: number | null | undefined, variantAmount: number): "増量" | "減量" | null {
+	if (recordAmount === null || recordAmount === undefined || recordAmount === variantAmount) return null;
+	return recordAmount > variantAmount ? "増量" : "減量";
+}
+
 type PriceInput = {
 	price: number;
 	/** 1 個あたりの容量 */

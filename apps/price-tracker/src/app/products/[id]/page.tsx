@@ -11,7 +11,7 @@ import { getProduct, listMergeTargets, listRecords, listStores, listVariants } f
 import type { PriceRecord, Product, Variant } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { imageUrl } from "@/lib/images";
-import { formatAmount, formatPackage, formatYen, metricLabel, metricUnitPrice, packageAmount, productMetric, unitBaseLabel, unitPrice, type Metric } from "@/lib/price";
+import { amountChangeLabel, effectiveAmount, formatAmount, formatPackage, formatYen, metricLabel, metricUnitPrice, packageAmount, productMetric, unitBaseLabel, unitPrice, type Metric } from "@/lib/price";
 import { isSafeExternalUrl, linkHostname } from "@/lib/url";
 
 /** リンクがあれば店舗名を外部リンクにする。危険な形式は素のテキストに落とす */
@@ -34,6 +34,12 @@ function StoreLabel({ store, url }: { store: string; url: string | null }) {
 	);
 }
 
+/** 荷姿と容量が違う記録に付ける印 */
+function ChangeBadge({ label }: { label: ReturnType<typeof amountChangeLabel> }) {
+	if (!label) return null;
+	return <span className="ml-1 rounded bg-amber-100 px-1 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-200">{label}</span>;
+}
+
 function parseId(raw: string): number | null {
 	const n = Number(raw);
 	return Number.isInteger(n) && n > 0 ? n : null;
@@ -52,12 +58,15 @@ type VariantSectionProps = {
 
 function VariantSection({ product, variant, records, stores, deletable, formOpen }: VariantSectionProps) {
 	const best = records[0];
-	const total = packageAmount(variant.amount, variant.count);
+	// 記録が容量を上書きしていればその容量で計算する
+	const amountOf = (r: PriceRecord) => effectiveAmount(r.amount, variant.amount);
+	const totalOf = (r: PriceRecord) => packageAmount(amountOf(r), variant.count);
 	const perUnit = (r: PriceRecord) =>
-		unitPrice({ price: r.price, amount: variant.amount, count: variant.count, quantity: r.quantity, unit: product.unit });
+		unitPrice({ price: r.price, amount: amountOf(r), count: variant.count, quantity: r.quantity, unit: product.unit });
 	const metric = productMetric(product);
 	const perMetric = (r: PriceRecord, m: Metric) =>
-		metricUnitPrice({ price: r.price, amount: variant.amount, count: variant.count, quantity: r.quantity, metric: m });
+		metricUnitPrice({ price: r.price, amount: amountOf(r), count: variant.count, quantity: r.quantity, metric: m });
+	const changeOf = (r: PriceRecord) => amountChangeLabel(r.amount, variant.amount);
 
 	return (
 		<section className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
@@ -89,7 +98,10 @@ function VariantSection({ product, variant, records, stores, deletable, formOpen
 						</span>
 						<span className="text-xl font-semibold text-emerald-800 dark:text-emerald-200">
 							{formatYen(best.price, 0)}
-							<span className="ml-1 text-sm font-normal">/ {formatAmount(total, best.quantity, product.unit)}</span>
+							<span className="ml-1 text-sm font-normal">
+								/ {formatAmount(totalOf(best), best.quantity, product.unit)}
+								<ChangeBadge label={changeOf(best)} />
+							</span>
 						</span>
 					</p>
 					{metric && (
@@ -108,7 +120,7 @@ function VariantSection({ product, variant, records, stores, deletable, formOpen
 			<details open={formOpen} className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
 				<summary className="cursor-pointer text-sm font-semibold">価格を記録</summary>
 				<div className="pt-3">
-					<RecordForm action={createRecord} productId={product.id} variantId={variant.id} unit={product.unit} amount={total} stores={stores} />
+					<RecordForm action={createRecord} productId={product.id} variantId={variant.id} unit={product.unit} variant={variant} stores={stores} />
 				</div>
 			</details>
 
@@ -139,7 +151,10 @@ function VariantSection({ product, variant, records, stores, deletable, formOpen
 											<StoreLabel store={r.store} url={r.url} />
 										</td>
 										<td className="px-3 py-2">{formatYen(r.price, 0)}</td>
-										<td className="px-3 py-2">{formatAmount(total, r.quantity, product.unit)}</td>
+										<td className="px-3 py-2 whitespace-nowrap">
+											{formatAmount(totalOf(r), r.quantity, product.unit)}
+											<ChangeBadge label={changeOf(r)} />
+										</td>
 										<td className="px-3 py-2 whitespace-nowrap">{r.recordedAt}</td>
 										<td className="px-3 py-2">
 											{r.imageKey && (

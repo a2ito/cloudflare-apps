@@ -136,6 +136,18 @@ describe("listProducts", () => {
 		expect(item.variants[0].best?.store).toBe("安い店");
 	});
 
+	it("容量を上書きした記録は、その容量で単価を比べる", async () => {
+		await seedProduct({ name: "ヨーグルト", unit: "g" }, [{ amount: 400 }]);
+		await t.db.insert(priceRecords).values([
+			// 荷姿どおりなら 200 / 400 = 0.5
+			{ variantId: 1, store: "通常", price: 200, quantity: 1, recordedAt: "2026-09-10" },
+			// 増量 500g で 230 / 500 = 0.46。荷姿の 400g で計算すると 0.575 で負ける
+			{ variantId: 1, store: "増量", price: 230, quantity: 1, amount: 500, recordedAt: "2026-09-11" },
+		]);
+		const [item] = await listProducts(t.db);
+		expect(item.variants[0].best).toMatchObject({ store: "増量", amount: 500 });
+	});
+
 	it("空の DB では空配列", async () => {
 		expect(await listProducts(t.db)).toEqual([]);
 	});
@@ -184,6 +196,15 @@ describe("listRecords", () => {
 		await seed();
 		const rows = await listRecords(t.db, 1);
 		expect(rows.map((r) => r.store)).toEqual(["業務スーパー", "OKストア", "コンビニ"]);
+	});
+	it("容量を上書きした記録は、その容量の単価で並ぶ", async () => {
+		await seedProduct({ name: "ヨーグルト", unit: "g" }, [{ amount: 400 }]);
+		await t.db.insert(priceRecords).values([
+			// 減量 350g で 190 / 350 = 0.543。荷姿の 400g で計算すると 0.475 で勝ってしまう
+			{ variantId: 1, store: "減量", price: 190, quantity: 1, amount: 350, recordedAt: "2026-09-10" },
+			{ variantId: 1, store: "通常", price: 200, quantity: 1, recordedAt: "2026-09-11" },
+		]);
+		expect((await listRecords(t.db, 1)).map((r) => r.store)).toEqual(["通常", "減量"]);
 	});
 	it("他の荷姿の記録は含まない", async () => {
 		await seed();

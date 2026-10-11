@@ -4,7 +4,7 @@ import { listCategories, listProducts, type ProductListItem, type VariantWithBes
 import type { Unit } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { imageUrl } from "@/lib/images";
-import { formatAmount, formatPackage, formatYen, metricLabel, metricUnitPrice, packageAmount, productMetric, unitBaseLabel, unitPrice, type Metric } from "@/lib/price";
+import { amountChangeLabel, effectiveAmount, formatAmount, formatPackage, formatYen, metricLabel, metricUnitPrice, packageAmount, productMetric, unitBaseLabel, unitPrice, type Metric } from "@/lib/price";
 import { inputClass } from "@/components/ui";
 
 function parseCategoryId(value: string | string[] | undefined): number | undefined {
@@ -15,6 +15,8 @@ function parseCategoryId(value: string | string[] | undefined): number | undefin
 
 function VariantRow({ variant, unit, metric }: { variant: VariantWithBest; unit: Unit; metric: Metric | null }) {
 	const best = variant.best;
+	const amount = effectiveAmount(best?.amount, variant.amount);
+	const change = amountChangeLabel(best?.amount, variant.amount);
 	return (
 		<li className="py-1.5">
 			<p className="truncate text-xs text-zinc-500">{formatPackage(variant.amount, variant.count, unit)}</p>
@@ -22,13 +24,14 @@ function VariantRow({ variant, unit, metric }: { variant: VariantWithBest; unit:
 				<>
 					<p className="flex flex-wrap items-baseline gap-x-2">
 						<span className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
-							{formatYen(unitPrice({ price: best.price, amount: variant.amount, count: variant.count, quantity: best.quantity, unit }))}
+							{formatYen(unitPrice({ price: best.price, amount, count: variant.count, quantity: best.quantity, unit }))}
 							<span className="ml-0.5 text-xs font-normal text-zinc-500">/ {unitBaseLabel(unit)}</span>
 						</span>
 						<span className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
 							{formatYen(best.price, 0)}
 							<span className="ml-0.5 text-xs font-normal text-zinc-500">
-								/ {formatAmount(packageAmount(variant.amount, variant.count), best.quantity, unit)}
+								/ {formatAmount(packageAmount(amount, variant.count), best.quantity, unit)}
+								{change && <span className="ml-1">（{change}）</span>}
 							</span>
 						</span>
 					</p>
@@ -36,7 +39,7 @@ function VariantRow({ variant, unit, metric }: { variant: VariantWithBest; unit:
 						<p className="truncate text-xs text-zinc-600 dark:text-zinc-400">
 							{metricLabel(metric)}{" "}
 							<span className="font-semibold">
-								{formatYen(metricUnitPrice({ price: best.price, amount: variant.amount, count: variant.count, quantity: best.quantity, metric }), 2)}
+								{formatYen(metricUnitPrice({ price: best.price, amount, count: variant.count, quantity: best.quantity, metric }), 2)}
 							</span>
 						</p>
 					)}

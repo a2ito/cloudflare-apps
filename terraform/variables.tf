@@ -23,5 +23,7 @@ variable "secrets" {
 variable "build_variables" {
   description = "Workers Builds の Build variables の値。キーはアプリ名、値は変数名 => 値。実 ID と公開ホスト名を含むためコミットしない"
   type        = map(map(string))
-  default     = {}
+  # リポジトリは public で、CI の plan は PR のコメントと Actions のログに出る。実 ID と公開ホスト名を伏せる
+  sensitive = true
+  default   = {}
 }

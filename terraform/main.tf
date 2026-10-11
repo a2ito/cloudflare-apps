@@ -49,7 +49,8 @@ resource "cloudflare_workers_build_trigger" "app" {
     prevent_destroy = true
 
     precondition {
-      condition     = join(",", sort(keys(lookup(var.build_variables, each.key, {})))) == join(",", sort(each.value.build_variables))
+      # 変数名は秘匿値ではない。sensitive のままだと条件の結果も sensitive になり評価できない
+      condition     = join(",", sort(nonsensitive(keys(lookup(var.build_variables, each.key, {}))))) == join(",", sort(each.value.build_variables))
       error_message = "terraform.tfvars の build_variables[\"${each.key}\"] には次の変数をちょうど書いてください: ${join(", ", each.value.build_variables)}"
     }
   }

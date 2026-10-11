@@ -8,6 +8,12 @@ terraform {
       source  = "a2ito/cloudflare"
       version = "~> 0.2"
     }
+    # 公式の provider。自作の provider に無いリソース（workers.dev の設定など）だけに使う。
+    # リソースの種類名が自作と同じ cloudflare_ で始まるため、各リソースで provider を明示する
+    cloudflare-official = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.26.0"
+    }
   }
 }
 
@@ -17,3 +23,6 @@ terraform {
 #   受け付けないため、ユーザーのトークン（cloudflare-apps-terraform-builds）を別に渡す
 # どちらも cloud-management の cloudflare/bootstrap が作る。
 provider "cloudflare" {}
+
+# 公式の provider も CLOUDFLARE_API_TOKEN（アカウントのトークン、Workers Scripts Write）を読む
+provider "cloudflare-official" {}

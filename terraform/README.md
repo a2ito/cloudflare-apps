@@ -7,12 +7,15 @@ Workers Builds（main への push → `npm run cf:deploy`）が行い、Terrafor
 | --- | --- |
 | Worker の Secret（`AUTH_SECRET` など） | **Terraform**（`cloudflare_workers_script`） |
 | Workers Builds の設定（Build command・Deploy command・Root directory・watch paths・Build variables） | **Terraform**（`cloudflare_workers_build_trigger`） |
+| workers.dev のサブドメインとプレビュー URL（無効にする） | **Terraform**（`cloudflare_workers_script_subdomain`、公式 provider） |
 | コード・D1・assets・平文の変数（`vars`）・互換性設定・カスタムドメイン | `apps/<name>/wrangler.jsonc.example`（デプロイのたびに wrangler が反映する） |
 | D1 データベースの作成、Google OAuth の設定、GitHub との接続、ビルドトークン | ダッシュボード・`wrangler`（手作業） |
 
 provider は公式の `cloudflare/cloudflare` ではなく
 [`a2ito/cloudflare`](https://registry.terraform.io/providers/a2ito/cloudflare)。
 Workers Builds のトリガーと、コードに触らずに Secret だけを持つ Worker を扱えるのがこれだけのため。
+自作の provider に無いリソース（workers.dev の設定）だけ、公式の provider を `cloudflare-official` として併用する。
+リソースの種類名がどちらも `cloudflare_` で始まるため、公式のリソースには `provider = cloudflare-official` を書く。
 
 ## 前提
 
@@ -56,5 +59,7 @@ D1 データベースや Google OAuth の設定は、ルートの CLAUDE.md の�
 - Secret を更新すると、Cloudflare は今のコードのまま新しいバージョンをデプロイする
 - Worker とトリガーには `prevent_destroy` を付けている。destroy すると本番の Worker が消え、
   トリガーを消すと main への push でデプロイされなくなる
+- **workers.dev は wrangler も書き込む。** デプロイのたびに wrangler が設定を反映する（`routes` があれば無効）。
+  Terraform は wrangler と同じ `false` にしている。`true` にすると、デプロイのたびに無効へ戻り plan に差分が出続ける
 - `wrangler.jsonc` に `vars` を足す・`compatibility_date` を変えるといった変更は、これまでどおりアプリの
   `wrangler.jsonc.example` で行う。Terraform には書けない（書くと plan で止まる）

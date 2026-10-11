@@ -54,3 +54,16 @@ resource "cloudflare_workers_build_trigger" "app" {
     }
   }
 }
+
+# workers.dev のサブドメインとプレビュー URL を無効にする。公開 URL は Custom Domain だけにする。
+# wrangler もデプロイのたびにこの設定を書き込む（routes があれば無効）ため、値は wrangler と揃えて false にする。
+# true にすると、デプロイのたびに wrangler が無効へ戻し、plan に差分が出続ける
+resource "cloudflare_workers_script_subdomain" "app" {
+  provider = cloudflare-official
+  for_each = local.apps
+
+  account_id       = var.account_id
+  script_name      = cloudflare_workers_script.app[each.key].script_name
+  enabled          = false
+  previews_enabled = false
+}

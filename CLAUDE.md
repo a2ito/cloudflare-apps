@@ -33,7 +33,9 @@ Worker の Secret と Workers Builds の設定は `terraform/` で管理する�
   Deploy command（`npm run cf:deploy`）・watch paths は全アプリ共通で、`main.tf` が組み立てる
 - Secret と Build variables の名前を `config_apps.tf` に書き、値は人に `terraform.tfvars` へ書いてもらう
 - **`wrangler secret put` は使わない。** Terraform の外で変えた Secret は差分にならず、次の apply で戻る
-- `make plan` までは自分で確かめてよいが、`make apply` は人が実行する
+- apply は main へのマージで CI（`terraform-apply.yml`）が行う。PR の plan コメントで差分を確かめる。
+  手元の `make plan` は自分で流してよいが、`make apply` は人が実行する
+- `terraform.tfvars` を変えたら、GitHub の Secret `TERRAFORM_TFVARS` の更新を人に頼む（自動では同期されない）
 
 ### ダッシュボードで人がやること
 

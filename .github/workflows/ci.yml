@@ -133,7 +133,7 @@ jobs:
       # cf:build が wrangler.jsonc と型定義の生成まで面倒を見る
       - run: npm run cf:build -w apps/${{ matrix.app }}
 
-  # terraform/ の整形と構文。state と Cloudflare には触らない（plan / apply は手元で行う）。
+  # terraform/ の整形と構文。state と Cloudflare には触らない。
   terraform:
     name: terraform
     runs-on: ubuntu-latest
@@ -142,19 +142,161 @@ jobs:
         working-directory: terraform
     steps:
       - uses: actions/checkout@v7
+      # 手元（tfenv）と同じ版を使う。新しい版で state を書くと、手元の古い版で読めなくなる
+      - name: Resolve Terraform version
+        id: tfver
+        run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
       - uses: hashicorp/setup-terraform@v3
         with:
+          terraform_version: ${{ steps.tfver.outputs.version }}
           terraform_wrapper: false
       - run: terraform fmt -check -diff
       - run: terraform init -backend=false -input=false
       - run: terraform validate
+
+  # terraform/ を変えた PR で plan を回し、結果を PR にコメントする。apply は main への push で
+  # terraform-apply.yml が行う。ci-result に含めるので、plan が落ちると自動マージも止まる。
+  #
+  # リポジトリは public で、コメントも Actions のログも誰でも読める。秘匿値は変数の
+  # sensitive で (sensitive value) に伏せている。fork からの PR には GitHub が Secret と
+  # id-token を渡さないため対象外にする（auto-merge.yml と同じ条件）。
+  terraform-plan:
+    name: terraform plan
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # state が GCS にあるため GCP へ OIDC で入る
+      pull-requests: write # plan 結果のコメント
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # terraform/ に触れない PR（アプリの変更・npm の更新）では plan しない。
+      # job ごと if で飛ばすと paths を見られないため、ステップで判定する
+      - name: Detect terraform changes
+        id: changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if git diff --quiet "$BASE_SHA"..."$HEAD_SHA" -- . ../.github/workflows/ci.yml; then
+            echo "terraform/ に変更なし。plan しない"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve Terraform version
+        if: steps.changed.outputs.changed == 'true'
+        id: tfver
+        run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
+
+      # plan 用の SA は PR の sub（...:pull_request）だけがなりすませ、state のバケットを読むだけ。
+      # ロックを書けないので -lock=false で回す。作るのは cloud-management の gcp/bootstrap
+      - name: Configure GCP credentials (Workload Identity)
+        if: steps.changed.outputs.changed == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_PLAN_SERVICE_ACCOUNT }}
+
+      - uses: hashicorp/setup-terraform@v3
+        if: steps.changed.outputs.changed == 'true'
+        with:
+          terraform_version: ${{ steps.tfver.outputs.version }}
+          terraform_wrapper: false
+
+      # terraform.tfvars は Secret と実 ID を含むのでコミットしていない。値が増えても workflow を
+      # 直さなくて済むよう、ファイルごと 1 つの Secret に入れて復元する（手元と同じファイル）。
+      # Secret は末尾の改行が落ちるため、改行を足して書き出す
+      - name: Restore terraform.tfvars
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
+        run: printf '%s\n' "$TFVARS" > terraform.tfvars
+
+      - name: terraform init
+        if: steps.changed.outputs.changed == 'true'
+        run: terraform init -input=false
+
+      - name: terraform plan
+        if: steps.changed.outputs.changed == 'true'
+        id: plan
+        env:
+          # 手元の make と同じ 2 本。Workers Builds の API はユーザーのトークンしか受け付けない
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_BUILDS_API_TOKEN }}
+        run: |
+          set -o pipefail
+          terraform plan -input=false -no-color -lock=false 2>&1 | tee ../plan.txt
+        continue-on-error: true
+
+      - name: Comment plan result
+        if: steps.changed.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        env:
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+        with:
+          script: |
+            const fs = require('fs');
+            const MAX = 60000; // コメントの上限に収める
+            let plan = fs.readFileSync('plan.txt', 'utf8');
+            if (plan.length > MAX) {
+              plan = plan.slice(-MAX) + '\n\n（長いため先頭を省略。全文は Actions のログを参照）';
+            }
+            const ok = process.env.PLAN_OUTCOME === 'success';
+            const marker = '<!-- terraform-plan -->';
+            const body = [
+              marker,
+              `## terraform plan ${ok ? '✅' : '❌'}`,
+              '',
+              'マージすると terraform-apply.yml がこの内容を apply する。',
+              '',
+              '<details><summary>plan の結果を開く</summary>',
+              '',
+              '```terraform',
+              plan,
+              '```',
+              '',
+              '</details>',
+            ].join('\n');
+
+            // 既存のコメントがあれば更新し、無ければ新規作成する
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, body,
+              });
+            }
+
+      - name: Fail if plan failed
+        if: steps.changed.outputs.changed == 'true' && steps.plan.outcome != 'success'
+        run: exit 1
 
   # ruleset の必須チェックに指定する集約ジョブ。quality と build は変更のあった
   # アプリだけ matrix で作るためジョブ名が毎回変わり、必須チェックに指定できない。
   # 対象アプリが無く両方が skipped になった場合は成功として扱う。
   ci-result:
     name: ci-result
-    needs: [changes, quality, build, terraform]
+    needs: [changes, quality, build, terraform, terraform-plan]
     if: always()
     runs-on: ubuntu-latest
     steps:

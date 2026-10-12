@@ -17,6 +17,7 @@ Cloudflare Workers で動く Next.js アプリをまとめたモノレポ。
 | [liftlog](apps/liftlog) | https://liftlog.a2ito.work | `liftlog` | 目標から今日のメニューを提案し、実際の重量と回数を残す筋トレ記録 |
 | [lifelog](apps/lifelog) | https://lifelog.a2ito.work | `lifelog` | 日々の出来事を写真付きの日記として残すライフログ |
 | [account-book](apps/account-book) | https://account-book.a2ito.work | `account-book` | グループ単位で管理する家計簿 |
+| [flash-english](apps/flash-english) | https://flash-english.a2ito.work | `flash-english` | 日本文を見て英文を瞬間的に言う、瞬間英作文の練習帳 |
 | [exam-lab](apps/exam-lab) | https://exam-lab.a2ito.work | `exam-lab` | 資格試験の問題を管理・学習する |
 | [warikan](apps/warikan) | https://warikan.a2ito.work | `warikan` | ログイン不要の割り勘。最小回数で自動精算する |
 | [wordle](apps/wordle) | https://wordle.a2ito.work | `wordle` | ブラウザで遊ぶ Wordle |

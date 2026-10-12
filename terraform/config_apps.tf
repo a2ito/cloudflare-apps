@@ -30,6 +30,12 @@ locals {
       build_caching_enabled = false
       trigger_uuid          = "ba910802-7cb2-4d5a-b18c-aa1b1ce0e4c3"
     }
+    "flash-english" = {
+      secrets               = local.google_login_secrets
+      build_variables       = ["APP_HOSTNAME", "D1_DATABASE_ID"]
+      build_token_uuid      = local.build_tokens.cloudflare_apps
+      build_caching_enabled = true
+    }
     "games" = {
       secrets               = []
       build_variables       = []

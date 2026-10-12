@@ -36,6 +36,9 @@ Worker の Secret と Workers Builds の設定は `terraform/` で管理する�
 - `terraform/config_apps.tf` の `apps` に行を足す。Root directory・Build command・
   Deploy command（`npm run cf:deploy`）・watch paths は全アプリ共通で、`main.tf` が組み立てる
 - Secret と Build variables の名前を `config_apps.tf` に書き、値は人に `terraform.tfvars` へ書いてもらう
+- D1 や R2（画像）を Terraform で持たせるなら `config_apps.tf` の `d1_databases` / `r2_buckets` に足す。
+  **R2 の画像のカスタムドメインはダッシュボードで付けない**（import できない）。キャッシュのルールは
+  cloud-management が持つので、そちらにもホスト名を足す
 - **`wrangler secret put` は使わない。** Terraform の外で変えた Secret は差分にならず、次の apply で戻る
 - `make plan` までは自分で確かめてよいが、`make apply` は人が実行する
 

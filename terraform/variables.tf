@@ -27,3 +27,11 @@ variable "build_variables" {
   sensitive = true
   default   = {}
 }
+
+variable "zone_id" {
+  description = "R2 のカスタムドメインを置くゾーン（公開ホスト名のゾーン）の ID"
+  type        = string
+  # ゾーン ID から公開ホスト名をたどれるため、build_variables と同じく伏せる
+  sensitive = true
+  default   = null
+}

@@ -8,8 +8,11 @@ Workers Builds（main への push → `npm run cf:deploy`）が行い、Terrafor
 | Worker の Secret（`AUTH_SECRET` など） | **Terraform**（`cloudflare_workers_script`） |
 | Workers Builds の設定（Build command・Deploy command・Root directory・watch paths・Build variables） | **Terraform**（`cloudflare_workers_build_trigger`） |
 | workers.dev のサブドメインとプレビュー URL（無効にする） | **Terraform**（`cloudflare_workers_script_subdomain`、公式 provider） |
-| コード・D1・assets・平文の変数（`vars`）・互換性設定・カスタムドメイン | `apps/<name>/wrangler.jsonc.example`（デプロイのたびに wrangler が反映する） |
-| D1 データベースの作成、Google OAuth の設定、GitHub との接続、ビルドトークン | ダッシュボード・`wrangler`（手作業） |
+| D1 データベース・R2 バケット・画像のカスタムドメイン（`config_apps.tf` の `d1_databases` / `r2_buckets` に載せたアプリ） | **Terraform**（公式 provider） |
+| コード・D1 の中身（マイグレーション）・assets・平文の変数（`vars`）・互換性設定・Worker のカスタムドメイン | `apps/<name>/wrangler.jsonc.example`（デプロイのたびに wrangler が反映する） |
+| 上に載せていないアプリの D1 / R2 | 手作業か cloud-management の `cloudflare/` |
+| 画像をキャッシュに乗せるルール（ゾーンに 1 つ） | cloud-management の `cloudflare/`（`r2_buckets` に足したらホスト名を足す） |
+| Google OAuth の設定、GitHub との接続、ビルドトークン | ダッシュボード（手作業） |
 
 provider は公式の `cloudflare/cloudflare` ではなく
 [`a2ito/cloudflare`](https://registry.terraform.io/providers/a2ito/cloudflare)。
@@ -22,7 +25,7 @@ Workers Builds のトリガーと、コードに触らずに Secret だけを持
 | もの | 置き場所 | 作るところ |
 | --- | --- | --- |
 | state のバケット `a2ito-cloudflare-apps-tfstate` | GCS | cloud-management の `gcp/bootstrap` |
-| `CLOUDFLARE_APPS_TERRAFORM_TOKEN`（アカウントのトークン、Workers Scripts Write） | `~/.secrets` | cloud-management の `cloudflare/bootstrap` |
+| `CLOUDFLARE_APPS_TERRAFORM_TOKEN`（アカウントのトークン、Workers Scripts Write・D1 Write・Workers R2 Storage Write、ゾーンの Zone Read・DNS Write） | `~/.secrets` | cloud-management の `cloudflare/bootstrap` |
 | `CLOUDFLARE_APPS_TERRAFORM_BUILDS_TOKEN`（**ユーザーの**トークン、Workers CI Write） | `~/.secrets` | 〃 |
 | `terraform.tfvars`（Secret と Build variables の値） | 手元のみ | `terraform.tfvars.example` をコピーして埋める |
 
@@ -54,9 +57,19 @@ make apply   # plan で保存したものだけを適用する
 3. `make plan` → `make apply`。Worker が無ければ仮のスクリプトで作られ、トリガーが付く
 4. `main` に push すると Workers Builds が本物のコードをデプロイする
 
-D1 データベースや Google OAuth の設定は、ルートの CLAUDE.md の「ダッシュボードで人がやること」のとおり手で行う。
+D1 と R2（画像）を Terraform で持たせるときは、`config_apps.tf` の `d1_databases` / `r2_buckets` にも足す。
+
+- Terraform が D1 を作った場合、ID は apply のあとに `terraform state show 'cloudflare_d1_database.app["<アプリ>"]'` で調べ、
+  Build variables の `D1_DATABASE_ID` に書いてもう一度 apply する。手で作った D1 は `imports.tf` で取り込む
+- 画像のカスタムドメインは `NEXT_PUBLIC_IMAGES_BASE_URL` のホスト名で作られる。cloud-management の
+  キャッシュルールにもホスト名を足す
+
+Google OAuth の設定は、ルートの CLAUDE.md の「ダッシュボードで人がやること」のとおり手で行う。
 
 ## 気をつけること
+
+- **R2 のカスタムドメインは import できない。** ダッシュボードで先に付けると Terraform で管理できなくなるので、
+  必ず `r2_buckets` に足して Terraform で作る。ホスト名は Build variables の `NEXT_PUBLIC_IMAGES_BASE_URL` から取る
 
 - **Secret の値は state に平文で入る。** state のバケットは cloudflare-apps 専用にしている
 - **Secret の値は Cloudflare から読めない。** Terraform の外（`wrangler secret put` やダッシュボード）で値を

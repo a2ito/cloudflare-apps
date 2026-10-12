@@ -133,3 +133,7 @@ build_variables = {
     APP_HOSTNAME = "FILL_ME"
   }
 }
+
+# R2 の画像のカスタムドメインを置くゾーンの ID（ダッシュボードのゾーンの概要ページ右下）。
+# config_apps.tf の r2_buckets に載せたアプリが使う
+zone_id = "FILL_ME"

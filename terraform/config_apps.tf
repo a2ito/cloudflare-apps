@@ -121,6 +121,23 @@ locals {
     }
   }
 
+  # アプリの D1。キーはアプリ名、値はデータベース名（wrangler.jsonc.example の database_name）。
+  # 載せていないアプリの D1 は手で作ったもので、一部は cloud-management の cloudflare/ が持っている。
+  # ここに載せる D1 の ID は Build variables の D1_DATABASE_ID と同じものを指す（imports.tf）。
+  d1_databases = {
+    "spec-compare" = "spec-compare-db"
+  }
+
+  # アプリの R2。キーはアプリ名。location は作成後に変えられず、変えると作り直しになるので実態を書く。
+  # 画像は Build variables の NEXT_PUBLIC_IMAGES_BASE_URL のホスト名をカスタムドメインにして CDN から直に配る。
+  # 載せていないアプリ（price-tracker など）の R2 は cloud-management の cloudflare/ が持っている。
+  #
+  # 画像をキャッシュに乗せるルールはゾーンに 1 つしか持てず、cloud-management が持っている。
+  # ここにバケットを足したら、cloud-management の cloudflare/config_workers.tf にもホスト名を足す。
+  r2_buckets = {
+    "spec-compare" = { name = "spec-compare-images", location = "APAC" }
+  }
+
   # Google ログインのアプリ（apps/kcalog を雛形にしたもの）が持つ Secret。
   # 中身は各アプリの wrangler.jsonc.example の末尾のコメントを参照。
   google_login_secrets = ["ALLOWED_EMAILS", "AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET", "AUTH_SECRET"]

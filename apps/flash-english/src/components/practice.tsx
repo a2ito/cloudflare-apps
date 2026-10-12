@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { recordReviewAction } from "@/app/actions/practice";
 import type { PracticeSentence } from "@/db/queries";
+import { useBooleanPreference } from "@/lib/preferences";
+import { speak, stopSpeaking } from "@/lib/speech";
+import { SpeakButton, useSpeechSupported } from "./speak-button";
 import { primaryButtonClass, secondaryButtonClass } from "./ui";
 
 type Question = Pick<PracticeSentence, "id" | "ja" | "en" | "note">;
@@ -13,6 +16,8 @@ type Question = Pick<PracticeSentence, "id" | "ja" | "en" | "note">;
  *
  * ×の文は列の最後に回して、同じ練習のうちにもう一度出す。言えるようになるまで繰り返すため。
  * 結果の「○の数」は 1 回目の答えで数える（2 回目以降は答えを見た直後なので）。
+ *
+ * 答えを見たら英文を読み上げる（オフにもできる）。自分の言った英文と、音で比べられるように。
  */
 export function Practice({ questions }: { questions: Question[] }) {
 	const [queue, setQueue] = useState(questions);
@@ -21,9 +26,18 @@ export function Practice({ questions }: { questions: Question[] }) {
 	const [firstTry, setFirstTry] = useState<ReadonlyMap<number, boolean>>(new Map());
 	const [error, setError] = useState<string | null>(null);
 	const [, startTransition] = useTransition();
+	const speechSupported = useSpeechSupported();
+	const [autoSpeak, setAutoSpeak] = useBooleanPreference("flash-english:auto-speak", true);
 
 	const current = queue[index];
 	const done = current === undefined;
+
+	// 読み上げは effect ではなく操作の中で始める。iOS はユーザー操作の中でしか音声を鳴らせないため
+	const reveal = useCallback(() => {
+		if (!current) return;
+		setRevealed(true);
+		if (autoSpeak) speak(current.en);
+	}, [current, autoSpeak]);
 
 	const grade = useCallback(
 		(correct: boolean) => {
@@ -36,6 +50,7 @@ export function Practice({ questions }: { questions: Question[] }) {
 				}
 			});
 			setFirstTry((m) => (m.has(current.id) ? m : new Map(m).set(current.id, correct)));
+			stopSpeaking();
 			if (!correct) setQueue((q) => [...q, current]);
 			setIndex((i) => i + 1);
 			setRevealed(false);
@@ -50,7 +65,9 @@ export function Practice({ questions }: { questions: Question[] }) {
 			if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
 			if (!revealed && (e.key === " " || e.key === "Enter")) {
 				e.preventDefault();
-				setRevealed(true);
+				reveal();
+			} else if (revealed && current && (e.key === "r" || e.key === "R")) {
+				speak(current.en);
 			} else if (revealed && e.key === "ArrowRight") {
 				grade(true);
 			} else if (revealed && e.key === "ArrowLeft") {
@@ -59,7 +76,7 @@ export function Practice({ questions }: { questions: Question[] }) {
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [done, revealed, grade]);
+	}, [done, revealed, current, reveal, grade]);
 
 	if (done) {
 		const correctCount = [...firstTry.values()].filter(Boolean).length;
@@ -80,7 +97,10 @@ export function Practice({ questions }: { questions: Question[] }) {
 							{missed.map((q) => (
 								<li key={q.id} className="py-2">
 									<p className="text-sm text-zinc-500">{q.ja}</p>
-									<p lang="en">{q.en}</p>
+									<p lang="en">
+										{q.en}
+										<SpeakButton text={q.en} />
+									</p>
 								</li>
 							))}
 						</ul>
@@ -106,17 +126,30 @@ export function Practice({ questions }: { questions: Question[] }) {
 
 	return (
 		<section className="space-y-4">
-			<p className="text-right text-sm text-zinc-500 tabular-nums">
-				{index + 1} / {queue.length}
-			</p>
+			<div className="flex items-center justify-between gap-4 text-sm text-zinc-500">
+				{speechSupported ? (
+					<label className="flex items-center gap-1.5">
+						<input type="checkbox" checked={autoSpeak} onChange={(e) => setAutoSpeak(e.target.checked)} />
+						答えを読み上げる
+					</label>
+				) : (
+					<span />
+				)}
+				<span className="tabular-nums">
+					{index + 1} / {queue.length}
+				</span>
+			</div>
 
 			<div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
 				<p className="text-xl leading-relaxed font-semibold">{current.ja}</p>
 				{revealed && (
 					<div className="space-y-2 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-						<p lang="en" className="text-xl leading-relaxed text-indigo-700 dark:text-indigo-300">
-							{current.en}
-						</p>
+						<div className="flex items-start gap-2">
+							<p lang="en" className="flex-1 text-xl leading-relaxed text-indigo-700 dark:text-indigo-300">
+								{current.en}
+							</p>
+							<SpeakButton text={current.en} className="flex-none rounded-md px-2 py-1 text-xl hover:bg-zinc-100 dark:hover:bg-zinc-800" />
+						</div>
 						{current.note && <p className="text-sm text-zinc-500">{current.note}</p>}
 					</div>
 				)}
@@ -134,7 +167,7 @@ export function Practice({ questions }: { questions: Question[] }) {
 					</button>
 				</div>
 			) : (
-				<button type="button" onClick={() => setRevealed(true)} className={`${primaryButtonClass} w-full py-4 text-lg`}>
+				<button type="button" onClick={reveal} className={`${primaryButtonClass} w-full py-4 text-lg`}>
 					答えを見る
 					<span className="ml-2 hidden text-xs font-normal opacity-70 sm:inline">Space</span>
 				</button>

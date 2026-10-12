@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { deleteDeckAction } from "@/app/actions/decks";
 import { deleteSentenceAction } from "@/app/actions/sentences";
 import { ConfirmButton } from "@/components/confirm-button";
+import { SpeakButton } from "@/components/speak-button";
 import { RenameDeckForm } from "@/components/deck-forms";
 import { BulkSentenceForm, NewSentenceForm } from "@/components/sentence-forms";
 import { getDb } from "@/db";
@@ -64,6 +65,7 @@ export default async function DeckPage({ params }: PageProps<"/decks/[id]">) {
 									<p>{s.ja}</p>
 									<p lang="en" className="text-indigo-700 dark:text-indigo-300">
 										{s.en}
+										<SpeakButton text={s.en} />
 									</p>
 									{s.note && <p className="text-xs text-zinc-500">{s.note}</p>}
 									<p className="text-xs text-zinc-400 tabular-nums">

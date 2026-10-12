@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # GITHUB_TOKEN で予約すると、マージが github-actions の操作になる。GitHub は GITHUB_TOKEN が
-      # 起こした push でワークフローを起動しないため、main への push で動く CI と terraform-apply.yml が
+      # 起こした push でワークフローを起動しないため、main への push で動く CI が
       # 走らない。head ブランチも消えずに残る。App として予約すれば、マージは App の操作になる。
       # App の ID と鍵は github-management の auto_merge.tf が配る
       - name: Create GitHub App token

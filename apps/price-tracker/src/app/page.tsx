@@ -111,6 +111,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 	]);
 	const total = [...counts.values()].reduce((a, b) => a + b, 0);
 	const uncategorized = counts.get(null) ?? 0;
+	// 畳んでいても何を選んでいるか分かるよう、見出しに出す
+	const selectedName = categoryId === null ? "未分類" : categories.find((c) => c.id === categoryId)?.name;
 
 	const chip = (active: boolean) =>
 		`rounded-full px-3 py-1 text-sm ${
@@ -136,21 +138,29 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 				</button>
 			</form>
 
-			<div className="flex flex-wrap gap-2">
-				{/* 選択中のカテゴリをもう一度押すと選択を外す */}
-				{categories.map((c) => (
-					<Link key={c.id} href={withQuery(categoryId === c.id ? undefined : c.id)} className={chip(categoryId === c.id)}>
-						{c.name}
-						<span className="ml-1 opacity-70">{counts.get(c.id) ?? 0}</span>
-					</Link>
-				))}
-				{uncategorized > 0 && (
-					<Link href={withQuery(categoryId === null ? undefined : null)} className={chip(categoryId === null)}>
-						未分類
-						<span className="ml-1 opacity-70">{uncategorized}</span>
-					</Link>
-				)}
-			</div>
+			{/* チップ列は畳める。開閉だけなので JS を使わず details で済ませる */}
+			<details open className="group">
+				<summary className="flex cursor-pointer list-none items-center gap-1 text-sm text-zinc-500 select-none [&::-webkit-details-marker]:hidden">
+					<span className="inline-block transition-transform group-open:rotate-90">▶</span>
+					カテゴリ
+					{selectedName !== undefined && <span className="ml-1 font-medium text-emerald-700 dark:text-emerald-400">{selectedName}</span>}
+				</summary>
+				<div className="mt-2 flex flex-wrap gap-2">
+					{/* 選択中のカテゴリをもう一度押すと選択を外す */}
+					{categories.map((c) => (
+						<Link key={c.id} href={withQuery(categoryId === c.id ? undefined : c.id)} className={chip(categoryId === c.id)}>
+							{c.name}
+							<span className="ml-1 opacity-70">{counts.get(c.id) ?? 0}</span>
+						</Link>
+					))}
+					{uncategorized > 0 && (
+						<Link href={withQuery(categoryId === null ? undefined : null)} className={chip(categoryId === null)}>
+							未分類
+							<span className="ml-1 opacity-70">{uncategorized}</span>
+						</Link>
+					)}
+				</div>
+			</details>
 
 			{total === 0 ? (
 				<div className="rounded-lg border border-dashed border-zinc-300 p-10 text-center text-zinc-500 dark:border-zinc-700">

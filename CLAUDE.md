@@ -7,6 +7,10 @@ Cloudflare Workers で動く Next.js アプリ群のモノレポ。アプリは 
 
 ## PR の出し方
 
+- **ローカルのテストが通ったら、確認を取らずにコミット・push・PR 作成まで進める**
+  - ここでいうテストは、型チェック・lint・テスト。画面を変えたときはローカルでの動作確認も含む
+  - テストが落ちたとき、または確認を省いたときは PR を出さずに報告する
+  - ラベルなど判断が割れるところは、PR 本文と報告に書いておく
 - **下書き（Draft）にしない**。最初から Ready for review で作る
 - Ready にすると auto-merge（`.github/workflows/auto-merge.yml`）が予約され、
   CI が通りしだい squash でマージされる。Draft のままだと auto-merge が動かず止まる

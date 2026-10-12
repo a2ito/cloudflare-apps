@@ -1,0 +1,59 @@
+/**
+ * wrangler.jsonc の雛形。実 ID と公開ホスト名を含む wrangler.jsonc は追跡しない。
+ * `npm run cf:config` で環境変数 D1_DATABASE_ID / APP_HOSTNAME を埋めて生成する。
+ * 画像の配信 URL（NEXT_PUBLIC_IMAGES_BASE_URL）は next build 時に埋め込むため、ここには書かない。
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "spec-compare",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2026-09-11",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".open-next/assets"
+	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "spec-compare"
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "spec-compare-db",
+			"database_id": "__D1_DATABASE_ID__",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "IMAGES_BUCKET",
+			"bucket_name": "spec-compare-images"
+		}
+	],
+	"vars": {
+		"AUTH_TRUST_HOST": "true"
+	},
+	// 公開 URL はカスタムドメインのみ。プレビュー URL は Google の許可リダイレクト URI に
+	// 含められずログインできないため無効にする
+	"routes": [
+		{
+			"pattern": "__APP_HOSTNAME__",
+			"custom_domain": true
+		}
+	],
+	"preview_urls": false,
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true
+	/**
+	 * Secrets（terraform/ で登録する。wrangler secret put は使わない。値はリポジトリに含めない）:
+	 *   AUTH_SECRET         セッション署名鍵（openssl rand -base64 32）
+	 *   AUTH_GOOGLE_ID      Google OAuth クライアント ID
+	 *   AUTH_GOOGLE_SECRET  Google OAuth クライアントシークレット
+	 *   ALLOWED_EMAILS      ログインを許可するメールアドレス（カンマ区切り）
+	 */
+}

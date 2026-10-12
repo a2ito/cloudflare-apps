@@ -11,6 +11,7 @@ Cloudflare Workers で動く Next.js アプリをまとめたモノレポ。
 | アプリ | 本番 | Worker | 概要 |
 | --- | --- | --- | --- |
 | [price-tracker](apps/price-tracker) | https://price-tracker.a2ito.work | `price-tracker` | 店舗ごとの価格を容量あたりの単価で比較する最安値メモ |
+| [spec-compare](apps/spec-compare) | https://spec-compare.a2ito.work | `spec-compare` | 同じカテゴリの商品（同スペック帯の PC など）をスペックと価格で比べる |
 | [tabilog](apps/tabilog) | https://tabilog.a2ito.work | `tabilog` | 旅先の食事・買い物を記録して振り返る旅行メモ |
 | [sakelog](apps/sakelog) | https://sakelog.a2ito.work | `sakelog` | ワインから日本酒まで、飲んだお酒を 5 軸の評価付きで残すメモ |
 | [kcalog](apps/kcalog) | https://kcalog.a2ito.work | `kcalog` | 食べたものとカロリーを記録して 1 日の摂取量を振り返るメモ |

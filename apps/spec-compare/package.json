@@ -1,0 +1,47 @@
+{
+  "name": "spec-compare",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "preview": "npm run cf:build && opennextjs-cloudflare preview",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
+    "typecheck": "next typegen && tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply spec-compare-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply spec-compare-db --remote",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "cf:config": "node scripts/gen-wrangler-config.mjs",
+    "cf:build": "npm run cf:config && npm run cf-typegen && node ../../scripts/patch-opennext-preview-props.mjs && opennextjs-cloudflare build",
+    "cf:deploy": "npm run cf:config && npm run db:migrate:remote && opennextjs-cloudflare deploy"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.3",
+    "drizzle-orm": "^0.45.2",
+    "next": "16.4.0",
+    "next-auth": "^5.0.0-beta.32",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.2",
+    "esbuild": "0.28.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260911.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.1.7",
+    "@types/react-dom": "^19.1.7",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.0",
+    "miniflare": "^5.20260911.0-alpha",
+    "tailwindcss": "^4",
+    "typescript": "7.0.2",
+    "vitest": "^5.0.0",
+    "wrangler": "^4.131.1"
+  }
+}

@@ -1,0 +1,269 @@
+import type { Better, FieldKind, PriceRecord } from "@/db/schema";
+
+/** 比較に使うスペック項目の情報 */
+export type FieldDef = { id: number; name: string; unit: string | null; kind: FieldKind; better: Better };
+
+/** 1 つのスペック値。number / bool は num、text は text に入る */
+export type SpecCell = { num: number | null; text: string | null };
+
+export type BestPrice = Pick<PriceRecord, "id" | "store" | "price" | "recordedAt" | "url">;
+
+export type CompareItem = {
+	id: number;
+	name: string;
+	maker: string | null;
+	imageKey: string | null;
+	/** fieldId → 値。未入力の項目はキーを持たない */
+	specs: Record<number, SpecCell>;
+	best: BestPrice | null;
+};
+
+/** 並べ替えの軸。f<id> はスペック項目 */
+export type SortKey = "price" | "name" | "cost" | `f${number}`;
+export type SortDir = "asc" | "desc";
+
+export type RangeFilter = { fieldId: number; min?: number; max?: number };
+
+export type CompareQuery = {
+	sort: SortKey;
+	dir: SortDir;
+	/** 数値項目の範囲。境界を含む */
+	ranges: RangeFilter[];
+	/** 「あり」でなければ外す bool 項目 */
+	required: number[];
+	/** テキスト項目の部分一致（大文字小文字を区別しない） */
+	contains: { fieldId: number; text: string }[];
+	maxPrice?: number;
+	/** コスパ（価格 ÷ 値）を出す数値項目 */
+	costFieldId?: number;
+};
+
+/** 価格の記録から最安値を選ぶ。同額なら新しい記録を優先する */
+export function pickBest<T extends Pick<PriceRecord, "id" | "price" | "recordedAt">>(records: readonly T[]): T | null {
+	let best: T | null = null;
+	for (const r of records) {
+		if (
+			best === null ||
+			r.price < best.price ||
+			(r.price === best.price && (r.recordedAt > best.recordedAt || (r.recordedAt === best.recordedAt && r.id > best.id)))
+		) {
+			best = r;
+		}
+	}
+	return best;
+}
+
+/** 大小を比べる項目か。text と、良し悪しの無い項目は比べない */
+export function isRankable(field: Pick<FieldDef, "kind" | "better">): boolean {
+	return field.kind !== "text" && field.better !== "none";
+}
+
+/** コスパを出せる項目か。「価格 ÷ 値」が意味を持つのは、大きいほど良い数値だけ */
+export function isCostField(field: Pick<FieldDef, "kind" | "better">): boolean {
+	return field.kind === "number" && field.better === "higher";
+}
+
+/** 1 単位あたりの価格。値が無い・0 以下なら出せない */
+export function costPer(price: number | null | undefined, value: number | null | undefined): number | null {
+	if (price === null || price === undefined || value === null || value === undefined || value <= 0) return null;
+	return price / value;
+}
+
+function numberParam(value: string | string[] | undefined): number | undefined {
+	if (typeof value !== "string" || value.trim() === "") return undefined;
+	const n = Number(value);
+	return Number.isFinite(n) ? n : undefined;
+}
+
+function stringParam(value: string | string[] | undefined): string | undefined {
+	if (typeof value !== "string") return undefined;
+	const s = value.trim();
+	return s === "" ? undefined : s;
+}
+
+type Params = Record<string, string | string[] | undefined>;
+
+/**
+ * URL の検索パラメータを比較条件に直す。
+ * 項目ごとのパラメータ名は min_<id> / max_<id> / has_<id> / q_<id>。
+ * 存在しない項目や型の合わない指定は黙って捨てる（項目を消したあとの古いリンクでも開けるように）
+ */
+export function parseCompareQuery(params: Params, fields: readonly FieldDef[]): CompareQuery {
+	const byId = new Map(fields.map((f) => [f.id, f]));
+
+	const rawSort = stringParam(params.sort);
+	const costFieldId = numberParam(params.cost);
+	const costField = costFieldId !== undefined ? byId.get(costFieldId) : undefined;
+	const validCost = costField && isCostField(costField) ? costField.id : undefined;
+
+	let sort: SortKey = "price";
+	if (rawSort === "name" || rawSort === "price") sort = rawSort;
+	else if (rawSort === "cost" && validCost !== undefined) sort = "cost";
+	else if (rawSort?.startsWith("f")) {
+		const field = byId.get(Number(rawSort.slice(1)));
+		if (field) sort = `f${field.id}`;
+	}
+	const dir: SortDir = params.dir === "desc" ? "desc" : "asc";
+
+	const ranges: RangeFilter[] = [];
+	const required: number[] = [];
+	const contains: CompareQuery["contains"] = [];
+	for (const field of fields) {
+		if (field.kind === "number") {
+			const min = numberParam(params[`min_${field.id}`]);
+			const max = numberParam(params[`max_${field.id}`]);
+			if (min !== undefined || max !== undefined) ranges.push({ fieldId: field.id, min, max });
+		} else if (field.kind === "bool") {
+			if (params[`has_${field.id}`] === "1") required.push(field.id);
+		} else {
+			const text = stringParam(params[`q_${field.id}`]);
+			if (text !== undefined) contains.push({ fieldId: field.id, text });
+		}
+	}
+
+	return { sort, dir, ranges, required, contains, maxPrice: numberParam(params.maxPrice), costFieldId: validCost };
+}
+
+/** 絞り込みの条件に合うか。条件のある項目が未入力なら外す */
+export function matches(item: CompareItem, query: CompareQuery): boolean {
+	if (query.maxPrice !== undefined && (item.best === null || item.best.price > query.maxPrice)) return false;
+	for (const r of query.ranges) {
+		const v = item.specs[r.fieldId]?.num;
+		if (v === null || v === undefined) return false;
+		if (r.min !== undefined && v < r.min) return false;
+		if (r.max !== undefined && v > r.max) return false;
+	}
+	for (const id of query.required) {
+		if (item.specs[id]?.num !== 1) return false;
+	}
+	for (const c of query.contains) {
+		const v = item.specs[c.fieldId]?.text;
+		if (!v || !v.toLowerCase().includes(c.text.toLowerCase())) return false;
+	}
+	return true;
+}
+
+/** 並べ替えに使う値。null は値なしで、昇順・降順のどちらでも末尾に回す */
+function sortValue(item: CompareItem, query: CompareQuery): number | string | null {
+	if (query.sort === "price") return item.best?.price ?? null;
+	if (query.sort === "name") return item.name;
+	if (query.sort === "cost") {
+		return query.costFieldId === undefined ? null : costPer(item.best?.price, item.specs[query.costFieldId]?.num);
+	}
+	const cell = item.specs[Number(query.sort.slice(1))];
+	if (!cell) return null;
+	return cell.num ?? cell.text;
+}
+
+export function sortItems(items: readonly CompareItem[], query: CompareQuery): CompareItem[] {
+	const sign = query.dir === "desc" ? -1 : 1;
+	return [...items].sort((a, b) => {
+		const va = sortValue(a, query);
+		const vb = sortValue(b, query);
+		if (va === null && vb === null) return a.id - b.id;
+		if (va === null) return 1;
+		if (vb === null) return -1;
+		const diff = typeof va === "number" && typeof vb === "number" ? va - vb : String(va).localeCompare(String(vb), "ja");
+		return diff !== 0 ? sign * diff : a.id - b.id;
+	});
+}
+
+/** ハイライトの対象。price・cost はどちらも小さいほど良い */
+export type HighlightKey = "price" | "cost" | number;
+
+/**
+ * 列ごとに一番良い値を求める。
+ * 値のある商品が 2 つ未満、または全部同じ値の列はハイライトしない（勝ち負けが無いため）
+ */
+export function bestValues(items: readonly CompareItem[], fields: readonly FieldDef[], costFieldId?: number): Map<HighlightKey, number> {
+	const result = new Map<HighlightKey, number>();
+	const consider = (key: HighlightKey, values: (number | null | undefined)[], better: "higher" | "lower") => {
+		const present = values.filter((v): v is number => v !== null && v !== undefined);
+		if (present.length < 2) return;
+		const min = Math.min(...present);
+		const max = Math.max(...present);
+		if (min === max) return;
+		result.set(key, better === "higher" ? max : min);
+	};
+
+	consider(
+		"price",
+		items.map((i) => i.best?.price),
+		"lower",
+	);
+	if (costFieldId !== undefined) {
+		consider(
+			"cost",
+			items.map((i) => costPer(i.best?.price, i.specs[costFieldId]?.num)),
+			"lower",
+		);
+	}
+	for (const field of fields) {
+		// isRankable と同じ条件。better を絞り込むため直接書く
+		if (field.kind === "text" || field.better === "none") continue;
+		consider(
+			field.id,
+			items.map((i) => i.specs[field.id]?.num),
+			field.better,
+		);
+	}
+	return result;
+}
+
+/**
+ * カテゴリの中で何番目に良いか。同じ値は同じ順位にする（1, 1, 3 位）。
+ * 比べない項目、値が無い、比べる相手がいないときは null
+ */
+export function rankIn(items: readonly CompareItem[], field: FieldDef, productId: number): { rank: number; total: number } | null {
+	if (field.kind === "text" || field.better === "none") return null;
+	const own = items.find((i) => i.id === productId)?.specs[field.id]?.num;
+	if (own === null || own === undefined) return null;
+	const values = items.map((i) => i.specs[field.id]?.num).filter((v): v is number => v !== null && v !== undefined);
+	if (values.length < 2) return null;
+	const better = values.filter((v) => (field.better === "higher" ? v > own : v < own)).length;
+	return { rank: better + 1, total: values.length };
+}
+
+/** 比較表に出す行と、列ごとの最良値 */
+export function compare(items: readonly CompareItem[], fields: readonly FieldDef[], query: CompareQuery) {
+	const rows = sortItems(
+		items.filter((i) => matches(i, query)),
+		query,
+	);
+	return { rows, best: bestValues(rows, fields, query.costFieldId) };
+}
+
+/** 数値を桁区切りで。小数は必要なぶんだけ（最大 2 桁）出す */
+export function formatNumber(value: number, maxFractionDigits = 2): string {
+	return value.toLocaleString("ja-JP", { maximumFractionDigits: maxFractionDigits });
+}
+
+export function formatYen(value: number, maxFractionDigits = 0): string {
+	return `¥${formatNumber(value, maxFractionDigits)}`;
+}
+
+/** 表に出すスペック値。未入力は null */
+export function formatSpec(field: Pick<FieldDef, "kind" | "unit">, cell: SpecCell | undefined): string | null {
+	if (!cell) return null;
+	if (field.kind === "bool") return cell.num === null ? null : cell.num === 1 ? "あり" : "なし";
+	if (field.kind === "text") return cell.text;
+	if (cell.num === null) return null;
+	return field.unit ? `${formatNumber(cell.num)} ${field.unit}` : formatNumber(cell.num);
+}
+
+/** コスパ列の見出し。「¥ / GB」のように出す */
+export function costLabel(field: Pick<FieldDef, "name" | "unit">): string {
+	return `${field.name} 1${field.unit ?? ""} あたり`;
+}
+
+export const BETTER_LABELS: Record<Better, string> = {
+	higher: "大きいほど良い",
+	lower: "小さいほど良い",
+	none: "比べない",
+};
+
+export const KIND_LABELS: Record<FieldKind, string> = {
+	number: "数値",
+	bool: "あり / なし",
+	text: "テキスト",
+};

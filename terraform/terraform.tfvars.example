@@ -57,6 +57,17 @@ secrets = {
     AUTH_GOOGLE_SECRET = "FILL_ME"
     AUTH_SECRET        = "FILL_ME"
   }
+  "spec-compare" = {
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
+  }
+  "spec-compare" = {
+    APP_HOSTNAME                = "FILL_ME"
+    D1_DATABASE_ID              = "FILL_ME"
+    NEXT_PUBLIC_IMAGES_BASE_URL = "FILL_ME"
+  }
   "tabilog" = {
     ALLOWED_EMAILS     = "FILL_ME"
     AUTH_GOOGLE_ID     = "FILL_ME"

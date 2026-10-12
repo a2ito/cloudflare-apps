@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull, like, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, isNull, like, ne, sql, type SQL } from "drizzle-orm";
 import type { Db } from "./index";
 import { categories, priceRecords, products, variants, type Category, type PriceRecord, type Product, type Variant } from "./schema";
 
@@ -50,12 +50,20 @@ async function listVariantsWithBest(db: Db, where: SQL | undefined): Promise<Var
 	}));
 }
 
+/** カテゴリごとの商品数。キー null は未分類 */
+export async function countProductsByCategory(db: Db): Promise<Map<number | null, number>> {
+	const rows = await db.select({ categoryId: products.categoryId, count: count() }).from(products).groupBy(products.categoryId);
+	return new Map(rows.map((r) => [r.categoryId, r.count]));
+}
+
+/** categoryId が null なら未分類の商品だけを返す */
 export async function listProducts(
 	db: Db,
-	filter: { categoryId?: number; query?: string } = {},
+	filter: { categoryId?: number | null; query?: string } = {},
 ): Promise<ProductListItem[]> {
 	const conditions = [];
-	if (filter.categoryId !== undefined) conditions.push(eq(products.categoryId, filter.categoryId));
+	if (filter.categoryId === null) conditions.push(isNull(products.categoryId));
+	else if (filter.categoryId !== undefined) conditions.push(eq(products.categoryId, filter.categoryId));
 	if (filter.query) conditions.push(like(products.name, `%${filter.query}%`));
 
 	const where = conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;

@@ -1,14 +1,19 @@
 import Link from "next/link";
 import { getDb } from "@/db";
-import { listCategories, listProducts, type ProductListItem, type VariantWithBest } from "@/db/queries";
+import { countProductsByCategory, listCategories, listProducts, type ProductListItem, type VariantWithBest } from "@/db/queries";
 import type { Unit } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { imageUrl } from "@/lib/images";
 import { amountChangeLabel, effectiveAmount, formatAmount, formatPackage, formatYen, metricLabel, metricUnitPrice, packageAmount, productMetric, unitBaseLabel, unitPrice, type Metric } from "@/lib/price";
 import { inputClass } from "@/components/ui";
 
-function parseCategoryId(value: string | string[] | undefined): number | undefined {
+/** 未分類を選んだときの category パラメータの値 */
+const UNCATEGORIZED = "none";
+
+/** 戻り値の null は未分類、undefined はカテゴリ未選択 */
+function parseCategoryId(value: string | string[] | undefined): number | null | undefined {
 	if (typeof value !== "string" || value === "") return undefined;
+	if (value === UNCATEGORIZED) return null;
 	const n = Number(value);
 	return Number.isInteger(n) && n > 0 ? n : undefined;
 }
@@ -95,8 +100,17 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 	const categoryId = parseCategoryId(params.category);
 	const query = typeof params.q === "string" && params.q.trim() !== "" ? params.q.trim() : undefined;
 
+	// 一覧はカテゴリを選ぶか検索したときだけ出す。全件を並べると長くて目当ての商品にたどり着けないため
+	const showList = categoryId !== undefined || query !== undefined;
+
 	const db = await getDb();
-	const [categories, items] = await Promise.all([listCategories(db), listProducts(db, { categoryId, query })]);
+	const [categories, counts, items] = await Promise.all([
+		listCategories(db),
+		countProductsByCategory(db),
+		showList ? listProducts(db, { categoryId, query }) : Promise.resolve([]),
+	]);
+	const total = [...counts.values()].reduce((a, b) => a + b, 0);
+	const uncategorized = counts.get(null) ?? 0;
 
 	const chip = (active: boolean) =>
 		`rounded-full px-3 py-1 text-sm ${
@@ -104,9 +118,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 				? "bg-emerald-600 text-white"
 				: "border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
 		}`;
-	const withQuery = (cat?: number) => {
+	const withQuery = (cat?: number | null) => {
 		const sp = new URLSearchParams();
-		if (cat !== undefined) sp.set("category", String(cat));
+		if (cat !== undefined) sp.set("category", cat === null ? UNCATEGORIZED : String(cat));
 		if (query) sp.set("q", query);
 		const s = sp.toString();
 		return s ? `/?${s}` : "/";
@@ -115,7 +129,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 	return (
 		<div className="space-y-5">
 			<form className="flex gap-2">
-				{categoryId !== undefined && <input type="hidden" name="category" value={categoryId} />}
+				{categoryId !== undefined && <input type="hidden" name="category" value={categoryId ?? UNCATEGORIZED} />}
 				<input name="q" defaultValue={query ?? ""} placeholder="商品名で検索" className={inputClass} />
 				<button type="submit" className="rounded-md border border-zinc-300 px-4 text-sm whitespace-nowrap hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
 					検索
@@ -123,23 +137,32 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 			</form>
 
 			<div className="flex flex-wrap gap-2">
-				<Link href={withQuery()} className={chip(categoryId === undefined)}>
-					すべて
-				</Link>
+				{/* 選択中のカテゴリをもう一度押すと選択を外す */}
 				{categories.map((c) => (
-					<Link key={c.id} href={withQuery(c.id)} className={chip(categoryId === c.id)}>
+					<Link key={c.id} href={withQuery(categoryId === c.id ? undefined : c.id)} className={chip(categoryId === c.id)}>
 						{c.name}
+						<span className="ml-1 opacity-70">{counts.get(c.id) ?? 0}</span>
 					</Link>
 				))}
+				{uncategorized > 0 && (
+					<Link href={withQuery(categoryId === null ? undefined : null)} className={chip(categoryId === null)}>
+						未分類
+						<span className="ml-1 opacity-70">{uncategorized}</span>
+					</Link>
+				)}
 			</div>
 
-			{items.length === 0 ? (
+			{total === 0 ? (
 				<div className="rounded-lg border border-dashed border-zinc-300 p-10 text-center text-zinc-500 dark:border-zinc-700">
 					<p>商品がまだありません</p>
 					<Link href="/products/new" className="mt-2 inline-block font-medium text-emerald-700 hover:underline dark:text-emerald-400">
 						最初の商品を登録する
 					</Link>
 				</div>
+			) : !showList ? (
+				<p className="py-10 text-center text-sm text-zinc-500">カテゴリを選ぶと商品の一覧が出ます</p>
+			) : items.length === 0 ? (
+				<p className="py-10 text-center text-sm text-zinc-500">該当する商品はありません</p>
 			) : (
 				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					{items.map((item) => (

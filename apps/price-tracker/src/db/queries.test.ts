@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createTestEnv, type TestEnv } from "@/test/d1";
-import { getProduct, getRecord, getVariant, listCategories, listMakers, listMergeTargets, listProducts, listRecords, listStores, listVariants } from "./queries";
+import { countProductsByCategory, getProduct, getRecord, getVariant, listCategories, listMakers, listMergeTargets, listProducts, listRecords, listStores, listVariants } from "./queries";
 import { categories, priceRecords, products, variants } from "./schema";
 
 let t: TestEnv;
@@ -37,6 +37,22 @@ describe("listCategories", () => {
 	it("名前順で返す", async () => {
 		await seed();
 		expect((await listCategories(t.db)).map((c) => c.name)).toEqual(["乳製品", "飲料"]);
+	});
+});
+
+describe("countProductsByCategory", () => {
+	it("カテゴリごとの商品数を返し、未分類は null に数える", async () => {
+		await seed();
+		await t.db.insert(products).values({ name: "牛乳", categoryId: 2, unit: "ml" });
+		const counts = await countProductsByCategory(t.db);
+		expect(counts.get(1)).toBe(1);
+		expect(counts.get(2)).toBe(2);
+		expect(counts.get(null)).toBe(1);
+	});
+
+	it("商品の無いカテゴリは含まない", async () => {
+		await t.db.insert(categories).values({ name: "空" });
+		expect((await countProductsByCategory(t.db)).size).toBe(0);
 	});
 });
 
@@ -112,6 +128,11 @@ describe("listProducts", () => {
 		const items = await listProducts(t.db, { categoryId: 2 });
 		expect(items.map((i) => i.name)).toEqual(["卵"]);
 		expect(items[0].variants).toHaveLength(1);
+	});
+
+	it("categoryId に null を渡すと未分類だけを返す", async () => {
+		await seed();
+		expect((await listProducts(t.db, { categoryId: null })).map((i) => i.name)).toEqual(["未分類の何か"]);
 	});
 
 	it("商品名の部分一致で検索できる", async () => {

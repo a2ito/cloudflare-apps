@@ -68,3 +68,72 @@ resource "cloudflare_workers_script_subdomain" "app" {
   enabled          = false
   previews_enabled = false
 }
+
+# アプリの D1。入れ物だけを持ち、スキーマは各アプリの drizzle のマイグレーション（npm run cf:deploy）が持つ
+resource "cloudflare_d1_database" "app" {
+  provider = cloudflare-official
+  for_each = local.d1_databases
+
+  account_id = var.account_id
+  name       = each.value
+
+  # 省略すると「設定を消す」差分になるため、実態（無効）を明示する
+  read_replication = {
+    mode = "disabled"
+  }
+
+  lifecycle {
+    # 本番データが入っている
+    prevent_destroy = true
+
+    # primary_location_hint は作成時にしか効かず、既存の DB では API が返さない。指定しても差分が出続ける
+    ignore_changes = [primary_location_hint]
+
+    precondition {
+      condition     = contains(local.apps[each.key].build_variables, "D1_DATABASE_ID")
+      error_message = "${each.key} の build_variables に D1_DATABASE_ID がありません。アプリが D1 を読めなくなります"
+    }
+  }
+}
+
+# アプリの R2。中身（画像）はアプリが書き込む
+resource "cloudflare_r2_bucket" "app" {
+  provider = cloudflare-official
+  for_each = local.r2_buckets
+
+  account_id = var.account_id
+  name       = each.value.name
+  location   = each.value.location
+  # 省略すると、import 直後に default を書き込む差分が出る
+  jurisdiction  = "default"
+  storage_class = "Standard"
+
+  lifecycle {
+    # 中身のあるバケットを Terraform の都合で消さない
+    prevent_destroy = true
+  }
+}
+
+# 画像を CDN から直に配るためのカスタムドメイン。Worker を経由しないので、一覧を開くたびに画像の枚数ぶん
+# Worker が起動するのを避けられる。引き換えに、画像は URL を知っていれば認証なしで取れる（キーは UUID）。
+#
+# **このリソースは import できない。** ダッシュボードで先に付けると Terraform で管理できなくなるため、必ずここで作る。
+# ホスト名は Build variables の NEXT_PUBLIC_IMAGES_BASE_URL から取る。アプリに埋め込む URL と食い違わないようにするため
+resource "cloudflare_r2_custom_domain" "app" {
+  provider = cloudflare-official
+  for_each = local.r2_buckets
+
+  account_id  = var.account_id
+  bucket_name = cloudflare_r2_bucket.app[each.key].name
+  domain      = trimsuffix(trimprefix(var.build_variables[each.key]["NEXT_PUBLIC_IMAGES_BASE_URL"], "https://"), "/")
+  zone_id     = var.zone_id
+  enabled     = true
+  min_tls     = "1.2"
+
+  lifecycle {
+    precondition {
+      condition     = var.zone_id != null && contains(local.apps[each.key].build_variables, "NEXT_PUBLIC_IMAGES_BASE_URL")
+      error_message = "${each.key} の画像のカスタムドメインには、terraform.tfvars の zone_id と、build_variables の NEXT_PUBLIC_IMAGES_BASE_URL（https://<ホスト名>）が要ります"
+    }
+  }
+}

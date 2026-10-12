@@ -24,3 +24,20 @@ import {
   to = cloudflare_workers_build_trigger.app[each.key]
   id = "${var.account_id}/${each.key}/${local.apps[each.key].trigger_uuid}"
 }
+
+# 手で作ってから Terraform に載せた D1 と R2（spec-compare）。新しく足すものは Terraform が作るので、ここに足さなくてよい。
+# D1 の ID は Build variables の D1_DATABASE_ID と同じ値を使う（同じ DB を指していなければならないため）。
+# R2 は <account_id>/<bucket_name>/<jurisdiction> で、jurisdiction を使っていないため末尾は空になる。
+import {
+  for_each = toset(["spec-compare"])
+
+  to = cloudflare_d1_database.app[each.key]
+  id = "${var.account_id}/${nonsensitive(var.build_variables[each.key]["D1_DATABASE_ID"])}"
+}
+
+import {
+  for_each = toset(["spec-compare"])
+
+  to = cloudflare_r2_bucket.app[each.key]
+  id = "${var.account_id}/${local.r2_buckets[each.key].name}/"
+}

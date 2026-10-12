@@ -44,7 +44,7 @@
 | フレームワーク | Next.js 16 (App Router) |
 | 実行環境 | Cloudflare Workers (OpenNext) |
 | DB | Cloudflare D1 + Drizzle ORM |
-| 画像 | Cloudflare R2（カスタムドメインで公開配信。バケットとドメインは cloud-management の Terraform が持つ） |
+| 画像 | Cloudflare R2（カスタムドメインで公開配信。バケットとドメインは terraform/ が持つ） |
 | 認証 | Auth.js (next-auth v5) + Google OAuth + 許可メールリスト |
 | UI | Tailwind CSS v4 |
 | テスト | Vitest + Miniflare（本物の D1 / R2 を起動して検証） |
@@ -123,14 +123,11 @@ main への push を Cloudflare の [Workers Builds](https://developers.cloudfla
 
 ### 初回だけ手でやること
 
-1. `npx wrangler d1 create spec-compare-db` で D1 を作る
-2. `env -u CLOUDFLARE_API_TOKEN npx wrangler r2 bucket create spec-compare-images` で R2 バケットを作る
-   （`CLOUDFLARE_API_TOKEN` には R2 の権限が無い）
-3. D1・R2 バケット・画像のカスタムドメイン（`spec-compare-img.<ゾーン>`）は cloud-management の
-   `cloudflare/config_workers.tf` が持つ。D1 と R2 は作ったものを import し、カスタムドメインは Terraform が作る。
+1. D1（`spec-compare-db`）と R2（`spec-compare-images`）は手で作り、[terraform/](../../terraform) に import した。
+   画像のカスタムドメインは terraform/ が `NEXT_PUBLIC_IMAGES_BASE_URL` のホスト名で作る。
    **カスタムドメインはダッシュボードで付けない**（import できず、Terraform で管理できなくなる）
-4. Google OAuth の承認済みリダイレクト URI に本番の URI を足す
-5. `terraform/terraform.tfvars` に Secret（`AUTH_SECRET` など 4 つ）と Build variables
-   （`D1_DATABASE_ID`・`APP_HOSTNAME`・`NEXT_PUBLIC_IMAGES_BASE_URL`）の値を書き、`terraform/` で `make plan` → `make apply`。
-   `NEXT_PUBLIC_IMAGES_BASE_URL` は 3 のカスタムドメイン（`https://spec-compare-img.<ゾーン>`）
-6. main に push すると Workers Builds がビルドしてデプロイする
+2. 画像をキャッシュに乗せるルールはゾーンに 1 つしか持てず cloud-management の `cloudflare/` が持つので、そちらにもホスト名を足す
+3. Google OAuth の承認済みリダイレクト URI に本番の URI を足す
+4. `terraform/terraform.tfvars` に Secret（`AUTH_SECRET` など 4 つ）・Build variables
+   （`D1_DATABASE_ID`・`APP_HOSTNAME`・`NEXT_PUBLIC_IMAGES_BASE_URL`）・`zone_id` の値を書き、`terraform/` で `make plan` → `make apply`
+5. main に push すると Workers Builds がビルドしてデプロイする

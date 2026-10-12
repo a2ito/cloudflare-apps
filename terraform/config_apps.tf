@@ -92,6 +92,12 @@ locals {
       build_caching_enabled = false
       trigger_uuid          = "5edf5d60-1198-4191-8ded-b70d2eef0b6b"
     }
+    "spec-compare" = {
+      secrets               = local.google_login_secrets
+      build_variables       = ["APP_HOSTNAME", "D1_DATABASE_ID", "NEXT_PUBLIC_IMAGES_BASE_URL"]
+      build_token_uuid      = local.build_tokens.cloudflare_apps
+      build_caching_enabled = true
+    }
     "tabilog" = {
       secrets               = local.google_login_secrets
       build_variables       = ["APP_HOSTNAME", "D1_DATABASE_ID", "NEXT_PUBLIC_PHOTOS_BASE_URL"]

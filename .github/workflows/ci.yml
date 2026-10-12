@@ -132,6 +132,11 @@ jobs:
             next-${{ matrix.app }}-
       # cf:build が wrangler.jsonc と型定義の生成まで面倒を見る
       - run: npm run cf:build -w apps/${{ matrix.app }}
+      # ビルドは通っても Worker が起動時に落ちる（本番で全リクエストが Error 1101）ことがある。
+      # workerd で起動して / を開き、5xx にならないことを確かめる。Renovate の PR もここで止まる
+      - name: 起動確認
+        working-directory: apps/${{ matrix.app }}
+        run: ../../scripts/smoke-test.sh
 
   # terraform/ の整形と構文。state と Cloudflare には触らない。
   terraform:

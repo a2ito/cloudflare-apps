@@ -5,8 +5,9 @@
 // 全リクエストが Error 1101 になる。
 //
 // upstream の修正（opennextjs/opennextjs-cloudflare#1356、issue #1355）と同じく glob に足す。
-// 修正入りの版が出たら、このスクリプトと cf:build の呼び出しを消す。
+// 修正入りの版が出たら、このスクリプトと各アプリの cf:build からの呼び出しを消す（#93）。
 //
+// 全アプリの cf:build が opennextjs-cloudflare build の直前に呼ぶ（カレントディレクトリはアプリ）。
 // Workers Builds は毎回 npm ci から始まるので、ビルドの直前に node_modules を書き換える。
 // 何度流してもよい（既に足してあれば何もしない）。
 import { existsSync, readFileSync, writeFileSync } from "node:fs";

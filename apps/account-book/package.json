@@ -17,7 +17,7 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "drizzle:generate": "drizzle-kit generate --config=./drizzle.config.ts",
-    "cf:build": "opennextjs-cloudflare build",
+    "cf:build": "node ../../scripts/patch-opennext-preview-props.mjs && opennextjs-cloudflare build",
     "cf:deploy": "npm run db:migrate:remote && opennextjs-cloudflare deploy"
   },
   "dependencies": {

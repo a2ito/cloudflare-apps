@@ -10,7 +10,7 @@
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
-    "cf:build": "opennextjs-cloudflare build",
+    "cf:build": "node ../../scripts/patch-opennext-preview-props.mjs && opennextjs-cloudflare build",
     "cf:deploy": "opennextjs-cloudflare deploy"
   },
   "dependencies": {

@@ -18,7 +18,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "cf:config": "node scripts/gen-wrangler-config.mjs",
-    "cf:build": "npm run cf:config && opennextjs-cloudflare build",
+    "cf:build": "npm run cf:config && node ../../scripts/patch-opennext-preview-props.mjs && opennextjs-cloudflare build",
     "cf:deploy": "npm run cf:config && npm run db:migrate:remote && opennextjs-cloudflare deploy"
   },
   "dependencies": {

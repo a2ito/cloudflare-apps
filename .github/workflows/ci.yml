@@ -4,6 +4,14 @@ on:
   pull_request:
   push:
     branches: [main]
+  # 手動実行。self-hosted を選ぶと全ジョブを CodeBuild（Lambda compute）の runner で動かす。
+  # runner は cloud-management の aws/github_runner が作る。
+  workflow_dispatch:
+    inputs:
+      use_self_hosted:
+        description: self-hosted runner（CodeBuild）で動かす
+        type: boolean
+        default: false
 
 # 同じブランチで新しい実行が始まったら、古い実行は打ち切る
 concurrency:
@@ -26,7 +34,12 @@ jobs:
   # 全アプリのビルドが回るのを避ける。
   changes:
     name: changes
-    runs-on: ubuntu-latest
+    # 手動実行で use_self_hosted を選んだときだけ CodeBuild の runner に載せる。pull_request と
+    # push では inputs が空なので ubuntu-latest になる。project 名（a2ito-runner）は
+    # cloud-management の aws/github_runner/config_github_runner.tf と揃える（自動では揃わない）。
+    # 拾うのは cloud-management の allowed_actor_ids の人が起こしたジョブだけで、ほかの人が
+    # 選ぶと queued のまま残る。
+    runs-on: ${{ inputs.use_self_hosted && format('codebuild-a2ito-runner-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-latest' }}
     outputs:
       apps: ${{ steps.detect.outputs.apps }}
     steps:
@@ -80,7 +93,7 @@ jobs:
     name: quality (${{ matrix.app }})
     needs: changes
     if: needs.changes.outputs.apps != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.use_self_hosted && format('codebuild-a2ito-runner-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -105,7 +118,7 @@ jobs:
     name: build (${{ matrix.app }})
     needs: changes
     if: needs.changes.outputs.apps != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.use_self_hosted && format('codebuild-a2ito-runner-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -141,7 +154,7 @@ jobs:
   # terraform/ の整形と構文。state と Cloudflare には触らない（plan / apply は手元で行う）。
   terraform:
     name: terraform
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.use_self_hosted && format('codebuild-a2ito-runner-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-latest' }}
     defaults:
       run:
         working-directory: terraform
@@ -166,7 +179,7 @@ jobs:
     name: ci-result
     needs: [changes, quality, build, terraform]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.use_self_hosted && format('codebuild-a2ito-runner-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-latest' }}
     steps:
       - name: Check results
         env:

@@ -21,6 +21,12 @@ secrets = {
     AUTH_GOOGLE_SECRET = "FILL_ME"
     AUTH_SECRET        = "FILL_ME"
   }
+  "flash-english" = {
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
+  }
   "kcalog" = {
     ALLOWED_EMAILS     = "FILL_ME"
     AUTH_GOOGLE_ID     = "FILL_ME"
@@ -69,6 +75,10 @@ build_variables = {
   }
   "exam-lab" = {
     APP_HOSTNAME = "FILL_ME"
+  }
+  "flash-english" = {
+    APP_HOSTNAME   = "FILL_ME"
+    D1_DATABASE_ID = "FILL_ME"
   }
   "kcalog" = {
     APP_HOSTNAME   = "FILL_ME"

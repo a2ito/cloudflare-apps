@@ -342,3 +342,18 @@ describe("健康食品・サプリのカテゴリを足す移行", () => {
 		expect(await query("SELECT COUNT(*) AS n FROM categories")).toEqual([{ n: 1 }]);
 	});
 });
+
+describe("おつまみのカテゴリを足す移行", () => {
+	it("カテゴリが 1 件増える", async () => {
+		t = await createTestEnvUpTo("0011");
+		await t.applyMigration("0012");
+		expect(await query("SELECT name FROM categories ORDER BY id")).toEqual([{ name: "健康食品・サプリ" }, { name: "おつまみ" }]);
+	});
+
+	it("同じ名前が先にあっても失敗せず、重複もしない", async () => {
+		t = await createTestEnvUpTo("0011");
+		await t.d1.prepare("INSERT INTO categories (name) VALUES ('おつまみ')").run();
+		await t.applyMigration("0012");
+		expect(await query("SELECT COUNT(*) AS n FROM categories WHERE name = 'おつまみ'")).toEqual([{ n: 1 }]);
+	});
+});

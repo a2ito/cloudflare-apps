@@ -33,11 +33,7 @@ state のバケットは GCP のユーザー認証で読む（`gcloud auth appli
 
 ## 使い方
 
-ふだんは PR で変える。`terraform/` を変えた PR では CI（`ci.yml` の `terraform-plan`）が plan を回して
-PR にコメントし、main にマージされると `terraform-apply.yml` が差分を apply する。
-plan が落ちると `ci-result` も落ち、自動マージは止まる。
-
-手元から流すこともできる（CI が落ちたときの調査など）。
+手元から流す。CI（`ci.yml` の `terraform`）は整形と構文を見るだけで、plan / apply はしない。
 
 ```sh
 cd terraform
@@ -46,49 +42,16 @@ make plan
 make apply   # plan で保存したものだけを適用する
 ```
 
-## CI / CD
+## 注意
 
-| 用途 | なりすます SA | 権限 |
-| --- | --- | --- |
-| PR の plan | `cloudflare-apps-plan` | state のバケットの読み取りだけ。`-lock=false` で回す |
-| main への push の apply | `cloudflare-apps-apply` | state とロックの書き込み |
-
-SA と WIF のプロバイダは cloud-management の `gcp/bootstrap`（`config_cloudflare_apps_ci.tf`）が持つ。
-OIDC の `sub` を完全一致で絞っているので、PR から apply 用の SA にはなりすませない。
-fork からの PR には GitHub が Secret と id-token を渡さないため、plan は回らない。
-
-GitHub に登録するもの（Cloudflare のトークンは手元の `~/.secrets` と同じ値。再発行したら両方を更新する）:
-
-| 種類 | 名前 | 値 |
-| --- | --- | --- |
-| Variable | `GCP_WORKLOAD_IDENTITY_PROVIDER` | `gcp/bootstrap` の出力 `cloudflare_apps_workload_identity_provider` |
-| Variable | `GCP_PLAN_SERVICE_ACCOUNT` | 〃 `cloudflare_apps_plan_service_account_email` |
-| Variable | `GCP_APPLY_SERVICE_ACCOUNT` | 〃 `cloudflare_apps_apply_service_account_email` |
-| Secret | `TERRAFORM_TFVARS` | `terraform.tfvars` の中身 |
-| Secret | `CLOUDFLARE_API_TOKEN` | `CLOUDFLARE_APPS_TERRAFORM_TOKEN` |
-| Secret | `CLOUDFLARE_BUILDS_API_TOKEN` | `CLOUDFLARE_APPS_TERRAFORM_BUILDS_TOKEN` |
-
-```sh
-. ~/.secrets
-printf '%s' "$CLOUDFLARE_APPS_TERRAFORM_TOKEN" | gh secret set CLOUDFLARE_API_TOKEN
-printf '%s' "$CLOUDFLARE_APPS_TERRAFORM_BUILDS_TOKEN" | gh secret set CLOUDFLARE_BUILDS_API_TOKEN
-gh secret set TERRAFORM_TFVARS < terraform/terraform.tfvars
-```
-
-- **`terraform.tfvars` を変えたら `TERRAFORM_TFVARS` も更新する。** 自動では同期されない。
-  Secret の値を変えるだけの変更は PR にならないので、手元で `make apply` してから Secret を更新する
-- **リポジトリは public。** plan は PR のコメントと Actions のログに出る。`secrets` と `build_variables` は
-  `sensitive` にして伏せている。秘匿値を持つ変数を足すときは `sensitive = true` を付ける
-- Terraform の版は `.terraform-version` に揃える（手元は tfenv、CI も同じファイルを読む）。
+- Terraform の版は `.terraform-version` に揃える（手元は tfenv、CI の構文チェックも同じファイルを読む）。
   新しい版で state を書くと古い版で読めなくなる
-- apply が途中で落ちたら、原因を直して `terraform-apply.yml` を `workflow_dispatch` で main のまま再実行する
 
 ## アプリを足す
 
 1. `config_apps.tf` の `apps` に足す（`trigger_uuid` は要らない）
 2. `terraform.tfvars` に Secret と Build variables の値を足す
-3. GitHub の Secret `TERRAFORM_TFVARS` を更新してから PR を出す。マージで apply され、
-   Worker が無ければ仮のスクリプトで作られ、トリガーが付く
+3. `make plan` → `make apply`。Worker が無ければ仮のスクリプトで作られ、トリガーが付く
 4. `main` に push すると Workers Builds が本物のコードをデプロイする
 
 D1 データベースや Google OAuth の設定は、ルートの CLAUDE.md の「ダッシュボードで人がやること」のとおり手で行う。

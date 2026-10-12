@@ -13,7 +13,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
-    "cf:build": "opennextjs-cloudflare build",
+    "cf:build": "node ../../scripts/patch-opennext-preview-props.mjs && opennextjs-cloudflare build",
     "cf:deploy": "opennextjs-cloudflare deploy",
     "test": "vitest run"
   },

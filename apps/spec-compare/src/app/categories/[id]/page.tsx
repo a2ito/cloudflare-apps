@@ -21,6 +21,7 @@ import {
 } from "@/lib/compare";
 import { imageUrl } from "@/lib/images";
 import { parseId } from "@/lib/params";
+import { isSafeExternalUrl } from "@/lib/url";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -236,7 +237,14 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 														<>
 															{item.best.used && <UsedBadge />}
 															{formatYen(item.best.price)}
-															<span className="block text-xs font-normal text-zinc-500">{item.best.store}</span>
+															{/* 比較表から買いに行けるよう、最安値を記録したお店のページへ飛べるようにする */}
+															{isSafeExternalUrl(item.best.url) ? (
+																<a href={item.best.url ?? undefined} target="_blank" rel="noopener noreferrer" className="block text-xs font-normal text-indigo-700 hover:underline dark:text-indigo-400">
+																	{item.best.store} ↗
+																</a>
+															) : (
+																<span className="block text-xs font-normal text-zinc-500">{item.best.store}</span>
+															)}
 														</>
 													) : (
 														<span className="text-zinc-400">—</span>

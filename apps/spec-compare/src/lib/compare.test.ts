@@ -30,31 +30,40 @@ function item(id: number, price: number | null, specs: Partial<Record<number, nu
 		specs: Object.fromEntries(
 			Object.entries(specs).map(([k, v]) => [Number(k), typeof v === "string" ? { num: null, text: v } : { num: v ?? null, text: null }]),
 		),
-		best: price === null ? null : { id: id * 10, store: "店", price, recordedAt: "2026-10-12", url: null },
+		best: price === null ? null : { id: id * 10, store: "店", price, used: false, recordedAt: "2026-10-12", url: null },
 	};
 }
 
-const baseQuery: CompareQuery = { sort: "price", dir: "asc", ranges: [], required: [], contains: [] };
+const baseQuery: CompareQuery = { sort: "price", dir: "asc", ranges: [], required: [], contains: [], includeUsed: false };
 
 describe("pickBest", () => {
 	it("一番安い記録を選び、同額なら新しい記録を選ぶ", () => {
 		const records = [
-			{ id: 1, price: 1000, recordedAt: "2026-10-01" },
-			{ id: 2, price: 900, recordedAt: "2026-09-01" },
-			{ id: 3, price: 900, recordedAt: "2026-10-05" },
+			{ id: 1, price: 1000, used: false, recordedAt: "2026-10-01" },
+			{ id: 2, price: 900, used: false, recordedAt: "2026-09-01" },
+			{ id: 3, price: 900, used: false, recordedAt: "2026-10-05" },
 		];
 		expect(pickBest(records)?.id).toBe(3);
 	});
 	it("同額・同日なら後から記録したものを選ぶ", () => {
 		expect(
 			pickBest([
-				{ id: 5, price: 900, recordedAt: "2026-10-05" },
-				{ id: 4, price: 900, recordedAt: "2026-10-05" },
+				{ id: 5, price: 900, used: false, recordedAt: "2026-10-05" },
+				{ id: 4, price: 900, used: false, recordedAt: "2026-10-05" },
 			])?.id,
 		).toBe(5);
 	});
 	it("記録が無ければ null", () => {
 		expect(pickBest([])).toBeNull();
+	});
+	it("中古は includeUsed のときだけ候補にする", () => {
+		const records = [
+			{ id: 1, price: 1000, used: false, recordedAt: "2026-10-01" },
+			{ id: 2, price: 600, used: true, recordedAt: "2026-10-01" },
+		];
+		expect(pickBest(records)?.id).toBe(1);
+		expect(pickBest(records, true)?.id).toBe(2);
+		expect(pickBest([{ id: 3, price: 600, used: true, recordedAt: "2026-10-01" }])).toBeNull();
 	});
 });
 
@@ -99,6 +108,7 @@ describe("parseCompareQuery", () => {
 			contains: [{ fieldId: 1, text: "ryzen" }],
 			maxPrice: 200000,
 			costFieldId: 2,
+			includeUsed: false,
 		});
 	});
 
@@ -110,6 +120,11 @@ describe("parseCompareQuery", () => {
 		expect(q.required).toEqual([]);
 		// 重量は小さいほど良いので、価格 ÷ 重量はコスパにならない
 		expect(q.costFieldId).toBeUndefined();
+	});
+
+	it("used=1 のときだけ中古を含める", () => {
+		expect(parseCompareQuery({ used: "1" }, FIELDS).includeUsed).toBe(true);
+		expect(parseCompareQuery({ used: "0" }, FIELDS).includeUsed).toBe(false);
 	});
 
 	it("コスパの項目が無いのにコスパ順を指定されたら価格順にする", () => {

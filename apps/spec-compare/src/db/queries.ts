@@ -37,9 +37,10 @@ export async function getField(db: Db, id: number): Promise<SpecField | null> {
 
 /**
  * カテゴリの商品をスペック値と最安値つきで返す。
- * 商品 ID を IN で渡すと D1 のバインド変数の上限（100）に当たるため、どれもカテゴリで絞って引く
+ * 商品 ID を IN で渡すと D1 のバインド変数の上限（100）に当たるため、どれもカテゴリで絞って引く。
+ * includeUsed を渡さなければ、最安値は新品の記録だけから選ぶ
  */
-export async function listCompareItems(db: Db, categoryId: number): Promise<CompareItem[]> {
+export async function listCompareItems(db: Db, categoryId: number, includeUsed = false): Promise<CompareItem[]> {
 	const [rows, values, records] = await Promise.all([
 		db.select().from(products).where(eq(products.categoryId, categoryId)).orderBy(asc(products.id)),
 		db
@@ -53,6 +54,7 @@ export async function listCompareItems(db: Db, categoryId: number): Promise<Comp
 				productId: priceRecords.productId,
 				store: priceRecords.store,
 				price: priceRecords.price,
+				used: priceRecords.used,
 				recordedAt: priceRecords.recordedAt,
 				url: priceRecords.url,
 			})
@@ -70,14 +72,14 @@ export async function listCompareItems(db: Db, categoryId: number): Promise<Comp
 	const recordsByProduct = Map.groupBy(records, (r) => r.productId);
 
 	return rows.map((p) => {
-		const best = pickBest(recordsByProduct.get(p.id) ?? []);
+		const best = pickBest(recordsByProduct.get(p.id) ?? [], includeUsed);
 		return {
 			id: p.id,
 			name: p.name,
 			maker: p.maker,
 			imageKey: p.imageKey,
 			specs: specsByProduct.get(p.id) ?? {},
-			best: best && { id: best.id, store: best.store, price: best.price, recordedAt: best.recordedAt, url: best.url },
+			best: best && { id: best.id, store: best.store, price: best.price, used: best.used, recordedAt: best.recordedAt, url: best.url },
 		};
 	});
 }

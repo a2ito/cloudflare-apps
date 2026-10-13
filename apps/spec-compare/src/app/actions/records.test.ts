@@ -43,6 +43,17 @@ describe("createRecord", () => {
 		expect(revalidated).toEqual(expect.arrayContaining(["/products/1", "/categories/1"]));
 	});
 
+	it("中古の記録は、中古を含めたときだけ最安値になる", async () => {
+		await createRecord({}, record());
+		await createRecord({}, record({ store: "じゃんぱら", price: 90000, used: "1" }));
+		expect((await listRecords(t.db, 1)).map((r) => [r.store, r.used])).toEqual([
+			["じゃんぱら", true],
+			["Amazon", false],
+		]);
+		expect((await listCompareItems(t.db, 1))[0].best).toMatchObject({ store: "Amazon", used: false });
+		expect((await listCompareItems(t.db, 1, true))[0].best).toMatchObject({ store: "じゃんぱら", used: true });
+	});
+
 	it("日付と URL を検証する", async () => {
 		expect((await createRecord({}, record({ recordedAt: "2026-02-30" }))).error).toMatch(/日付/);
 		expect((await createRecord({}, record({ url: "javascript:alert(1)" }))).error).toMatch(/http/);
@@ -59,6 +70,12 @@ describe("updateRecord", () => {
 		const to = await expectRedirect(() => updateRecord({}, record({ id: 1, price: 2 })));
 		expect(to).toBe("/products/1");
 		expect((await listRecords(t.db, 1))[0]).toMatchObject({ store: "Amazon", price: 2, recordedAt: "2026-10-12" });
+	});
+
+	it("中古のチェックを外すと新品に戻る", async () => {
+		await t.db.insert(priceRecords).values({ productId: 1, store: "A", price: 1, used: true, recordedAt: "2026-10-01" });
+		await expectRedirect(() => updateRecord({}, record({ id: 1 })));
+		expect((await listRecords(t.db, 1))[0].used).toBe(false);
 	});
 
 	it("別の商品の記録は書き換えない", async () => {

@@ -6,7 +6,7 @@ export type FieldDef = { id: number; name: string; unit: string | null; kind: Fi
 /** 1 つのスペック値。number / bool は num、text は text に入る */
 export type SpecCell = { num: number | null; text: string | null };
 
-export type BestPrice = Pick<PriceRecord, "id" | "store" | "price" | "recordedAt" | "url">;
+export type BestPrice = Pick<PriceRecord, "id" | "store" | "price" | "used" | "recordedAt" | "url">;
 
 export type CompareItem = {
 	id: number;
@@ -36,12 +36,18 @@ export type CompareQuery = {
 	maxPrice?: number;
 	/** コスパ（価格 ÷ 値）を出す数値項目 */
 	costFieldId?: number;
+	/** 中古の価格も最安値の候補にするか */
+	includeUsed: boolean;
 };
 
-/** 価格の記録から最安値を選ぶ。同額なら新しい記録を優先する */
-export function pickBest<T extends Pick<PriceRecord, "id" | "price" | "recordedAt">>(records: readonly T[]): T | null {
+/**
+ * 価格の記録から最安値を選ぶ。同額なら新しい記録を優先する。
+ * 中古は状態が新品と違い同じ物の値段として比べられないので、includeUsed のときだけ候補にする
+ */
+export function pickBest<T extends Pick<PriceRecord, "id" | "price" | "used" | "recordedAt">>(records: readonly T[], includeUsed = false): T | null {
 	let best: T | null = null;
 	for (const r of records) {
+		if (r.used && !includeUsed) continue;
 		if (
 			best === null ||
 			r.price < best.price ||
@@ -83,6 +89,11 @@ function stringParam(value: string | string[] | undefined): string | undefined {
 
 type Params = Record<string, string | string[] | undefined>;
 
+/** 中古も含めるか（?used=1）。最安値は項目の定義より先に決めるので、parseCompareQuery とは別に読めるようにしている */
+export function parseIncludeUsed(params: Params): boolean {
+	return params.used === "1";
+}
+
 /**
  * URL の検索パラメータを比較条件に直す。
  * 項目ごとのパラメータ名は min_<id> / max_<id> / has_<id> / q_<id>。
@@ -121,7 +132,16 @@ export function parseCompareQuery(params: Params, fields: readonly FieldDef[]): 
 		}
 	}
 
-	return { sort, dir, ranges, required, contains, maxPrice: numberParam(params.maxPrice), costFieldId: validCost };
+	return {
+		sort,
+		dir,
+		ranges,
+		required,
+		contains,
+		maxPrice: numberParam(params.maxPrice),
+		costFieldId: validCost,
+		includeUsed: parseIncludeUsed(params),
+	};
 }
 
 /** 絞り込みの条件に合うか。条件のある項目が未入力なら外す */

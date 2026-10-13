@@ -101,3 +101,8 @@ export function DangerButton({ children, ...props }: ComponentProps<"button">) {
 		</button>
 	);
 }
+
+/** 中古の価格に付ける印。最安値が中古のときに見落とさないように */
+export function UsedBadge() {
+	return <span className="mr-1 rounded bg-amber-500 px-1.5 align-middle text-xs font-normal text-white">中古</span>;
+}

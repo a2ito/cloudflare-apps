@@ -4,14 +4,6 @@ on:
   pull_request:
   push:
     branches: [main]
-  # 手動実行。self-hosted を選ぶと全ジョブを Cloud Run の runner で動かす
-  # （インフラは cloud-management、コードは github-management の runner/）。
-  workflow_dispatch:
-    inputs:
-      use_self_hosted:
-        description: self-hosted runner（Cloud Run）で動かす
-        type: boolean
-        default: false
 
 # 同じブランチで新しい実行が始まったら、古い実行は打ち切る
 concurrency:
@@ -34,13 +26,10 @@ jobs:
   # 全アプリのビルドが回るのを避ける。
   changes:
     name: changes
-    # 手動実行で use_self_hosted を選び、かつ runner が ON（cloud-scope が変数 RUNNER を作る）の
-    # ときだけ Cloud Run の runner に載せる。pull_request と push では inputs が空、OFF のときは
-    # 変数が無いので、どちらも ubuntu-latest になる。
-    #
-    # CodeBuild（Lambda compute）の runner はやめた。1GB では next build が 15 分の上限で
-    # 打ち切られ、同時実行のクォータ（15）を超えたジョブは拒否されて queued のまま残ったため。
-    runs-on: ${{ inputs.use_self_hosted && vars.RUNNER || 'ubuntu-latest' }}
+    # 全ジョブ GitHub-hosted。public リポジトリは GitHub-hosted の分数に上限が無いため、
+    # self-hosted に載せる理由が無い。CodeBuild（Lambda）と Cloud Run の runner も試したが、
+    # 起動待ちが長く（Cloud Run で 1 段 1.5 分以上）、遅くなるだけだった（#106〜#108）。
+    runs-on: ubuntu-latest
     outputs:
       apps: ${{ steps.detect.outputs.apps }}
     steps:
@@ -94,10 +83,7 @@ jobs:
     name: quality (${{ matrix.app }})
     needs: changes
     if: needs.changes.outputs.apps != '[]'
-    # self-hosted では大きい runner（RUNNER_LARGE、2 vCPU / 8GiB）に載せる。Cloud Run は
-    # ディスクもメモリに数えるため、4GiB（RUNNER）では node_modules（約 1.2GB）と next build /
-    # vitest が収まらず、exit 137（OOM）で落ちた。
-    runs-on: ${{ inputs.use_self_hosted && vars.RUNNER_LARGE || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -122,10 +108,7 @@ jobs:
     name: build (${{ matrix.app }})
     needs: changes
     if: needs.changes.outputs.apps != '[]'
-    # self-hosted では大きい runner（RUNNER_LARGE、2 vCPU / 8GiB）に載せる。Cloud Run は
-    # ディスクもメモリに数えるため、4GiB（RUNNER）では node_modules（約 1.2GB）と next build /
-    # vitest が収まらず、exit 137（OOM）で落ちた。
-    runs-on: ${{ inputs.use_self_hosted && vars.RUNNER_LARGE || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -161,7 +144,7 @@ jobs:
   # terraform/ の整形と構文。state と Cloudflare には触らない（plan / apply は手元で行う）。
   terraform:
     name: terraform
-    runs-on: ${{ inputs.use_self_hosted && vars.RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: terraform
@@ -186,7 +169,7 @@ jobs:
     name: ci-result
     needs: [changes, quality, build, terraform]
     if: always()
-    runs-on: ${{ inputs.use_self_hosted && vars.RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - name: Check results
         env:

@@ -143,7 +143,7 @@ jobs:
       # .next/cache を持ち越すと、変わっていない部分はコンパイル結果を使い回せる。
       # key に sha を含めて毎回書き戻し、読み出しは restore-keys で直近のものに落とす。
       - name: Next.js のビルドキャッシュ
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: apps/${{ matrix.app }}/.next/cache
           key: next-${{ matrix.app }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}

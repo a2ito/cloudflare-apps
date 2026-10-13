@@ -14,6 +14,8 @@ const recordSchema = z.object({
 	productId: idFromForm,
 	store: z.string().trim().min(1, "店舗名を入力してください").max(100),
 	price: z.coerce.number().int("価格は整数で入力してください").positive("価格は 1 円以上で入力してください"),
+	// チェックボックスは外すと送られてこないので、値が無ければ新品とみなす
+	used: z.literal("1").optional().transform((v) => v === "1"),
 	recordedAt: z.string().refine(isDate, "日付の形式が不正です"),
 	url: optionalUrl,
 	memo: optionalText,
@@ -40,6 +42,7 @@ export async function createRecord(_prev: ActionState, formData: FormData): Prom
 		productId: parsed.data.productId,
 		store: parsed.data.store,
 		price: parsed.data.price,
+		used: parsed.data.used,
 		recordedAt: parsed.data.recordedAt,
 		url: parsed.data.url ?? null,
 		memo: parsed.data.memo ?? null,
@@ -61,6 +64,7 @@ export async function updateRecord(_prev: ActionState, formData: FormData): Prom
 		.set({
 			store: parsed.data.store,
 			price: parsed.data.price,
+			used: parsed.data.used,
 			recordedAt: parsed.data.recordedAt,
 			url: parsed.data.url ?? null,
 			memo: parsed.data.memo ?? null,

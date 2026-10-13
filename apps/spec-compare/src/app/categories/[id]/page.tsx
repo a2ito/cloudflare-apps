@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { LinkButton, inputClass } from "@/components/ui";
+import { LinkButton, UsedBadge, inputClass } from "@/components/ui";
 import { getDb } from "@/db";
 import { getCategory, listCompareItems, listFields } from "@/db/queries";
 import { requireUser } from "@/lib/auth";
@@ -12,6 +12,7 @@ import {
 	formatYen,
 	isCostField,
 	parseCompareQuery,
+	parseIncludeUsed,
 	type CompareQuery,
 	type FieldDef,
 	type HighlightKey,
@@ -60,7 +61,8 @@ function cellClass(isBest: boolean): string {
 function FilterForm({ fields, query, params, base }: { fields: readonly FieldDef[]; query: CompareQuery; params: Params; base: string }) {
 	const costFields = fields.filter(isCostField);
 	const value = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : "");
-	const active = query.ranges.length + query.required.length + query.contains.length + (query.maxPrice !== undefined ? 1 : 0);
+	const active =
+		query.ranges.length + query.required.length + query.contains.length + (query.maxPrice !== undefined ? 1 : 0) + (query.includeUsed ? 1 : 0);
 
 	return (
 		<details className="group rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950" open={active > 0}>
@@ -77,6 +79,10 @@ function FilterForm({ fields, query, params, base }: { fields: readonly FieldDef
 					<label className="block space-y-1 text-sm">
 						<span className="font-medium text-zinc-700 dark:text-zinc-300">価格の上限（円）</span>
 						<input name="maxPrice" type="number" inputMode="numeric" min={0} defaultValue={value("maxPrice")} className={inputClass} />
+					</label>
+					<label className="flex items-center gap-2 self-end py-2 text-sm">
+						<input type="checkbox" name="used" value="1" defaultChecked={query.includeUsed} />
+						中古の価格も最安値に含める
 					</label>
 					{costFields.length > 0 && (
 						<label className="block space-y-1 text-sm">
@@ -142,10 +148,10 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 	if (id === null) notFound();
 
 	const db = await getDb();
-	const [category, fields, items] = await Promise.all([getCategory(db, id), listFields(db, id), listCompareItems(db, id)]);
+	const sp = await searchParams;
+	const [category, fields, items] = await Promise.all([getCategory(db, id), listFields(db, id), listCompareItems(db, id, parseIncludeUsed(sp))]);
 	if (!category) notFound();
 
-	const sp = await searchParams;
 	const query = parseCompareQuery(sp, fields);
 	const { rows, best } = compare(items, fields, query);
 	const costField = fields.find((f) => f.id === query.costFieldId);
@@ -228,6 +234,7 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 												<td className={cellClass(isBest("price", item.best?.price))}>
 													{item.best ? (
 														<>
+															{item.best.used && <UsedBadge />}
 															{formatYen(item.best.price)}
 															<span className="block text-xs font-normal text-zinc-500">{item.best.store}</span>
 														</>

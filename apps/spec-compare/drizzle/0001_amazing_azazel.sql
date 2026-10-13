@@ -1,0 +1,1 @@
+ALTER TABLE `price_records` ADD `used` integer DEFAULT false NOT NULL;

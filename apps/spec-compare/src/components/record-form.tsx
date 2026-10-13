@@ -52,6 +52,11 @@ export function RecordForm({ action, productId, stores, today, record }: Props) 
 				</Field>
 			</div>
 
+			<label className="flex items-center gap-2 text-sm">
+				<input type="checkbox" name="used" value="1" defaultChecked={record?.used ?? false} />
+				中古の価格（比較表では「中古も含める」にしたときだけ最安値の候補になる）
+			</label>
+
 			<Field label="リンク" hint="商品ページの URL（任意）">
 				<input name="url" type="url" inputMode="url" maxLength={2000} defaultValue={record?.url ?? ""} className={inputClass} placeholder="https://..." />
 			</Field>

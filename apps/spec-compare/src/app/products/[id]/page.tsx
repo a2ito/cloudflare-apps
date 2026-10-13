@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { deleteProduct } from "@/app/actions/products";
 import { createRecord, deleteRecord } from "@/app/actions/records";
 import { RecordForm } from "@/components/record-form";
-import { ConfirmForm, DangerButton, LinkButton } from "@/components/ui";
+import { ConfirmForm, DangerButton, LinkButton, UsedBadge } from "@/components/ui";
 import { getDb } from "@/db";
 import { getProduct, listCompareItems, listFields, listRecords, listStores } from "@/db/queries";
 import { requireUser } from "@/lib/auth";
@@ -48,7 +48,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 					{product.maker && <p className="text-sm text-zinc-500">{product.maker}</p>}
 					{self?.best && (
 						<p className="text-lg">
-							最安値 <span className="font-bold text-indigo-700 dark:text-indigo-400">{formatYen(self.best.price)}</span>
+							新品の最安値 <span className="font-bold text-indigo-700 dark:text-indigo-400">{formatYen(self.best.price)}</span>
 							<span className="ml-2 text-sm text-zinc-500">
 								{self.best.store} ・ {self.best.recordedAt}
 							</span>
@@ -111,6 +111,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 								<li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
 									<div className="min-w-0">
 										<p>
+											{r.used && <UsedBadge />}
 											<span className={`font-semibold ${r.id === bestId ? "text-indigo-700 dark:text-indigo-400" : ""}`}>{formatYen(r.price)}</span>
 											<span className="ml-2">{r.store}</span>
 											{r.id === bestId && <span className="ml-2 rounded bg-indigo-600 px-1.5 text-xs text-white">最安</span>}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { moveField } from "@/app/actions/fields";
 import { LinkButton, UsedBadge, inputClass } from "@/components/ui";
 import { getDb } from "@/db";
 import { getCategory, listCompareItems, listFields } from "@/db/queries";
@@ -52,6 +53,33 @@ function SortHeader({ label, sortKey, query, fields, base, params }: { label: st
 			{label}
 			{active && <span aria-label={query.dir === "asc" ? "昇順" : "降順"}>{query.dir === "asc" ? "▲" : "▼"}</span>}
 		</Link>
+	);
+}
+
+/**
+ * 列を左右に動かすボタン。並び順はカテゴリの設定画面と同じ position に保存するので、
+ * 次に開いたときも、ほかの端末でも同じ順に並ぶ
+ */
+function MoveButtons({ field, categoryId, isFirst, isLast }: { field: FieldDef; categoryId: number; isFirst: boolean; isLast: boolean }) {
+	return (
+		<span className="mt-1 flex justify-end gap-1">
+			{(["up", "down"] as const).map((direction) => (
+				<form key={direction} action={moveField}>
+					<input type="hidden" name="id" value={field.id} />
+					<input type="hidden" name="categoryId" value={categoryId} />
+					<input type="hidden" name="direction" value={direction} />
+					<button
+						type="submit"
+						disabled={direction === "up" ? isFirst : isLast}
+						className="rounded px-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 disabled:invisible dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
+						aria-label={`${field.name}を${direction === "up" ? "左" : "右"}へ移動`}
+						title={direction === "up" ? "左へ移動" : "右へ移動"}
+					>
+						{direction === "up" ? "←" : "→"}
+					</button>
+				</form>
+			))}
+		</span>
 	);
 }
 
@@ -209,9 +237,10 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 												<SortHeader label={costLabel(costField)} sortKey="cost" query={query} fields={fields} base={base} params={sp} />
 											</th>
 										)}
-										{fields.map((f) => (
+										{fields.map((f, i) => (
 											<th key={f.id} className="px-3 py-2 text-right whitespace-nowrap">
 												<SortHeader label={f.name} sortKey={`f${f.id}`} query={query} fields={fields} base={base} params={sp} />
+												<MoveButtons field={f} categoryId={id} isFirst={i === 0} isLast={i === fields.length - 1} />
 											</th>
 										))}
 									</tr>

@@ -94,7 +94,10 @@ jobs:
     name: quality (${{ matrix.app }})
     needs: changes
     if: needs.changes.outputs.apps != '[]'
-    runs-on: ${{ inputs.use_self_hosted && vars.RUNNER || 'ubuntu-latest' }}
+    # self-hosted では大きい runner（RUNNER_LARGE、2 vCPU / 8GiB）に載せる。Cloud Run は
+    # ディスクもメモリに数えるため、4GiB（RUNNER）では node_modules（約 1.2GB）と next build /
+    # vitest が収まらず、exit 137（OOM）で落ちた。
+    runs-on: ${{ inputs.use_self_hosted && vars.RUNNER_LARGE || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -119,7 +122,10 @@ jobs:
     name: build (${{ matrix.app }})
     needs: changes
     if: needs.changes.outputs.apps != '[]'
-    runs-on: ${{ inputs.use_self_hosted && vars.RUNNER || 'ubuntu-latest' }}
+    # self-hosted では大きい runner（RUNNER_LARGE、2 vCPU / 8GiB）に載せる。Cloud Run は
+    # ディスクもメモリに数えるため、4GiB（RUNNER）では node_modules（約 1.2GB）と next build /
+    # vitest が収まらず、exit 137（OOM）で落ちた。
+    runs-on: ${{ inputs.use_self_hosted && vars.RUNNER_LARGE || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:

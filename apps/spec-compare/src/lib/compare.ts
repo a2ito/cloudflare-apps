@@ -40,14 +40,21 @@ export type CompareQuery = {
 	includeUsed: boolean;
 };
 
+type PriceCandidate = Pick<PriceRecord, "id" | "price" | "used" | "recordedAt">;
+
 /**
  * 価格の記録から最安値を選ぶ。同額なら新しい記録を優先する。
- * 中古は状態が新品と違い同じ物の値段として比べられないので、includeUsed のときだけ候補にする
+ * 中古は状態が新品と違い同じ物の値段として比べられないので、新品の記録があれば新品だけから選ぶ。
+ * 新品の記録が無ければ（もう新品が売っていない機種など）中古から選ぶ。includeUsed なら新品と中古をまとめて比べる
  */
-export function pickBest<T extends Pick<PriceRecord, "id" | "price" | "used" | "recordedAt">>(records: readonly T[], includeUsed = false): T | null {
+export function pickBest<T extends PriceCandidate>(records: readonly T[], includeUsed = false): T | null {
+	if (includeUsed) return cheapest(records);
+	return cheapest(records.filter((r) => !r.used)) ?? cheapest(records);
+}
+
+function cheapest<T extends PriceCandidate>(records: readonly T[]): T | null {
 	let best: T | null = null;
 	for (const r of records) {
-		if (r.used && !includeUsed) continue;
 		if (
 			best === null ||
 			r.price < best.price ||

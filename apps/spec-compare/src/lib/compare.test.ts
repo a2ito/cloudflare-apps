@@ -56,14 +56,20 @@ describe("pickBest", () => {
 	it("記録が無ければ null", () => {
 		expect(pickBest([])).toBeNull();
 	});
-	it("中古は includeUsed のときだけ候補にする", () => {
+	it("新品があれば新品だけから選び、中古は includeUsed のときに候補にする", () => {
 		const records = [
 			{ id: 1, price: 1000, used: false, recordedAt: "2026-10-01" },
 			{ id: 2, price: 600, used: true, recordedAt: "2026-10-01" },
 		];
 		expect(pickBest(records)?.id).toBe(1);
 		expect(pickBest(records, true)?.id).toBe(2);
-		expect(pickBest([{ id: 3, price: 600, used: true, recordedAt: "2026-10-01" }])).toBeNull();
+	});
+	it("新品の記録が無ければ中古から選ぶ", () => {
+		const records = [
+			{ id: 3, price: 600, used: true, recordedAt: "2026-10-01" },
+			{ id: 4, price: 500, used: true, recordedAt: "2026-10-01" },
+		];
+		expect(pickBest(records)?.id).toBe(4);
 	});
 });
 

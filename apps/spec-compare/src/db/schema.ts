@@ -9,6 +9,12 @@ const timestamp = (name: string) =>
 export const categories = sqliteTable("categories", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
 	name: text("name").notNull().unique(),
+	/**
+	 * 比較表を開いたときに出すコスパ列の項目（spec_fields.id）。
+	 * 外部キーにすると categories と spec_fields が互いを参照するので付けていない。
+	 * 項目が消えたり大きいほど良い数値でなくなったりしたら、比較表の側で無視する
+	 */
+	defaultCostFieldId: integer("default_cost_field_id"),
 	createdAt: timestamp("created_at"),
 });
 

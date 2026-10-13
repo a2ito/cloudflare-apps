@@ -1,6 +1,6 @@
 "use server";
 
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -8,7 +8,8 @@ import { getDb } from "@/db";
 import { categories, products, specFields } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { isUniqueViolation } from "@/lib/errors";
-import { idFromForm, parseForm, type ActionState } from "@/lib/form";
+import { isCostField } from "@/lib/compare";
+import { idFromForm, optionalIdFromForm, parseForm, type ActionState } from "@/lib/form";
 import { findPreset } from "@/lib/presets";
 
 const nameSchema = z.string().trim().min(1, "カテゴリ名を入力してください").max(50);
@@ -54,6 +55,25 @@ export async function renameCategory(_prev: ActionState, formData: FormData): Pr
 		throw e;
 	}
 	revalidatePath("/");
+	revalidatePath(`/categories/${parsed.data.id}`, "layout");
+	return { success: "変更しました" };
+}
+
+/** 比較表を開いたときに出すコスパ列の項目を決める。空なら出さない */
+export async function setDefaultCostField(_prev: ActionState, formData: FormData): Promise<ActionState> {
+	await requireUser();
+	const parsed = parseForm(z.object({ id: idFromForm, fieldId: optionalIdFromForm }), formData);
+	if (!parsed.ok) return { error: parsed.error };
+
+	const db = await getDb();
+	const fieldId = parsed.data.fieldId ?? null;
+	if (fieldId !== null) {
+		// 別のカテゴリの項目や、コスパにならない項目を選ばせない
+		const field = (await db.select().from(specFields).where(and(eq(specFields.id, fieldId), eq(specFields.categoryId, parsed.data.id))).limit(1))[0];
+		if (!field || !isCostField(field)) return { error: "コスパに使えるのは、大きいほど良い数値の項目だけです" };
+	}
+
+	await db.update(categories).set({ defaultCostFieldId: fieldId }).where(eq(categories.id, parsed.data.id));
 	revalidatePath(`/categories/${parsed.data.id}`, "layout");
 	return { success: "変更しました" };
 }

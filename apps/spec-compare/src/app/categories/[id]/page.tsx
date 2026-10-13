@@ -88,7 +88,7 @@ function FilterForm({ fields, query, params, base }: { fields: readonly FieldDef
 					{costFields.length > 0 && (
 						<label className="block space-y-1 text-sm">
 							<span className="font-medium text-zinc-700 dark:text-zinc-300">コスパの基準</span>
-							<select name="cost" defaultValue={value("cost")} className={inputClass}>
+							<select name="cost" defaultValue={query.costFieldId ?? ""} className={inputClass}>
 								<option value="">出さない</option>
 								{costFields.map((f) => (
 									<option key={f.id} value={f.id}>
@@ -153,7 +153,7 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 	const [category, fields, items] = await Promise.all([getCategory(db, id), listFields(db, id), listCompareItems(db, id, parseIncludeUsed(sp))]);
 	if (!category) notFound();
 
-	const query = parseCompareQuery(sp, fields);
+	const query = parseCompareQuery(sp, fields, category.defaultCostFieldId);
 	const { rows, best } = compare(items, fields, query);
 	const costField = fields.find((f) => f.id === query.costFieldId);
 	const base = `/categories/${id}`;

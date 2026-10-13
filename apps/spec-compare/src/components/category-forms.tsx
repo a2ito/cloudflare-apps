@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { createCategory, deleteCategory, renameCategory } from "@/app/actions/categories";
-import type { Category } from "@/db/schema";
+import { createCategory, deleteCategory, renameCategory, setDefaultCostField } from "@/app/actions/categories";
+import type { Category, SpecField } from "@/db/schema";
+import { costLabel, isCostField } from "@/lib/compare";
 import { initialActionState } from "@/lib/form";
 import { PRESETS } from "@/lib/presets";
 import { Field, FormMessage, inputClass, SubmitButton } from "./ui";
@@ -64,6 +65,30 @@ export function DeleteCategoryForm({ category }: { category: Category }) {
 			>
 				カテゴリを削除
 			</button>
+		</form>
+	);
+}
+
+/** 比較表を開いたときに出すコスパ列。選べるのは大きいほど良い数値の項目だけ */
+export function DefaultCostForm({ category, fields }: { category: Category; fields: readonly SpecField[] }) {
+	const [state, formAction] = useActionState(setDefaultCostField, initialActionState);
+	const costFields = fields.filter(isCostField);
+	if (costFields.length === 0) return <p className="text-sm text-zinc-500">大きいほど良い数値の項目を作ると選べます。</p>;
+	return (
+		<form action={formAction} className="space-y-2">
+			<input type="hidden" name="id" value={category.id} />
+			<div className="flex gap-2">
+				<select name="fieldId" defaultValue={category.defaultCostFieldId ?? ""} className={inputClass} aria-label="既定のコスパの基準">
+					<option value="">出さない</option>
+					{costFields.map((f) => (
+						<option key={f.id} value={f.id}>
+							{costLabel(f)}の価格
+						</option>
+					))}
+				</select>
+				<SubmitButton pendingText="…">変更</SubmitButton>
+			</div>
+			<FormMessage state={state} />
 		</form>
 	);
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DeleteCategoryForm, RenameCategoryForm } from "@/components/category-forms";
+import { DefaultCostForm, DeleteCategoryForm, RenameCategoryForm } from "@/components/category-forms";
 import { FieldManager } from "@/components/field-manager";
 import { getDb } from "@/db";
 import { getCategory, listFields } from "@/db/queries";
@@ -34,6 +34,12 @@ export default async function CategorySettingsPage({ params }: PageProps<"/categ
 				<h2 className="font-semibold">スペック項目</h2>
 				<p className="text-sm text-zinc-500">比較表の列になります。上にある項目ほど左に出ます。</p>
 				<FieldManager categoryId={id} fields={fields} />
+			</section>
+
+			<section className="space-y-2">
+				<h2 className="font-semibold">既定のコスパ</h2>
+				<p className="text-sm text-zinc-500">比較表を開いたときに出すコスパ列です。比較表の「絞り込み・コスパ」で一時的に切り替えられます。</p>
+				<DefaultCostForm category={category} fields={fields} />
 			</section>
 
 			<section className="space-y-2 border-t border-zinc-200 pt-6 dark:border-zinc-800">

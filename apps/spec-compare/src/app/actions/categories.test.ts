@@ -15,7 +15,7 @@ vi.mock("next/navigation", async () => {
 	const { RedirectSignal } = await import("@/test/action-mocks");
 	return { redirect: (to: string) => { throw new RedirectSignal(to); } };
 });
-const { createCategory, deleteCategory, renameCategory } = await import("./categories");
+const { createCategory, deleteCategory, renameCategory, setDefaultCostField } = await import("./categories");
 
 beforeAll(async () => {
 	t = await createTestEnv();
@@ -58,6 +58,31 @@ describe("renameCategory", () => {
 		expect(await renameCategory({}, formData({ id: 1, name: "新" }))).toEqual({ success: "変更しました" });
 		expect((await listCategories(t.db))[0].name).toBe("新");
 		expect(revalidated).toContain("/");
+	});
+});
+
+describe("setDefaultCostField", () => {
+	beforeEach(async () => {
+		await t.db.insert(categories).values([{ name: "PC" }, { name: "スマホ" }]);
+		await t.db.insert(specFields).values([
+			{ categoryId: 1, name: "メモリ", unit: "GB", kind: "number", better: "higher" },
+			{ categoryId: 1, name: "重量", unit: "kg", kind: "number", better: "lower" },
+			{ categoryId: 2, name: "AnTuTu", unit: "点", kind: "number", better: "higher" },
+		]);
+	});
+	const defaultOf = async (id: number) => (await listCategories(t.db)).find((c) => c.id === id)?.defaultCostFieldId;
+
+	it("大きいほど良い数値の項目を既定にし、空なら外す", async () => {
+		expect(await setDefaultCostField({}, formData({ id: 1, fieldId: 1 }))).toEqual({ success: "変更しました" });
+		expect(await defaultOf(1)).toBe(1);
+		await setDefaultCostField({}, formData({ id: 1, fieldId: "" }));
+		expect(await defaultOf(1)).toBeNull();
+	});
+
+	it("コスパにならない項目や別のカテゴリの項目は選ばせない", async () => {
+		expect((await setDefaultCostField({}, formData({ id: 1, fieldId: 2 }))).error).toMatch(/大きいほど良い/);
+		expect((await setDefaultCostField({}, formData({ id: 1, fieldId: 3 }))).error).toMatch(/大きいほど良い/);
+		expect(await defaultOf(1)).toBeNull();
 	});
 });
 

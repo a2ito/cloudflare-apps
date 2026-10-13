@@ -1,0 +1,1 @@
+ALTER TABLE `categories` ADD `default_cost_field_id` integer;

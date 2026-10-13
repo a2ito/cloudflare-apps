@@ -127,6 +127,15 @@ describe("parseCompareQuery", () => {
 		expect(parseCompareQuery({ used: "0" }, FIELDS).includeUsed).toBe(false);
 	});
 
+	it("cost が無ければ既定のコスパ項目を使い、空なら出さない", () => {
+		expect(parseCompareQuery({}, FIELDS, 2).costFieldId).toBe(2);
+		expect(parseCompareQuery({ cost: "" }, FIELDS, 2).costFieldId).toBeUndefined();
+		expect(parseCompareQuery({ sort: "cost" }, FIELDS, 2).sort).toBe("cost");
+		// 既定の項目が消えたり、小さいほど良い項目になっていたりしたら出さない
+		expect(parseCompareQuery({}, FIELDS, 99).costFieldId).toBeUndefined();
+		expect(parseCompareQuery({}, FIELDS, 3).costFieldId).toBeUndefined();
+	});
+
 	it("コスパの項目が無いのにコスパ順を指定されたら価格順にする", () => {
 		expect(parseCompareQuery({ sort: "cost" }, FIELDS).sort).toBe("price");
 		expect(parseCompareQuery({ sort: "cost", cost: "2" }, FIELDS).sort).toBe("cost");

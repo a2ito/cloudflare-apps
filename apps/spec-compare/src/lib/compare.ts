@@ -97,13 +97,14 @@ export function parseIncludeUsed(params: Params): boolean {
 /**
  * URL の検索パラメータを比較条件に直す。
  * 項目ごとのパラメータ名は min_<id> / max_<id> / has_<id> / q_<id>。
- * 存在しない項目や型の合わない指定は黙って捨てる（項目を消したあとの古いリンクでも開けるように）
+ * 存在しない項目や型の合わない指定は黙って捨てる（項目を消したあとの古いリンクでも開けるように）。
+ * cost が無ければカテゴリの既定のコスパ項目を使う。フォームで「出さない」を選ぶと cost が空で届くので、そのときは出さない
  */
-export function parseCompareQuery(params: Params, fields: readonly FieldDef[]): CompareQuery {
+export function parseCompareQuery(params: Params, fields: readonly FieldDef[], defaultCostFieldId?: number | null): CompareQuery {
 	const byId = new Map(fields.map((f) => [f.id, f]));
 
 	const rawSort = stringParam(params.sort);
-	const costFieldId = numberParam(params.cost);
+	const costFieldId = params.cost === undefined ? (defaultCostFieldId ?? undefined) : numberParam(params.cost);
 	const costField = costFieldId !== undefined ? byId.get(costFieldId) : undefined;
 	const validCost = costField && isCostField(costField) ? costField.id : undefined;
 

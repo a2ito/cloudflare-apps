@@ -48,7 +48,8 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 					{product.maker && <p className="text-sm text-zinc-500">{product.maker}</p>}
 					{self?.best && (
 						<p className="text-lg">
-							新品の最安値 <span className="font-bold text-indigo-700 dark:text-indigo-400">{formatYen(self.best.price)}</span>
+							{self.best.used ? "最安値（新品の記録なし）" : "新品の最安値"} {self.best.used && <UsedBadge />}
+							<span className="font-bold text-indigo-700 dark:text-indigo-400">{formatYen(self.best.price)}</span>
 							<span className="ml-2 text-sm text-zinc-500">
 								{self.best.store} ・ {self.best.recordedAt}
 							</span>

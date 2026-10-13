@@ -101,7 +101,7 @@ export const priceRecords = sqliteTable(
 		store: text("store").notNull(),
 		/** 税込価格（円） */
 		price: integer("price").notNull(),
-		/** 中古の価格か。比較表は既定で新品だけから最安値を選ぶ */
+		/** 中古の価格か。比較表は既定で、新品の記録があれば新品だけから最安値を選ぶ */
 		used: integer("used", { mode: "boolean" }).notNull().default(false),
 		/** 記録日 YYYY-MM-DD */
 		recordedAt: text("recorded_at").notNull(),

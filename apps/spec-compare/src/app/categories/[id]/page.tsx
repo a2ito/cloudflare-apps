@@ -111,7 +111,7 @@ function FilterForm({ fields, query, params, base }: { fields: readonly FieldDef
 					</label>
 					<label className="flex items-center gap-2 self-end py-2 text-sm">
 						<input type="checkbox" name="used" value="1" defaultChecked={query.includeUsed} />
-						中古の価格も最安値に含める
+						新品があっても中古の価格を最安値に含める
 					</label>
 					{costFields.length > 0 && (
 						<label className="block space-y-1 text-sm">

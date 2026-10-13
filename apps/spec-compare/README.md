@@ -130,4 +130,6 @@ main への push を Cloudflare の [Workers Builds](https://developers.cloudfla
 3. Google OAuth の承認済みリダイレクト URI に本番の URI を足す
 4. `terraform/terraform.tfvars` に Secret（`AUTH_SECRET` など 4 つ）・Build variables
    （`D1_DATABASE_ID`・`APP_HOSTNAME`・`NEXT_PUBLIC_IMAGES_BASE_URL`）・`zone_id` の値を書き、`terraform/` で `make plan` → `make apply`
-5. main に push すると Workers Builds がビルドしてデプロイする
+5. main に push すると Workers Builds がビルドしてデプロイする。トリガーは apply より後の push にしか反応せず、
+   apply しただけでは Worker は Terraform が入れた仮のスクリプトのまま。watch paths に当たる変更を
+   main に入れて最初のビルドを起こす

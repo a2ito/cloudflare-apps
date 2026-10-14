@@ -33,10 +33,11 @@ function item(id: number, price: number | null, specs: Partial<Record<number, nu
 		),
 		best: price === null ? null : { id: id * 10, store: "店", price, used: false, recordedAt: "2026-10-12", url: null },
 		hidden: false,
+		favorite: false,
 	};
 }
 
-const baseQuery: CompareQuery = { sort: "price", dir: "asc", ranges: [], required: [], contains: [], includeUsed: false, showHidden: false };
+const baseQuery: CompareQuery = { sort: "price", dir: "asc", ranges: [], required: [], contains: [], includeUsed: false, showHidden: false, favoritesOnly: false };
 
 describe("pickBest", () => {
 	it("一番安い記録を選び、同額なら新しい記録を選ぶ", () => {
@@ -118,6 +119,7 @@ describe("parseCompareQuery", () => {
 			costFieldId: 2,
 			includeUsed: false,
 			showHidden: false,
+			favoritesOnly: false,
 		});
 	});
 
@@ -201,6 +203,14 @@ describe("matches", () => {
 		expect(matches(hidden, baseQuery)).toBe(false);
 		expect(matches(hidden, { ...baseQuery, showHidden: true })).toBe(true);
 		expect(parseCompareQuery({ hidden: "1" }, FIELDS).showHidden).toBe(true);
+	});
+
+	it("favoritesOnly のときはお気に入りだけ出す", () => {
+		const fav = { ...pc, favorite: true };
+		expect(matches(pc, { ...baseQuery, favoritesOnly: true })).toBe(false);
+		expect(matches(fav, { ...baseQuery, favoritesOnly: true })).toBe(true);
+		expect(matches(pc, baseQuery)).toBe(true);
+		expect(parseCompareQuery({ fav: "1" }, FIELDS).favoritesOnly).toBe(true);
 	});
 	it("bool は「あり」だけ通す", () => {
 		expect(matches(pc, { ...baseQuery, required: [4] })).toBe(true);

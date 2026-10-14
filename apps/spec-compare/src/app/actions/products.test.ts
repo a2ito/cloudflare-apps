@@ -15,7 +15,7 @@ vi.mock("next/navigation", async () => {
 	const { RedirectSignal } = await import("@/test/action-mocks");
 	return { redirect: (to: string) => { throw new RedirectSignal(to); } };
 });
-const { createProduct, deleteProduct, setProductHidden, updateProduct } = await import("./products");
+const { createProduct, deleteProduct, setProductFavorite, setProductHidden, updateProduct } = await import("./products");
 
 beforeAll(async () => {
 	t = await createTestEnv();
@@ -116,6 +116,22 @@ describe("updateProduct", () => {
 
 	it("無い商品はエラー", async () => {
 		expect(await updateProduct({}, formData({ id: 99, name: "x" }))).toEqual({ error: "商品が見つかりません" });
+	});
+});
+
+describe("setProductFavorite", () => {
+	it("お気に入りを付け外しできる", async () => {
+		await expectRedirect(() => createProduct({}, formData({ categoryId: 1, name: "PC-A" })));
+		expect((await listCompareItems(t.db, 1))[0].favorite).toBe(false);
+		await setProductFavorite(formData({ id: 1, favorite: "1" }));
+		expect((await listCompareItems(t.db, 1))[0].favorite).toBe(true);
+		expect(revalidated).toEqual(expect.arrayContaining(["/categories/1", "/products/1"]));
+		await setProductFavorite(formData({ id: 1, favorite: "0" }));
+		expect((await listCompareItems(t.db, 1))[0].favorite).toBe(false);
+	});
+
+	it("無い商品はエラー", async () => {
+		await expect(setProductFavorite(formData({ id: 99, favorite: "1" }))).rejects.toThrow(/見つかりません/);
 	});
 });
 

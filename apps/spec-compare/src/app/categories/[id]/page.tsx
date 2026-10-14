@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { moveField } from "@/app/actions/fields";
 import { deleteProduct, setProductHidden } from "@/app/actions/products";
+import { FavoriteButton } from "@/components/favorite-button";
 import { ColumnResizer } from "@/components/column-resizer";
 import { ConfirmForm, LinkButton, UsedBadge, inputClass } from "@/components/ui";
 import { getDb } from "@/db";
@@ -148,7 +149,7 @@ function FilterForm({ fields, query, params, base }: { fields: readonly FieldDef
 	const costFields = fields.filter(isCostField);
 	const value = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : "");
 	const active =
-		query.ranges.length + query.required.length + query.contains.length + (query.maxPrice !== undefined ? 1 : 0) + (query.includeUsed ? 1 : 0) + (query.showHidden ? 1 : 0);
+		query.ranges.length + query.required.length + query.contains.length + (query.maxPrice !== undefined ? 1 : 0) + (query.includeUsed ? 1 : 0) + (query.showHidden ? 1 : 0) + (query.favoritesOnly ? 1 : 0);
 
 	return (
 		<details className="group rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950" open={active > 0}>
@@ -173,6 +174,10 @@ function FilterForm({ fields, query, params, base }: { fields: readonly FieldDef
 					<label className="flex items-center gap-2 self-end py-2 text-sm">
 						<input type="checkbox" name="hidden" value="1" defaultChecked={query.showHidden} />
 						非表示の商品も表示
+					</label>
+					<label className="flex items-center gap-2 self-end py-2 text-sm">
+						<input type="checkbox" name="fav" value="1" defaultChecked={query.favoritesOnly} />
+						お気に入りだけ表示
 					</label>
 					{costFields.length > 0 && (
 						<label className="block space-y-1 text-sm">
@@ -319,6 +324,8 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 										return (
 											<tr key={item.id} className={item.hidden ? "opacity-50" : undefined}>
 												<td className="sticky left-0 z-10 bg-white px-3 py-2 dark:bg-zinc-950">
+													<span className="flex items-center gap-1">
+													<FavoriteButton id={item.id} favorite={item.favorite} />
 													<Link href={`/products/${item.id}`} className="flex max-w-56 items-center gap-2 hover:underline">
 														<span className="h-10 w-10 flex-none overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
 															{item.imageKey && <img src={imageUrl(item.imageKey)} alt="" className="h-full w-full object-contain" loading="lazy" />}
@@ -328,6 +335,7 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 															{item.maker && <span className="block truncate text-xs text-zinc-500">{item.maker}</span>}
 														</span>
 													</Link>
+													</span>
 												</td>
 												<td data-col="price" className={cellClass(isBest("price", item.best?.price))}>
 													{item.best ? (

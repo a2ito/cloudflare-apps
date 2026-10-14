@@ -31,10 +31,11 @@ function item(id: number, price: number | null, specs: Partial<Record<number, nu
 			Object.entries(specs).map(([k, v]) => [Number(k), typeof v === "string" ? { num: null, text: v } : { num: v ?? null, text: null }]),
 		),
 		best: price === null ? null : { id: id * 10, store: "店", price, used: false, recordedAt: "2026-10-12", url: null },
+		hidden: false,
 	};
 }
 
-const baseQuery: CompareQuery = { sort: "price", dir: "asc", ranges: [], required: [], contains: [], includeUsed: false };
+const baseQuery: CompareQuery = { sort: "price", dir: "asc", ranges: [], required: [], contains: [], includeUsed: false, showHidden: false };
 
 describe("pickBest", () => {
 	it("一番安い記録を選び、同額なら新しい記録を選ぶ", () => {
@@ -115,6 +116,7 @@ describe("parseCompareQuery", () => {
 			maxPrice: 200000,
 			costFieldId: 2,
 			includeUsed: false,
+			showHidden: false,
 		});
 	});
 
@@ -158,6 +160,12 @@ describe("matches", () => {
 	it("条件のある項目が未入力なら外す", () => {
 		expect(matches(item(2, 100000), { ...baseQuery, ranges: [{ fieldId: 2, min: 8 }] })).toBe(false);
 		expect(matches(item(2, 100000), { ...baseQuery, required: [4] })).toBe(false);
+	});
+	it("非表示の商品は showHidden のときだけ出す", () => {
+		const hidden = { ...pc, hidden: true };
+		expect(matches(hidden, baseQuery)).toBe(false);
+		expect(matches(hidden, { ...baseQuery, showHidden: true })).toBe(true);
+		expect(parseCompareQuery({ hidden: "1" }, FIELDS).showHidden).toBe(true);
 	});
 	it("bool は「あり」だけ通す", () => {
 		expect(matches(pc, { ...baseQuery, required: [4] })).toBe(true);

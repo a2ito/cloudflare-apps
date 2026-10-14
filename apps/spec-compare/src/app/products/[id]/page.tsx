@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { deleteProduct } from "@/app/actions/products";
+import { deleteProduct, setProductHidden } from "@/app/actions/products";
 import { createRecord, deleteRecord } from "@/app/actions/records";
 import { RecordForm } from "@/components/record-form";
 import { ConfirmForm, DangerButton, LinkButton, UsedBadge } from "@/components/ui";
@@ -28,6 +28,8 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 		listStores(db),
 	]);
 	const self = items.find((i) => i.id === id);
+	// 順位は比較表に出ている商品の中で数える。非表示にした商品は候補から外したものなので入れない
+	const ranked = items.filter((i) => !i.hidden || i.id === id);
 	const bestId = self?.best?.id;
 
 	return (
@@ -44,7 +46,10 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 					<Link href={`/categories/${product.categoryId}`} className="text-sm text-zinc-500 hover:underline">
 						← {product.categoryName}の比較表
 					</Link>
-					<h1 className="text-2xl font-bold">{product.name}</h1>
+					<h1 className="text-2xl font-bold">
+						{product.name}
+						{product.hidden && <span className="ml-2 rounded bg-zinc-200 px-1.5 align-middle text-xs font-normal text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">非表示中</span>}
+					</h1>
 					{product.maker && <p className="text-sm text-zinc-500">{product.maker}</p>}
 					{self?.best && (
 						<p className="text-lg">
@@ -58,6 +63,16 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 					{product.memo && <p className="text-sm whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">{product.memo}</p>}
 					<div className="flex flex-wrap gap-2 pt-1">
 						<LinkButton href={`/products/${id}/edit`}>編集</LinkButton>
+						<form action={setProductHidden}>
+							<input type="hidden" name="id" value={id} />
+							<input type="hidden" name="hidden" value={product.hidden ? "0" : "1"} />
+							<button
+								type="submit"
+								className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+							>
+								{product.hidden ? "比較表に戻す" : "比較表から隠す"}
+							</button>
+						</form>
 						<ConfirmForm action={deleteProduct} message={`「${product.name}」を削除しますか？\nスペックと価格の記録も消えます。`}>
 							<input type="hidden" name="id" value={id} />
 							<DangerButton>削除</DangerButton>
@@ -80,7 +95,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 					<dl className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">
 						{fields.map((f) => {
 							const text = formatSpec(f, self?.specs[f.id]);
-							const rank = rankIn(items, f, id);
+							const rank = rankIn(ranked, f, id);
 							return (
 								<div key={f.id} className="flex items-baseline justify-between gap-4 px-4 py-2 text-sm">
 									<dt className="text-zinc-600 dark:text-zinc-400">{f.name}</dt>

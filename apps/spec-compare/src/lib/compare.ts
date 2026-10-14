@@ -40,6 +40,8 @@ export type CompareQuery = {
 	textIn: { fieldId: number; values: string[] }[];
 	/** 簡易フィルタで選んだ数値。どれかにちょうど一致すれば通す */
 	numIn: { fieldId: number; values: number[] }[];
+	/** 簡易フィルタで選んだメーカー。どれかに一致すれば通す（大文字小文字を区別しない） */
+	makers: string[];
 	maxPrice?: number;
 	/** コスパ（価格 ÷ 値）を出す数値項目 */
 	costFieldId?: number;
@@ -170,6 +172,7 @@ export function parseCompareQuery(params: Params, fields: readonly FieldDef[], d
 		contains,
 		textIn,
 		numIn,
+		makers: listParam(params.maker),
 		maxPrice: numberParam(params.maxPrice),
 		costFieldId: validCost,
 		includeUsed: parseIncludeUsed(params),
@@ -199,6 +202,10 @@ export function matches(item: CompareItem, query: CompareQuery): boolean {
 	for (const t of query.textIn) {
 		const v = item.specs[t.fieldId]?.text?.toLowerCase();
 		if (!v || !t.values.some((x) => x.toLowerCase() === v)) return false;
+	}
+	if (query.makers.length > 0) {
+		const maker = item.maker?.toLowerCase();
+		if (!maker || !query.makers.some((m) => m.toLowerCase() === maker)) return false;
 	}
 	for (const n of query.numIn) {
 		const v = item.specs[n.fieldId]?.num;
@@ -340,6 +347,17 @@ export function quickFilterChips(items: readonly CompareItem[], field: FieldDef,
 		const selected = query.numIn.find((n) => n.fieldId === field.id)?.values ?? [];
 		const active = selected.includes(v);
 		return { label: text, params: { [`in_${field.id}`]: toggled(selected.map(String), String(v), active) }, active };
+	});
+}
+
+/** メーカーの簡易フィルタのチップ。テキストの項目と同じく複数選べ、どれかに一致するものを残す */
+export function makerChips(items: readonly CompareItem[], query: CompareQuery): QuickChip[] {
+	const visible = items.filter((i) => !i.hidden || query.showHidden);
+	const makers = [...new Set(visible.map((i) => i.maker).filter((m): m is string => !!m))].sort((a, b) => a.localeCompare(b, "ja"));
+	return makers.map((m) => {
+		const match = query.makers.find((s) => s.toLowerCase() === m.toLowerCase());
+		const active = match !== undefined;
+		return { label: m, params: { maker: toggled(query.makers, match ?? m, active) }, active };
 	});
 }
 

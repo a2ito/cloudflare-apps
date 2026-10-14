@@ -18,6 +18,7 @@ import {
 	formatSpec,
 	formatYen,
 	isCostField,
+	makerChips,
 	parseCompareQuery,
 	parseIncludeUsed,
 	quickFilterChips,
@@ -128,13 +129,18 @@ const headerClass = `group/col relative px-3 py-2 text-right whitespace-nowrap d
 
 /** ワンタップで絞り込むチップ。押すと URL の条件を差し替え、押し直すと外れる。テキストと比べない数値は複数選べる */
 function QuickFilters({ fields, items, query, params, base }: { fields: readonly FieldDef[]; items: readonly CompareItem[]; query: CompareQuery; params: Params; base: string }) {
-	const rows = fields.map((f) => ({ field: f, chips: quickFilterChips(items, f, query) })).filter((r) => r.chips.length > 0);
+	// メーカーはスペック項目ではないが、どのカテゴリでもよく絞るので先頭に出す。1 社だけなら絞り込みにならないので出さない
+	const makers = makerChips(items, query);
+	const rows = [
+		...(makers.length > 1 ? [{ key: "maker", name: "メーカー", chips: makers }] : []),
+		...fields.map((f) => ({ key: `f${f.id}`, name: f.name, chips: quickFilterChips(items, f, query) })),
+	].filter((r) => r.chips.length > 0);
 	if (rows.length === 0) return null;
 	return (
 		<div className="space-y-1.5">
-			{rows.map(({ field, chips }) => (
-				<div key={field.id} className="flex flex-wrap items-center gap-1.5 text-sm">
-					<span className="w-24 flex-none text-xs text-zinc-500">{field.name}</span>
+			{rows.map(({ key, name, chips }) => (
+				<div key={key} className="flex flex-wrap items-center gap-1.5 text-sm">
+					<span className="w-24 flex-none text-xs text-zinc-500">{name}</span>
 					{chips.map((chip) => (
 						<Link
 							key={chip.label}
@@ -160,7 +166,7 @@ function FilterForm({ fields, query, params, base }: { fields: readonly FieldDef
 	const costFields = fields.filter(isCostField);
 	const value = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : "");
 	const active =
-		query.ranges.length + query.required.length + query.contains.length + (query.maxPrice !== undefined ? 1 : 0) + (query.includeUsed ? 1 : 0) + (query.showHidden ? 1 : 0) + (query.favoritesOnly ? 1 : 0) + query.textIn.length + query.numIn.length;
+		query.ranges.length + query.required.length + query.contains.length + (query.maxPrice !== undefined ? 1 : 0) + (query.includeUsed ? 1 : 0) + (query.showHidden ? 1 : 0) + (query.favoritesOnly ? 1 : 0) + query.textIn.length + query.numIn.length + (query.makers.length > 0 ? 1 : 0);
 
 	return (
 		<details className="group rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950" open={active > 0}>
@@ -174,7 +180,7 @@ function FilterForm({ fields, query, params, base }: { fields: readonly FieldDef
 				<input type="hidden" name="sort" value={query.sort} />
 				<input type="hidden" name="dir" value={query.dir} />
 				{/* 簡易フィルタで選んだ値はフォームに欄が無いので、適用しても消えないよう引き継ぐ */}
-				{Object.entries(params).flatMap(([k, v]) => (k.startsWith("in_") ? [v ?? []].flat().map((s) => <input key={`${k}=${s}`} type="hidden" name={k} value={s} />) : []))}
+				{Object.entries(params).flatMap(([k, v]) => (k.startsWith("in_") || k === "maker" ? [v ?? []].flat().map((s) => <input key={`${k}=${s}`} type="hidden" name={k} value={s} />) : []))}
 				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					<label className="block space-y-1 text-sm">
 						<span className="font-medium text-zinc-700 dark:text-zinc-300">価格の上限（円）</span>

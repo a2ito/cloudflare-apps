@@ -335,12 +335,22 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 															{item.best.used && <UsedBadge />}
 															{formatYen(item.best.price)}
 															{/* 比較表から買いに行けるよう、最安値を記録したお店のページへ飛べるようにする */}
+															{/* 店名は列の幅に合わせて 1 行で省く。w-0 min-w-full で、店名の長さが列の幅を広げないようにする */}
 															{isSafeExternalUrl(item.best.url) ? (
-																<a href={item.best.url ?? undefined} target="_blank" rel="noopener noreferrer" className="block text-xs font-normal text-indigo-700 hover:underline dark:text-indigo-400">
-																	{item.best.store} ↗
+																<a
+																	href={item.best.url ?? undefined}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	title={item.best.store}
+																	className="flex w-0 min-w-full justify-end gap-0.5 text-xs font-normal text-indigo-700 hover:underline dark:text-indigo-400"
+																>
+																	<span className="min-w-0 truncate">{item.best.store}</span>
+																	<span className="flex-none">↗</span>
 																</a>
 															) : (
-																<span className="block text-xs font-normal text-zinc-500">{item.best.store}</span>
+																<span title={item.best.store} className="block w-0 min-w-full truncate text-xs font-normal text-zinc-500">
+																	{item.best.store}
+																</span>
 															)}
 														</>
 													) : (

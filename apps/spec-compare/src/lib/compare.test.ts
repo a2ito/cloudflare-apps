@@ -37,7 +37,7 @@ function item(id: number, price: number | null, specs: Partial<Record<number, nu
 	};
 }
 
-const baseQuery: CompareQuery = { sort: "price", dir: "asc", ranges: [], required: [], contains: [], includeUsed: false, showHidden: false, favoritesOnly: false };
+const baseQuery: CompareQuery = { sort: "price", dir: "asc", ranges: [], required: [], contains: [], includeUsed: false, showHidden: false, favoritesOnly: false, textIn: [], numIn: [] };
 
 describe("pickBest", () => {
 	it("一番安い記録を選び、同額なら新しい記録を選ぶ", () => {
@@ -120,6 +120,8 @@ describe("parseCompareQuery", () => {
 			includeUsed: false,
 			showHidden: false,
 			favoritesOnly: false,
+			textIn: [],
+			numIn: [],
 		});
 	});
 
@@ -158,13 +160,16 @@ describe("quickFilterChips", () => {
 	const SIZE: FieldDef = { id: 5, name: "画面", unit: "インチ", kind: "number", better: "none" };
 	const sized = [item(1, 1, { 5: 14 }), item(2, 1, { 5: 16 })];
 
-	it("テキストは値ごと。押し直すと外れる", () => {
-		expect(quickFilterChips(items, CPU, baseQuery).map((c) => [c.label, c.params.q_1])).toEqual([
-			["macOS", "macOS"],
-			["Windows", "Windows"],
+	it("テキストは値ごとに複数選べる。押し直すと外れる", () => {
+		expect(quickFilterChips(items, CPU, baseQuery).map((c) => [c.label, c.params.in_1])).toEqual([
+			["macOS", ["macOS"]],
+			["Windows", ["Windows"]],
 		]);
-		const active = quickFilterChips(items, CPU, { ...baseQuery, contains: [{ fieldId: 1, text: "windows" }] });
-		expect(active.find((c) => c.label === "Windows")).toMatchObject({ active: true, params: { q_1: undefined } });
+		const one = quickFilterChips(items, CPU, { ...baseQuery, textIn: [{ fieldId: 1, values: ["windows"] }] });
+		expect(one.find((c) => c.label === "Windows")).toMatchObject({ active: true, params: { in_1: undefined } });
+		expect(one.find((c) => c.label === "macOS")).toMatchObject({ active: false, params: { in_1: ["windows", "macOS"] } });
+		const both = quickFilterChips(items, CPU, { ...baseQuery, textIn: [{ fieldId: 1, values: ["Windows", "macOS"] }] });
+		expect(both.find((c) => c.label === "Windows")).toMatchObject({ active: true, params: { in_1: ["macOS"] } });
 	});
 
 	it("大きいほど良い数値は以上、小さいほど良い数値は以下。全部が通る値は出さない", () => {
@@ -173,12 +178,16 @@ describe("quickFilterChips", () => {
 		expect(quickFilterChips(items, WEIGHT, baseQuery).map((c) => c.label)).toEqual(["1.2 kg 以下"]);
 	});
 
-	it("比べない数値はその値ちょうど", () => {
-		expect(quickFilterChips(sized, SIZE, baseQuery).map((c) => [c.label, c.params.min_5, c.params.max_5])).toEqual([
-			["14 インチ", "14", "14"],
-			["16 インチ", "16", "16"],
+	it("比べない数値はその値ちょうどで、複数選べる", () => {
+		expect(quickFilterChips(sized, SIZE, baseQuery).map((c) => [c.label, c.params.in_5])).toEqual([
+			["14 インチ", ["14"]],
+			["16 インチ", ["16"]],
 		]);
-		expect(quickFilterChips(sized, SIZE, { ...baseQuery, ranges: [{ fieldId: 5, min: 14, max: 14 }] })[0].active).toBe(true);
+		const picked = quickFilterChips(sized, SIZE, { ...baseQuery, numIn: [{ fieldId: 5, values: [14] }] });
+		expect(picked.map((c) => [c.active, c.params.in_5])).toEqual([
+			[true, undefined],
+			[false, ["14", "16"]],
+		]);
 	});
 
 	it("非表示の商品の値は使わない", () => {
@@ -189,6 +198,16 @@ describe("quickFilterChips", () => {
 
 describe("matches", () => {
 	const pc = item(1, 150000, { 1: "Ryzen 7", 2: 16, 3: 1.2, 4: 1 });
+
+	it("簡易フィルタの複数選択は、同じ項目内はどれか・項目どうしは両方", () => {
+		const q = parseCompareQuery({ in_1: ["ryzen 7", "Core i7"], in_2: ["8", "16"] }, FIELDS);
+		expect(q.textIn).toEqual([{ fieldId: 1, values: ["ryzen 7", "Core i7"] }]);
+		expect(q.numIn).toEqual([{ fieldId: 2, values: [8, 16] }]);
+		expect(matches(pc, q)).toBe(true);
+		expect(matches(pc, parseCompareQuery({ in_1: "Core i7", in_2: "16" }, FIELDS))).toBe(false);
+		expect(matches(pc, parseCompareQuery({ in_1: "Ryzen 7", in_2: "32" }, FIELDS))).toBe(false);
+		expect(matches(item(2, 1), parseCompareQuery({ in_2: "16" }, FIELDS))).toBe(false);
+	});
 
 	it("範囲は境界を含む", () => {
 		expect(matches(pc, { ...baseQuery, ranges: [{ fieldId: 2, min: 16, max: 16 }] })).toBe(true);

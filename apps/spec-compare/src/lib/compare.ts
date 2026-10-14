@@ -36,6 +36,10 @@ export type CompareQuery = {
 	required: number[];
 	/** テキスト項目の部分一致（大文字小文字を区別しない） */
 	contains: { fieldId: number; text: string }[];
+	/** 簡易フィルタで選んだテキストの値。どれかに一致すれば通す（大文字小文字を区別しない） */
+	textIn: { fieldId: number; values: string[] }[];
+	/** 簡易フィルタで選んだ数値。どれかにちょうど一致すれば通す */
+	numIn: { fieldId: number; values: number[] }[];
 	maxPrice?: number;
 	/** コスパ（価格 ÷ 値）を出す数値項目 */
 	costFieldId?: number;
@@ -100,6 +104,12 @@ function stringParam(value: string | string[] | undefined): string | undefined {
 	return s === "" ? undefined : s;
 }
 
+/** 同じ名前で複数並ぶパラメータ（in_<id>=a&in_<id>=b）を、空でない値の配列にする */
+function listParam(value: string | string[] | undefined): string[] {
+	const list = typeof value === "string" ? [value] : (value ?? []);
+	return [...new Set(list.map((v) => v.trim()).filter((v) => v !== ""))];
+}
+
 type Params = Record<string, string | string[] | undefined>;
 
 /** 中古も含めるか（?used=1）。最安値は項目の定義より先に決めるので、parseCompareQuery とは別に読めるようにしている */
@@ -109,7 +119,7 @@ export function parseIncludeUsed(params: Params): boolean {
 
 /**
  * URL の検索パラメータを比較条件に直す。
- * 項目ごとのパラメータ名は min_<id> / max_<id> / has_<id> / q_<id>。
+ * 項目ごとのパラメータ名は min_<id> / max_<id> / has_<id> / q_<id>、簡易フィルタの複数選択は in_<id>（複数並べる）。
  * 存在しない項目や型の合わない指定は黙って捨てる（項目を消したあとの古いリンクでも開けるように）。
  * cost が無ければカテゴリの既定のコスパ項目を使う。フォームで「出さない」を選ぶと cost が空で届くので、そのときは出さない
  */
@@ -133,8 +143,13 @@ export function parseCompareQuery(params: Params, fields: readonly FieldDef[], d
 	const ranges: RangeFilter[] = [];
 	const required: number[] = [];
 	const contains: CompareQuery["contains"] = [];
+	const textIn: CompareQuery["textIn"] = [];
+	const numIn: CompareQuery["numIn"] = [];
 	for (const field of fields) {
+		const picked = listParam(params[`in_${field.id}`]);
 		if (field.kind === "number") {
+			const nums = picked.map(Number).filter(Number.isFinite);
+			if (nums.length > 0) numIn.push({ fieldId: field.id, values: nums });
 			const min = numberParam(params[`min_${field.id}`]);
 			const max = numberParam(params[`max_${field.id}`]);
 			if (min !== undefined || max !== undefined) ranges.push({ fieldId: field.id, min, max });
@@ -143,6 +158,7 @@ export function parseCompareQuery(params: Params, fields: readonly FieldDef[], d
 		} else {
 			const text = stringParam(params[`q_${field.id}`]);
 			if (text !== undefined) contains.push({ fieldId: field.id, text });
+			if (picked.length > 0) textIn.push({ fieldId: field.id, values: picked });
 		}
 	}
 
@@ -152,6 +168,8 @@ export function parseCompareQuery(params: Params, fields: readonly FieldDef[], d
 		ranges,
 		required,
 		contains,
+		textIn,
+		numIn,
 		maxPrice: numberParam(params.maxPrice),
 		costFieldId: validCost,
 		includeUsed: parseIncludeUsed(params),
@@ -177,6 +195,14 @@ export function matches(item: CompareItem, query: CompareQuery): boolean {
 	for (const c of query.contains) {
 		const v = item.specs[c.fieldId]?.text;
 		if (!v || !v.toLowerCase().includes(c.text.toLowerCase())) return false;
+	}
+	for (const t of query.textIn) {
+		const v = item.specs[t.fieldId]?.text?.toLowerCase();
+		if (!v || !t.values.some((x) => x.toLowerCase() === v)) return false;
+	}
+	for (const n of query.numIn) {
+		const v = item.specs[n.fieldId]?.num;
+		if (v === null || v === undefined || !n.values.includes(v)) return false;
 	}
 	return true;
 }
@@ -262,11 +288,18 @@ export function rankIn(items: readonly CompareItem[], field: FieldDef, productId
 	return { rank: better + 1, total: values.length };
 }
 
-export type QuickChip = { label: string; params: Record<string, string | undefined>; active: boolean };
+export type QuickChip = { label: string; params: Record<string, string | string[] | undefined>; active: boolean };
+
+/** 選んだ値の一覧に value を足す・外したときの in_<id> の値。空になったらパラメータごと消す */
+function toggled(selected: readonly string[], value: string, active: boolean): string[] | undefined {
+	const next = active ? selected.filter((s) => s !== value) : [...selected, value];
+	return next.length > 0 ? next : undefined;
+}
 
 /**
  * 簡易フィルタのチップ。値はそのカテゴリの（表示している）商品に入っているものから作る。
- * 大きいほど良い数値は「以上」、小さいほど良い数値は「以下」、比べない数値はその値ちょうどで絞る。
+ * 大きいほど良い数値は「以上」、小さいほど良い数値は「以下」で、1 つだけ選べる（選び直すと入れ替わる）。
+ * テキストと比べない数値はその値ちょうどで、複数選ぶと「どれか」に一致するものを残す。
  * params は URL の検索パラメータの差し替え分で、押し直すと外れるよう active なら消す値を返す
  */
 export function quickFilterChips(items: readonly CompareItem[], field: FieldDef, query: CompareQuery): QuickChip[] {
@@ -276,11 +309,12 @@ export function quickFilterChips(items: readonly CompareItem[], field: FieldDef,
 		return [{ label: `${field.name}あり`, params: { [`has_${field.id}`]: active ? undefined : "1" }, active }];
 	}
 	if (field.kind === "text") {
-		const current = query.contains.find((c) => c.fieldId === field.id)?.text.toLowerCase();
+		const selected = query.textIn.find((t) => t.fieldId === field.id)?.values ?? [];
 		const values = [...new Set(visible.map((i) => i.specs[field.id]?.text).filter((v): v is string => !!v))].sort((a, b) => a.localeCompare(b, "ja"));
 		return values.map((v) => {
-			const active = current === v.toLowerCase();
-			return { label: v, params: { [`q_${field.id}`]: active ? undefined : v }, active };
+			const match = selected.find((s) => s.toLowerCase() === v.toLowerCase());
+			const active = match !== undefined;
+			return { label: v, params: { [`in_${field.id}`]: toggled(selected, match ?? v, active) }, active };
 		});
 	}
 
@@ -303,8 +337,9 @@ export function quickFilterChips(items: readonly CompareItem[], field: FieldDef,
 			const active = range?.max === v && range.min === undefined;
 			return { label: `${text} 以下`, params: { [minKey]: undefined, [maxKey]: active ? undefined : String(v) }, active };
 		}
-		const active = range?.min === v && range.max === v;
-		return { label: text, params: { [minKey]: active ? undefined : String(v), [maxKey]: active ? undefined : String(v) }, active };
+		const selected = query.numIn.find((n) => n.fieldId === field.id)?.values ?? [];
+		const active = selected.includes(v);
+		return { label: text, params: { [`in_${field.id}`]: toggled(selected.map(String), String(v), active) }, active };
 	});
 }
 

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { moveField } from "@/app/actions/fields";
 import { deleteProduct, setProductHidden } from "@/app/actions/products";
 import { FavoriteButton } from "@/components/favorite-button";
 import { ColumnResizer } from "@/components/column-resizer";
+import { QuickFilterMemory } from "@/components/quick-filter-memory";
 import { ConfirmForm, LinkButton, UsedBadge, inputClass } from "@/components/ui";
 import { getDb } from "@/db";
 import { getCategory, listCompareItems, listFields } from "@/db/queries";
@@ -32,12 +34,12 @@ import { isSafeExternalUrl } from "@/lib/url";
 type Params = Record<string, string | string[] | undefined>;
 
 /** 今の検索条件を残したまま一部だけ差し替えたリンク */
-function hrefWith(base: string, params: Params, overrides: Record<string, string | undefined>): string {
+function hrefWith(base: string, params: Params, overrides: Params): string {
 	const sp = new URLSearchParams();
-	for (const [k, v] of Object.entries(params)) if (typeof v === "string" && v !== "") sp.set(k, v);
+	for (const [k, v] of Object.entries(params)) for (const s of [v ?? []].flat()) if (s !== "") sp.append(k, s);
 	for (const [k, v] of Object.entries(overrides)) {
-		if (v === undefined) sp.delete(k);
-		else sp.set(k, v);
+		sp.delete(k);
+		for (const s of [v ?? []].flat()) sp.append(k, s);
 	}
 	const s = sp.toString();
 	return s ? `${base}?${s}` : base;
@@ -115,7 +117,7 @@ function cellClass(isBest: boolean): string {
 	return `whitespace-nowrap px-3 py-2 text-right tabular-nums ${isBest ? "bg-indigo-50 font-bold text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200" : ""}`;
 }
 
-/** ワンタップで絞り込むチップ。押すと URL の条件を差し替え、押し直すと外れる */
+/** ワンタップで絞り込むチップ。押すと URL の条件を差し替え、押し直すと外れる。テキストと比べない数値は複数選べる */
 function QuickFilters({ fields, items, query, params, base }: { fields: readonly FieldDef[]; items: readonly CompareItem[]; query: CompareQuery; params: Params; base: string }) {
 	const rows = fields.map((f) => ({ field: f, chips: quickFilterChips(items, f, query) })).filter((r) => r.chips.length > 0);
 	if (rows.length === 0) return null;
@@ -149,7 +151,7 @@ function FilterForm({ fields, query, params, base }: { fields: readonly FieldDef
 	const costFields = fields.filter(isCostField);
 	const value = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : "");
 	const active =
-		query.ranges.length + query.required.length + query.contains.length + (query.maxPrice !== undefined ? 1 : 0) + (query.includeUsed ? 1 : 0) + (query.showHidden ? 1 : 0) + (query.favoritesOnly ? 1 : 0);
+		query.ranges.length + query.required.length + query.contains.length + (query.maxPrice !== undefined ? 1 : 0) + (query.includeUsed ? 1 : 0) + (query.showHidden ? 1 : 0) + (query.favoritesOnly ? 1 : 0) + query.textIn.length + query.numIn.length;
 
 	return (
 		<details className="group rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950" open={active > 0}>
@@ -162,6 +164,8 @@ function FilterForm({ fields, query, params, base }: { fields: readonly FieldDef
 			<form className="mt-3 space-y-3">
 				<input type="hidden" name="sort" value={query.sort} />
 				<input type="hidden" name="dir" value={query.dir} />
+				{/* 簡易フィルタで選んだ値はフォームに欄が無いので、適用しても消えないよう引き継ぐ */}
+				{Object.entries(params).flatMap(([k, v]) => (k.startsWith("in_") ? [v ?? []].flat().map((s) => <input key={`${k}=${s}`} type="hidden" name={k} value={s} />) : []))}
 				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					<label className="block space-y-1 text-sm">
 						<span className="font-medium text-zinc-700 dark:text-zinc-300">価格の上限（円）</span>
@@ -251,6 +255,7 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 	const { rows, best } = compare(items, fields, query);
 	const costField = fields.find((f) => f.id === query.costFieldId);
 	const base = `/categories/${id}`;
+	const quickFieldIds = fields.filter((f) => f.quickFilter).map((f) => f.id);
 	const isBest = (key: HighlightKey, v: number | null | undefined) => v !== null && v !== undefined && best.get(key) === v;
 
 	return (
@@ -281,6 +286,10 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 				<>
 					<FilterForm fields={fields} query={query} params={sp} base={base} />
 					<QuickFilters fields={fields.filter((f) => f.quickFilter)} items={items} query={query} params={sp} base={base} />
+					{/* useSearchParams を使うので Suspense で包む */}
+					<Suspense fallback={null}>
+						<QuickFilterMemory categoryId={id} fieldIds={quickFieldIds} />
+					</Suspense>
 					<p className="text-sm text-zinc-500">
 						{items.length} 件中 {rows.length} 件を表示。
 						<span className="ml-1">一番良い値に色を付けています</span>

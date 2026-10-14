@@ -306,7 +306,9 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 					{rows.length === 0 ? (
 						<p className="py-10 text-center text-sm text-zinc-500">条件に合う商品はありません</p>
 					) : (
-						<div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+						// relative が無いと、セルの中の sr-only（position: absolute）がこの箱の外を基準に置かれ、
+						// 箱で切り取られずにページ全体の横スクロールを生む
+						<div className="relative overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
 							<table className="min-w-full text-sm">
 								<thead className="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
 									<tr>

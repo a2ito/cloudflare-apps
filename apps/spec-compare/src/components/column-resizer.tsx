@@ -40,6 +40,9 @@ function applyWidth(table: HTMLTableElement, column: string, width: number | nul
 		cell.style.minWidth = value;
 		cell.style.maxWidth = value;
 		cell.style.whiteSpace = width === null ? "" : "normal";
+		// 中身を 1 行で省く列（商品名）は、この幅を見て中身の幅を決める
+		if (width === null) cell.style.removeProperty("--col-w");
+		else cell.style.setProperty("--col-w", value);
 	}
 }
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { moveField } from "@/app/actions/fields";
+import { ColumnResizer } from "@/components/column-resizer";
 import { LinkButton, UsedBadge, inputClass } from "@/components/ui";
 import { getDb } from "@/db";
 import { getCategory, listCompareItems, listFields } from "@/db/queries";
@@ -229,18 +230,21 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 										<th className="sticky left-0 z-10 bg-zinc-50 px-3 py-2 text-left dark:bg-zinc-900">
 											<SortHeader label="商品" sortKey="name" query={query} fields={fields} base={base} params={sp} />
 										</th>
-										<th className="px-3 py-2 text-right whitespace-nowrap">
+										<th data-col="price" className="relative px-3 py-2 text-right whitespace-nowrap">
 											<SortHeader label="最安値" sortKey="price" query={query} fields={fields} base={base} params={sp} />
+											<ColumnResizer categoryId={id} column="price" label="最安値" />
 										</th>
 										{costField && (
-											<th className="px-3 py-2 text-right whitespace-nowrap">
+											<th data-col="cost" className="relative px-3 py-2 text-right whitespace-nowrap">
 												<SortHeader label={costLabel(costField)} sortKey="cost" query={query} fields={fields} base={base} params={sp} />
+												<ColumnResizer categoryId={id} column="cost" label={costLabel(costField)} />
 											</th>
 										)}
 										{fields.map((f, i) => (
-											<th key={f.id} className="px-3 py-2 text-right whitespace-nowrap">
+											<th key={f.id} data-col={`f${f.id}`} className="relative px-3 py-2 text-right whitespace-nowrap">
 												<SortHeader label={f.name} sortKey={`f${f.id}`} query={query} fields={fields} base={base} params={sp} />
 												<MoveButtons field={f} categoryId={id} isFirst={i === 0} isLast={i === fields.length - 1} />
+												<ColumnResizer categoryId={id} column={`f${f.id}`} label={f.name} />
 											</th>
 										))}
 									</tr>
@@ -261,7 +265,7 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 														</span>
 													</Link>
 												</td>
-												<td className={cellClass(isBest("price", item.best?.price))}>
+												<td data-col="price" className={cellClass(isBest("price", item.best?.price))}>
 													{item.best ? (
 														<>
 															{item.best.used && <UsedBadge />}
@@ -280,12 +284,12 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 													)}
 												</td>
 												{costField && (
-													<td className={cellClass(isBest("cost", cost))}>{cost === null ? <span className="text-zinc-400">—</span> : formatYen(cost, cost < 100 ? 2 : 0)}</td>
+													<td data-col="cost" className={cellClass(isBest("cost", cost))}>{cost === null ? <span className="text-zinc-400">—</span> : formatYen(cost, cost < 100 ? 2 : 0)}</td>
 												)}
 												{fields.map((f) => {
 													const text = formatSpec(f, item.specs[f.id]);
 													return (
-														<td key={f.id} className={cellClass(isBest(f.id, item.specs[f.id]?.num))}>
+														<td key={f.id} data-col={`f${f.id}`} className={cellClass(isBest(f.id, item.specs[f.id]?.num))}>
 															{text ?? <span className="text-zinc-400">—</span>}
 														</td>
 													);

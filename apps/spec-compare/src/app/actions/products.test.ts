@@ -69,8 +69,8 @@ describe("createProduct", () => {
 
 	it("項目が多くても D1 のバインド変数の上限に当たらない", async () => {
 		const many = Array.from({ length: 40 }, (_, i) => ({ categoryId: 2, name: `項目${i}`, kind: "number" as const }));
-		await t.db.insert(specFields).values(many.slice(0, 20));
-		await t.db.insert(specFields).values(many.slice(20));
+		// 下準備の INSERT 自体も上限に当たらないよう、10 項目ずつ入れる
+		for (let i = 0; i < many.length; i += 10) await t.db.insert(specFields).values(many.slice(i, i + 10));
 		const fields = await t.db.select().from(specFields);
 		const values = Object.fromEntries(fields.filter((f) => f.categoryId === 2).map((f) => [`spec_${f.id}`, "1"]));
 		await expectRedirect(() => createProduct({}, formData({ categoryId: 2, name: "M", ...values })));

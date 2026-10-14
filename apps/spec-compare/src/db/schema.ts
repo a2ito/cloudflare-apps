@@ -47,6 +47,8 @@ export const specFields = sqliteTable(
 		better: text("better", { enum: BETTER }).notNull().default("none"),
 		/** 比較表の列の並び。小さいほど左 */
 		position: integer("position").notNull().default(0),
+		/** 比較表の上の簡易フィルタ（ワンタップで絞り込むチップ）に出すか */
+		quickFilter: integer("quick_filter", { mode: "boolean" }).notNull().default(false),
 		createdAt: timestamp("created_at"),
 	},
 	(t) => [uniqueIndex("spec_fields_category_name_idx").on(t.categoryId, t.name)],

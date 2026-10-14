@@ -24,6 +24,15 @@ function BetterSelect({ kind, defaultValue }: { kind: FieldKind; defaultValue?: 
 	);
 }
 
+function QuickFilterCheckbox({ defaultChecked }: { defaultChecked: boolean }) {
+	return (
+		<label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+			<input type="checkbox" name="quickFilter" value="1" defaultChecked={defaultChecked} />
+			比較表の簡易フィルタに出す
+		</label>
+	);
+}
+
 function FieldRow({ field, isFirst, isLast }: { field: SpecField; isFirst: boolean; isLast: boolean }) {
 	const [state, formAction] = useActionState(updateField, initialActionState);
 	return (
@@ -70,6 +79,7 @@ function FieldRow({ field, isFirst, isLast }: { field: SpecField; isFirst: boole
 					</span>
 					<SubmitButton pendingText="…">変更</SubmitButton>
 				</div>
+				<QuickFilterCheckbox defaultChecked={field.quickFilter} />
 				<FormMessage state={state} />
 			</form>
 		</li>
@@ -108,6 +118,7 @@ function AddFieldForm({ categoryId }: { categoryId: number }) {
 				)}
 				{kind === "text" && <BetterSelect kind={kind} />}
 			</div>
+			<QuickFilterCheckbox defaultChecked={false} />
 			<SubmitButton pendingText="追加中…">項目を追加</SubmitButton>
 		</form>
 	);

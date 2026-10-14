@@ -1,0 +1,1 @@
+ALTER TABLE `spec_fields` ADD `quick_filter` integer DEFAULT false NOT NULL;

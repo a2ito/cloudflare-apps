@@ -258,6 +258,52 @@ export function rankIn(items: readonly CompareItem[], field: FieldDef, productId
 	return { rank: better + 1, total: values.length };
 }
 
+export type QuickChip = { label: string; params: Record<string, string | undefined>; active: boolean };
+
+/**
+ * 簡易フィルタのチップ。値はそのカテゴリの（表示している）商品に入っているものから作る。
+ * 大きいほど良い数値は「以上」、小さいほど良い数値は「以下」、比べない数値はその値ちょうどで絞る。
+ * params は URL の検索パラメータの差し替え分で、押し直すと外れるよう active なら消す値を返す
+ */
+export function quickFilterChips(items: readonly CompareItem[], field: FieldDef, query: CompareQuery): QuickChip[] {
+	const visible = items.filter((i) => !i.hidden || query.showHidden);
+	if (field.kind === "bool") {
+		const active = query.required.includes(field.id);
+		return [{ label: `${field.name}あり`, params: { [`has_${field.id}`]: active ? undefined : "1" }, active }];
+	}
+	if (field.kind === "text") {
+		const current = query.contains.find((c) => c.fieldId === field.id)?.text.toLowerCase();
+		const values = [...new Set(visible.map((i) => i.specs[field.id]?.text).filter((v): v is string => !!v))].sort((a, b) => a.localeCompare(b, "ja"));
+		return values.map((v) => {
+			const active = current === v.toLowerCase();
+			return { label: v, params: { [`q_${field.id}`]: active ? undefined : v }, active };
+		});
+	}
+
+	const minKey = `min_${field.id}`;
+	const maxKey = `max_${field.id}`;
+	const range = query.ranges.find((r) => r.fieldId === field.id);
+	const unit = field.unit ? ` ${field.unit}` : "";
+	let values = [...new Set(visible.map((i) => i.specs[field.id]?.num).filter((v): v is number => v !== null && v !== undefined))].sort((a, b) => a - b);
+	// 「一番小さい値以上」「一番大きい値以下」は全部の商品が通り、絞り込みにならないので出さない
+	if (values.length > 1 && field.better === "higher") values = values.slice(1);
+	if (values.length > 1 && field.better === "lower") values = values.slice(0, -1);
+
+	return values.map((v) => {
+		const text = `${formatNumber(v)}${unit}`;
+		if (field.better === "higher") {
+			const active = range?.min === v && range.max === undefined;
+			return { label: `${text} 以上`, params: { [minKey]: active ? undefined : String(v), [maxKey]: undefined }, active };
+		}
+		if (field.better === "lower") {
+			const active = range?.max === v && range.min === undefined;
+			return { label: `${text} 以下`, params: { [minKey]: undefined, [maxKey]: active ? undefined : String(v) }, active };
+		}
+		const active = range?.min === v && range.max === v;
+		return { label: text, params: { [minKey]: active ? undefined : String(v), [maxKey]: active ? undefined : String(v) }, active };
+	});
+}
+
 /** 比較表に出す行と、列ごとの最良値 */
 export function compare(items: readonly CompareItem[], fields: readonly FieldDef[], query: CompareQuery) {
 	const rows = sortItems(

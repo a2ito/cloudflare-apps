@@ -16,6 +16,7 @@ import {
 	isCostField,
 	parseCompareQuery,
 	parseIncludeUsed,
+	quickFilterChips,
 	type CompareItem,
 	type CompareQuery,
 	type FieldDef,
@@ -111,6 +112,36 @@ function RowActions({ item }: { item: CompareItem }) {
 
 function cellClass(isBest: boolean): string {
 	return `whitespace-nowrap px-3 py-2 text-right tabular-nums ${isBest ? "bg-indigo-50 font-bold text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200" : ""}`;
+}
+
+/** ワンタップで絞り込むチップ。押すと URL の条件を差し替え、押し直すと外れる */
+function QuickFilters({ fields, items, query, params, base }: { fields: readonly FieldDef[]; items: readonly CompareItem[]; query: CompareQuery; params: Params; base: string }) {
+	const rows = fields.map((f) => ({ field: f, chips: quickFilterChips(items, f, query) })).filter((r) => r.chips.length > 0);
+	if (rows.length === 0) return null;
+	return (
+		<div className="space-y-1.5">
+			{rows.map(({ field, chips }) => (
+				<div key={field.id} className="flex flex-wrap items-center gap-1.5 text-sm">
+					<span className="w-24 flex-none text-xs text-zinc-500">{field.name}</span>
+					{chips.map((chip) => (
+						<Link
+							key={chip.label}
+							href={hrefWith(base, params, chip.params)}
+							scroll={false}
+							aria-pressed={chip.active}
+							className={`rounded-full border px-2.5 py-0.5 text-xs ${
+								chip.active
+									? "border-indigo-600 bg-indigo-600 text-white"
+									: "border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+							}`}
+						>
+							{chip.label}
+						</Link>
+					))}
+				</div>
+			))}
+		</div>
+	);
 }
 
 function FilterForm({ fields, query, params, base }: { fields: readonly FieldDef[]; query: CompareQuery; params: Params; base: string }) {
@@ -244,6 +275,7 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 			) : (
 				<>
 					<FilterForm fields={fields} query={query} params={sp} base={base} />
+					<QuickFilters fields={fields.filter((f) => f.quickFilter)} items={items} query={query} params={sp} base={base} />
 					<p className="text-sm text-zinc-500">
 						{items.length} 件中 {rows.length} 件を表示。
 						<span className="ml-1">一番良い値に色を付けています</span>

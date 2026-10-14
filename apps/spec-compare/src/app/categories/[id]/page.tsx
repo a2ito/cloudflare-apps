@@ -302,8 +302,9 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 								<thead className="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
 									<tr>
 										{/* 横に長くても何の行か分かるよう、商品名の列は左に固定する */}
-										<th className="sticky left-0 z-10 bg-zinc-50 px-3 py-2 text-left dark:bg-zinc-900">
+										<th data-col="name" className="sticky left-0 z-10 bg-zinc-50 px-3 py-2 text-left dark:bg-zinc-900">
 											<SortHeader label="商品" sortKey="name" query={query} fields={fields} base={base} params={sp} />
+											<ColumnResizer categoryId={id} column="name" label="商品" />
 										</th>
 										<th data-col="price" className="relative px-3 py-2 text-right whitespace-nowrap">
 											<SortHeader label="最安値" sortKey="price" query={query} fields={fields} base={base} params={sp} />
@@ -332,10 +333,11 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 										const cost = costField ? costPer(item.best?.price, item.specs[costField.id]?.num) : null;
 										return (
 											<tr key={item.id} className={item.hidden ? "opacity-50" : undefined}>
-												<td className="sticky left-0 z-10 bg-white px-3 py-2 dark:bg-zinc-950">
-													<span className="flex items-center gap-1">
+												<td data-col="name" className="sticky left-0 z-10 bg-white px-3 py-2 dark:bg-zinc-950">
+													{/* 商品名は 1 行で省くので、セルの幅ではなく --col-w（列幅を変えたときの幅）から左右の余白を引いた幅に収める */}
+													<span className="flex max-w-[calc(var(--col-w,17.5rem)-1.5rem)] items-center gap-1">
 													<FavoriteButton id={item.id} favorite={item.favorite} />
-													<Link href={`/products/${item.id}`} className="flex max-w-56 items-center gap-2 hover:underline">
+													<Link href={`/products/${item.id}`} className="flex min-w-0 items-center gap-2 hover:underline">
 														<span className="h-10 w-10 flex-none overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
 															{item.imageKey && <img src={imageUrl(item.imageKey)} alt="" className="h-full w-full object-contain" loading="lazy" />}
 														</span>

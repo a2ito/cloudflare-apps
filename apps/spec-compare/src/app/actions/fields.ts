@@ -15,6 +15,8 @@ const fieldSchema = z.object({
 	name: z.string().trim().min(1, "項目名を入力してください").max(30),
 	unit: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), z.string().trim().max(10).optional()),
 	better: z.enum(BETTER),
+	// チェックボックスは外すと送られてこないので、値が無ければ出さない
+	quickFilter: z.literal("1").optional().transform((v) => v === "1"),
 });
 
 /** text は大小を比べられないので、良し悪しの向きを持たせない */
@@ -30,7 +32,7 @@ export async function createField(_prev: ActionState, formData: FormData): Promi
 	await requireUser();
 	const parsed = parseForm(fieldSchema.extend({ kind: z.enum(FIELD_KINDS) }), formData);
 	if (!parsed.ok) return { error: parsed.error };
-	const { categoryId, name, unit, kind, better } = parsed.data;
+	const { categoryId, name, unit, kind, better, quickFilter } = parsed.data;
 
 	const db = await getDb();
 	// 末尾（比較表の右端）に足す
@@ -42,6 +44,7 @@ export async function createField(_prev: ActionState, formData: FormData): Promi
 			unit: kind === "text" ? null : (unit ?? null),
 			kind,
 			better: normalizeBetter(kind, better),
+			quickFilter,
 			position: (last ?? -1) + 1,
 		});
 	} catch (e) {
@@ -60,7 +63,7 @@ export async function updateField(_prev: ActionState, formData: FormData): Promi
 	await requireUser();
 	const parsed = parseForm(fieldSchema.extend({ id: idFromForm }), formData);
 	if (!parsed.ok) return { error: parsed.error };
-	const { id, categoryId, name, unit, better } = parsed.data;
+	const { id, categoryId, name, unit, better, quickFilter } = parsed.data;
 
 	const db = await getDb();
 	const current = (
@@ -75,7 +78,7 @@ export async function updateField(_prev: ActionState, formData: FormData): Promi
 	try {
 		await db
 			.update(specFields)
-			.set({ name, unit: current.kind === "text" ? null : (unit ?? null), better: normalizeBetter(current.kind, better) })
+			.set({ name, unit: current.kind === "text" ? null : (unit ?? null), better: normalizeBetter(current.kind, better), quickFilter })
 			.where(eq(specFields.id, id));
 	} catch (e) {
 		if (isUniqueViolation(e)) return { error: `「${name}」は既にあります` };

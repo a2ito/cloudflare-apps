@@ -8,6 +8,7 @@ import {
 	matches,
 	parseCompareQuery,
 	pickBest,
+	quickFilterChips,
 	rankIn,
 	sortItems,
 	type CompareItem,
@@ -147,6 +148,40 @@ describe("parseCompareQuery", () => {
 	it("コスパの項目が無いのにコスパ順を指定されたら価格順にする", () => {
 		expect(parseCompareQuery({ sort: "cost" }, FIELDS).sort).toBe("price");
 		expect(parseCompareQuery({ sort: "cost", cost: "2" }, FIELDS).sort).toBe("cost");
+	});
+});
+
+describe("quickFilterChips", () => {
+	const items = [item(1, 1, { 1: "Windows", 2: 16, 3: 1.2, 4: 1 }), item(2, 1, { 1: "macOS", 2: 32, 3: 1.6 }), item(3, 1, { 1: "Windows", 2: 64, 3: 1.2 })];
+	const SIZE: FieldDef = { id: 5, name: "画面", unit: "インチ", kind: "number", better: "none" };
+	const sized = [item(1, 1, { 5: 14 }), item(2, 1, { 5: 16 })];
+
+	it("テキストは値ごと。押し直すと外れる", () => {
+		expect(quickFilterChips(items, CPU, baseQuery).map((c) => [c.label, c.params.q_1])).toEqual([
+			["macOS", "macOS"],
+			["Windows", "Windows"],
+		]);
+		const active = quickFilterChips(items, CPU, { ...baseQuery, contains: [{ fieldId: 1, text: "windows" }] });
+		expect(active.find((c) => c.label === "Windows")).toMatchObject({ active: true, params: { q_1: undefined } });
+	});
+
+	it("大きいほど良い数値は以上、小さいほど良い数値は以下。全部が通る値は出さない", () => {
+		expect(quickFilterChips(items, MEMORY, baseQuery).map((c) => c.label)).toEqual(["32 GB 以上", "64 GB 以上"]);
+		expect(quickFilterChips(items, MEMORY, baseQuery)[0].params).toEqual({ min_2: "32", max_2: undefined });
+		expect(quickFilterChips(items, WEIGHT, baseQuery).map((c) => c.label)).toEqual(["1.2 kg 以下"]);
+	});
+
+	it("比べない数値はその値ちょうど", () => {
+		expect(quickFilterChips(sized, SIZE, baseQuery).map((c) => [c.label, c.params.min_5, c.params.max_5])).toEqual([
+			["14 インチ", "14", "14"],
+			["16 インチ", "16", "16"],
+		]);
+		expect(quickFilterChips(sized, SIZE, { ...baseQuery, ranges: [{ fieldId: 5, min: 14, max: 14 }] })[0].active).toBe(true);
+	});
+
+	it("非表示の商品の値は使わない", () => {
+		const withHidden = [...items, { ...item(4, 1, { 1: "ChromeOS" }), hidden: true }];
+		expect(quickFilterChips(withHidden, CPU, baseQuery).map((c) => c.label)).not.toContain("ChromeOS");
 	});
 });
 

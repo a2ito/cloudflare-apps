@@ -60,6 +60,14 @@ describe("updateField", () => {
 		expect((await listFields(t.db, 1))[0]).toMatchObject({ name: "RAM", unit: null, kind: "number", better: "none" });
 	});
 
+	it("簡易フィルタに出すかは、チェックがあるときだけオンにする", async () => {
+		await t.db.insert(specFields).values({ categoryId: 1, name: "メモリ", unit: "GB", kind: "number", better: "higher" });
+		await updateField({}, formData({ id: 1, categoryId: 1, name: "メモリ", unit: "GB", better: "higher", quickFilter: "1" }));
+		expect((await listFields(t.db, 1))[0].quickFilter).toBe(true);
+		await updateField({}, formData({ id: 1, categoryId: 1, name: "メモリ", unit: "GB", better: "higher" }));
+		expect((await listFields(t.db, 1))[0].quickFilter).toBe(false);
+	});
+
 	it("別のカテゴリの項目は変えられない", async () => {
 		await t.db.insert(specFields).values({ categoryId: 1, name: "メモリ" });
 		expect(await updateField({}, formData({ id: 1, categoryId: 2, name: "x", better: "none" }))).toEqual({ error: "項目が見つかりません" });

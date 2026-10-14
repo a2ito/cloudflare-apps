@@ -5,6 +5,7 @@ import { moveField } from "@/app/actions/fields";
 import { deleteProduct, setProductHidden } from "@/app/actions/products";
 import { FavoriteButton } from "@/components/favorite-button";
 import { ColumnResizer } from "@/components/column-resizer";
+import { FrozenColumns, PinButton } from "@/components/frozen-columns";
 import { QuickFilterMemory } from "@/components/quick-filter-memory";
 import { ConfirmForm, LinkButton, UsedBadge, inputClass } from "@/components/ui";
 import { getDb } from "@/db";
@@ -113,9 +114,17 @@ function RowActions({ item }: { item: CompareItem }) {
 	);
 }
 
+/** 左に固定した列の右端に引く線。固定した列の下を他の列がくぐるので、境目が分かるようにする */
+const frozenEdge = "data-[frozen=last]:shadow-[inset_-1px_0_0_var(--color-zinc-300)] dark:data-[frozen=last]:shadow-[inset_-1px_0_0_var(--color-zinc-700)]";
+
 function cellClass(isBest: boolean): string {
-	return `whitespace-nowrap px-3 py-2 text-right tabular-nums ${isBest ? "bg-indigo-50 font-bold text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200" : ""}`;
+	// 固定した列は下をくぐる列が透けないよう背景を塗る（一番良い値の色はそのまま）
+	const background = isBest ? "bg-indigo-50 font-bold text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200" : "data-[frozen]:bg-white dark:data-[frozen]:bg-zinc-950";
+	return `whitespace-nowrap px-3 py-2 text-right tabular-nums ${frozenEdge} ${background}`;
 }
+
+/** 見出しのセル。固定したときに背景を塗り、ピンの色を変えられるよう group にする */
+const headerClass = `group/col relative px-3 py-2 text-right whitespace-nowrap data-[frozen]:bg-zinc-50 dark:data-[frozen]:bg-zinc-900 ${frozenEdge}`;
 
 /** ワンタップで絞り込むチップ。押すと URL の条件を差し替え、押し直すと外れる。テキストと比べない数値は複数選べる */
 function QuickFilters({ fields, items, query, params, base }: { fields: readonly FieldDef[]; items: readonly CompareItem[]; query: CompareQuery; params: Params; base: string }) {
@@ -301,24 +310,28 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 							<table className="min-w-full text-sm">
 								<thead className="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
 									<tr>
-										{/* 横に長くても何の行か分かるよう、商品名の列は左に固定する */}
-										<th data-col="name" className="sticky left-0 z-10 bg-zinc-50 px-3 py-2 text-left dark:bg-zinc-900">
+										{/* 横に長くても何の行か分かるよう、商品名の列はいつも左に固定する。どの列まで固定するかはピンで選ぶ（既定は最安値まで） */}
+										<th data-col="name" className={`sticky left-0 z-10 bg-zinc-50 px-3 py-2 text-left dark:bg-zinc-900 ${frozenEdge}`}>
 											<SortHeader label="商品" sortKey="name" query={query} fields={fields} base={base} params={sp} />
+											<FrozenColumns categoryId={id} />
 											<ColumnResizer categoryId={id} column="name" label="商品" />
 										</th>
-										<th data-col="price" className="relative px-3 py-2 text-right whitespace-nowrap">
+										<th data-col="price" className={headerClass}>
 											<SortHeader label="最安値" sortKey="price" query={query} fields={fields} base={base} params={sp} />
+											<PinButton categoryId={id} column="price" label="最安値" />
 											<ColumnResizer categoryId={id} column="price" label="最安値" />
 										</th>
 										{costField && (
-											<th data-col="cost" className="relative px-3 py-2 text-right whitespace-nowrap">
+											<th data-col="cost" className={headerClass}>
 												<SortHeader label={costLabel(costField)} sortKey="cost" query={query} fields={fields} base={base} params={sp} />
+												<PinButton categoryId={id} column="cost" label={costLabel(costField)} />
 												<ColumnResizer categoryId={id} column="cost" label={costLabel(costField)} />
 											</th>
 										)}
 										{fields.map((f, i) => (
-											<th key={f.id} data-col={`f${f.id}`} className="relative px-3 py-2 text-right whitespace-nowrap">
+											<th key={f.id} data-col={`f${f.id}`} className={headerClass}>
 												<SortHeader label={f.name} sortKey={`f${f.id}`} query={query} fields={fields} base={base} params={sp} />
+												<PinButton categoryId={id} column={`f${f.id}`} label={f.name} />
 												<MoveButtons field={f} categoryId={id} isFirst={i === 0} isLast={i === fields.length - 1} />
 												<ColumnResizer categoryId={id} column={`f${f.id}`} label={f.name} />
 											</th>
@@ -333,7 +346,7 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 										const cost = costField ? costPer(item.best?.price, item.specs[costField.id]?.num) : null;
 										return (
 											<tr key={item.id} className={item.hidden ? "opacity-50" : undefined}>
-												<td data-col="name" className="sticky left-0 z-10 bg-white px-3 py-2 dark:bg-zinc-950">
+												<td data-col="name" className={`sticky left-0 z-10 bg-white px-3 py-2 dark:bg-zinc-950 ${frozenEdge}`}>
 													{/* 商品名は 1 行で省くので、セルの幅ではなく --col-w（列幅を変えたときの幅）から左右の余白を引いた幅に収める */}
 													<span className="flex max-w-[calc(var(--col-w,17.5rem)-1.5rem)] items-center gap-1">
 													<FavoriteButton id={item.id} favorite={item.favorite} />

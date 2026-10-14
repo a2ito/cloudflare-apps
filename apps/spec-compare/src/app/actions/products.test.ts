@@ -15,7 +15,7 @@ vi.mock("next/navigation", async () => {
 	const { RedirectSignal } = await import("@/test/action-mocks");
 	return { redirect: (to: string) => { throw new RedirectSignal(to); } };
 });
-const { createProduct, deleteProduct, updateProduct } = await import("./products");
+const { createProduct, deleteProduct, setProductHidden, updateProduct } = await import("./products");
 
 beforeAll(async () => {
 	t = await createTestEnv();
@@ -116,6 +116,21 @@ describe("updateProduct", () => {
 
 	it("無い商品はエラー", async () => {
 		expect(await updateProduct({}, formData({ id: 99, name: "x" }))).toEqual({ error: "商品が見つかりません" });
+	});
+});
+
+describe("setProductHidden", () => {
+	it("比較表から隠し、戻せる。価格の記録は消さない", async () => {
+		await expectRedirect(() => createProduct({}, formData({ categoryId: 1, name: "PC-A", store: "A", price: "1" })));
+		await setProductHidden(formData({ id: 1, hidden: "1" }));
+		expect((await listCompareItems(t.db, 1))[0]).toMatchObject({ hidden: true, best: { price: 1 } });
+		expect(revalidated).toEqual(expect.arrayContaining(["/categories/1", "/products/1"]));
+		await setProductHidden(formData({ id: 1, hidden: "0" }));
+		expect((await listCompareItems(t.db, 1))[0].hidden).toBe(false);
+	});
+
+	it("無い商品はエラー", async () => {
+		await expect(setProductHidden(formData({ id: 99, hidden: "1" }))).rejects.toThrow(/見つかりません/);
 	});
 });
 

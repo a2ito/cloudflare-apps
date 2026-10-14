@@ -16,6 +16,8 @@ export type CompareItem = {
 	/** fieldId → 値。未入力の項目はキーを持たない */
 	specs: Record<number, SpecCell>;
 	best: BestPrice | null;
+	/** 候補から外して比較表に出さない商品 */
+	hidden: boolean;
 };
 
 /** 並べ替えの軸。f<id> はスペック項目 */
@@ -38,6 +40,8 @@ export type CompareQuery = {
 	costFieldId?: number;
 	/** 中古の価格も最安値の候補にするか */
 	includeUsed: boolean;
+	/** 非表示にした商品も出すか */
+	showHidden: boolean;
 };
 
 type PriceCandidate = Pick<PriceRecord, "id" | "price" | "used" | "recordedAt">;
@@ -149,11 +153,13 @@ export function parseCompareQuery(params: Params, fields: readonly FieldDef[], d
 		maxPrice: numberParam(params.maxPrice),
 		costFieldId: validCost,
 		includeUsed: parseIncludeUsed(params),
+		showHidden: params.hidden === "1",
 	};
 }
 
 /** 絞り込みの条件に合うか。条件のある項目が未入力なら外す */
 export function matches(item: CompareItem, query: CompareQuery): boolean {
+	if (item.hidden && !query.showHidden) return false;
 	if (query.maxPrice !== undefined && (item.best === null || item.best.price > query.maxPrice)) return false;
 	for (const r of query.ranges) {
 		const v = item.specs[r.fieldId]?.num;

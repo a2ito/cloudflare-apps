@@ -79,6 +79,7 @@ export async function listCompareItems(db: Db, categoryId: number, includeUsed =
 			maker: p.maker,
 			imageKey: p.imageKey,
 			hidden: p.hidden,
+			favorite: p.favorite,
 			specs: specsByProduct.get(p.id) ?? {},
 			best: best && { id: best.id, store: best.store, price: best.price, used: best.used, recordedAt: best.recordedAt, url: best.url },
 		};

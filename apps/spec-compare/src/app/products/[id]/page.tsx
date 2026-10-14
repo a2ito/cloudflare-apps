@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deleteProduct, setProductHidden } from "@/app/actions/products";
+import { FavoriteButton } from "@/components/favorite-button";
 import { createRecord, deleteRecord } from "@/app/actions/records";
 import { RecordForm } from "@/components/record-form";
 import { ConfirmForm, DangerButton, LinkButton, UsedBadge } from "@/components/ui";
@@ -46,7 +47,8 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
 					<Link href={`/categories/${product.categoryId}`} className="text-sm text-zinc-500 hover:underline">
 						← {product.categoryName}の比較表
 					</Link>
-					<h1 className="text-2xl font-bold">
+					<h1 className="flex flex-wrap items-center gap-x-1 text-2xl font-bold">
+						<FavoriteButton id={id} favorite={product.favorite} />
 						{product.name}
 						{product.hidden && <span className="ml-2 rounded bg-zinc-200 px-1.5 align-middle text-xs font-normal text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">非表示中</span>}
 					</h1>

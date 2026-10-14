@@ -72,6 +72,8 @@ export const products = sqliteTable(
 		memo: text("memo"),
 		/** 候補から外した商品。消さずに比較表から隠す（「非表示の商品も表示」で見える） */
 		hidden: integer("hidden", { mode: "boolean" }).notNull().default(false),
+		/** お気に入り。比較表の ☆ で付け外しし、「お気に入りだけ」で絞り込める */
+		favorite: integer("favorite", { mode: "boolean" }).notNull().default(false),
 		createdAt: timestamp("created_at"),
 		updatedAt: timestamp("updated_at"),
 	},

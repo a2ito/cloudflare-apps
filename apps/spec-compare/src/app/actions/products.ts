@@ -129,6 +129,25 @@ export async function updateProduct(_prev: ActionState, formData: FormData): Pro
 	redirect(`/products/${current.id}`);
 }
 
+/** お気に入りを付け外しする */
+export async function setProductFavorite(formData: FormData): Promise<void> {
+	await requireUser();
+	const parsed = parseForm(z.object({ id: idFromForm, favorite: z.enum(["0", "1"]) }), formData);
+	if (!parsed.ok) throw new Error(parsed.error);
+
+	const db = await getDb();
+	const updated = await db
+		.update(products)
+		.set({ favorite: parsed.data.favorite === "1" })
+		.where(eq(products.id, parsed.data.id))
+		.returning({ categoryId: products.categoryId });
+	const categoryId = updated[0]?.categoryId;
+	if (categoryId === undefined) throw new Error("商品が見つかりません");
+
+	revalidatePath(`/categories/${categoryId}`);
+	revalidatePath(`/products/${parsed.data.id}`);
+}
+
 /** 商品を比較表から隠す・戻す。消すと価格の記録まで失うので、候補から外すだけならこちらを使う */
 export async function setProductHidden(formData: FormData): Promise<void> {
 	await requireUser();

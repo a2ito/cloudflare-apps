@@ -1,9 +1,9 @@
 /** 簡易フィルタの項目が使う URL パラメータの接頭辞。チップは in_ / min_ / max_ / has_ のどれかを書き換える */
 const PREFIXES = ["in_", "min_", "max_", "has_"] as const;
 
-/** 簡易フィルタに出している項目の条件だけを、URL の検索パラメータから抜き出す */
+/** 簡易フィルタに出している項目とメーカーの条件だけを、URL の検索パラメータから抜き出す */
 export function pickQuickParams(search: URLSearchParams, fieldIds: readonly number[]): [string, string][] {
-	const keys = new Set(fieldIds.flatMap((id) => PREFIXES.map((p) => `${p}${id}`)));
+	const keys = new Set(["maker", ...fieldIds.flatMap((id) => PREFIXES.map((p) => `${p}${id}`))]);
 	return [...search.entries()].filter(([k, v]) => keys.has(k) && v !== "");
 }
 

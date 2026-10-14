@@ -3,11 +3,12 @@ import { parseSavedQuickParams, pickQuickParams, withQuickParams } from "./quick
 
 describe("pickQuickParams", () => {
 	it("簡易フィルタの項目の条件だけを、複数選択も含めて抜き出す", () => {
-		const search = new URLSearchParams("sort=f2&in_16=Windows&in_16=macOS&min_2=32&max_9=1&q_16=win&fav=1&in_4=");
+		const search = new URLSearchParams("sort=f2&in_16=Windows&in_16=macOS&min_2=32&max_9=1&q_16=win&fav=1&in_4=&maker=ASUS");
 		expect(pickQuickParams(search, [16, 2])).toEqual([
 			["in_16", "Windows"],
 			["in_16", "macOS"],
 			["min_2", "32"],
+			["maker", "ASUS"],
 		]);
 	});
 });

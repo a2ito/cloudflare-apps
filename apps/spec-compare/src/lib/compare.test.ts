@@ -5,6 +5,7 @@ import {
 	costPer,
 	formatSpec,
 	isCostField,
+	makerChips,
 	matches,
 	parseCompareQuery,
 	pickBest,
@@ -37,7 +38,7 @@ function item(id: number, price: number | null, specs: Partial<Record<number, nu
 	};
 }
 
-const baseQuery: CompareQuery = { sort: "price", dir: "asc", ranges: [], required: [], contains: [], includeUsed: false, showHidden: false, favoritesOnly: false, textIn: [], numIn: [] };
+const baseQuery: CompareQuery = { sort: "price", dir: "asc", ranges: [], required: [], contains: [], includeUsed: false, showHidden: false, favoritesOnly: false, textIn: [], numIn: [], makers: [] };
 
 describe("pickBest", () => {
 	it("一番安い記録を選び、同額なら新しい記録を選ぶ", () => {
@@ -122,6 +123,7 @@ describe("parseCompareQuery", () => {
 			favoritesOnly: false,
 			textIn: [],
 			numIn: [],
+			makers: [],
 		});
 	});
 
@@ -152,6 +154,21 @@ describe("parseCompareQuery", () => {
 	it("コスパの項目が無いのにコスパ順を指定されたら価格順にする", () => {
 		expect(parseCompareQuery({ sort: "cost" }, FIELDS).sort).toBe("price");
 		expect(parseCompareQuery({ sort: "cost", cost: "2" }, FIELDS).sort).toBe("cost");
+	});
+});
+
+describe("makerChips", () => {
+	const makers = [{ ...item(1, 1), maker: "Lenovo" }, { ...item(2, 1), maker: "Apple" }, { ...item(3, 1), maker: "Lenovo" }, { ...item(4, 1), maker: "ASUS", hidden: true }];
+	it("表示している商品のメーカーを並べ、押すと足し、押し直すと外す", () => {
+		expect(makerChips(makers, baseQuery).map((c) => [c.label, c.params.maker])).toEqual([
+			["Apple", ["Apple"]],
+			["Lenovo", ["Lenovo"]],
+		]);
+		const picked = makerChips(makers, { ...baseQuery, makers: ["lenovo"] });
+		expect(picked.map((c) => [c.label, c.active, c.params.maker])).toEqual([
+			["Apple", false, ["lenovo", "Apple"]],
+			["Lenovo", true, undefined],
+		]);
 	});
 });
 
@@ -222,6 +239,15 @@ describe("matches", () => {
 		expect(matches(hidden, baseQuery)).toBe(false);
 		expect(matches(hidden, { ...baseQuery, showHidden: true })).toBe(true);
 		expect(parseCompareQuery({ hidden: "1" }, FIELDS).showHidden).toBe(true);
+	});
+
+	it("メーカーは複数選べ、どれかに一致すれば通す。メーカー未入力は外す", () => {
+		const q = parseCompareQuery({ maker: ["lenovo", "Apple"] }, FIELDS);
+		expect(q.makers).toEqual(["lenovo", "Apple"]);
+		expect(matches({ ...pc, maker: "Lenovo" }, q)).toBe(true);
+		expect(matches({ ...pc, maker: "ASUS" }, q)).toBe(false);
+		expect(matches({ ...pc, maker: null }, q)).toBe(false);
+		expect(matches({ ...pc, maker: null }, baseQuery)).toBe(true);
 	});
 
 	it("favoritesOnly のときはお気に入りだけ出す", () => {

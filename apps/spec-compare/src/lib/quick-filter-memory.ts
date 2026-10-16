@@ -25,3 +25,8 @@ export function withQuickParams(search: URLSearchParams, saved: readonly [string
 	for (const [k, v] of saved) next.append(k, v);
 	return next.toString();
 }
+
+/** 簡易フィルタを畳んでいるかの保存値を読む。保存が無い・読めないときは開いておく */
+export function parseQuickFiltersOpen(raw: string | null): boolean {
+	return raw !== "0";
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSavedQuickParams, pickQuickParams, withQuickParams } from "./quick-filter-memory";
+import { parseQuickFiltersOpen, parseSavedQuickParams, pickQuickParams, withQuickParams } from "./quick-filter-memory";
 
 describe("pickQuickParams", () => {
 	it("簡易フィルタの項目の条件だけを、複数選択も含めて抜き出す", () => {
@@ -25,5 +25,17 @@ describe("parseSavedQuickParams", () => {
 describe("withQuickParams", () => {
 	it("今の条件を残して足す", () => {
 		expect(withQuickParams(new URLSearchParams("sort=name"), [["in_1", "a"], ["in_1", "b"]])).toBe("sort=name&in_1=a&in_1=b");
+	});
+});
+
+describe("parseQuickFiltersOpen", () => {
+	it("畳んだと保存されているときだけ閉じる", () => {
+		expect(parseQuickFiltersOpen("0")).toBe(false);
+		expect(parseQuickFiltersOpen("1")).toBe(true);
+	});
+
+	it("保存が無い・壊れているときは開いておく", () => {
+		expect(parseQuickFiltersOpen(null)).toBe(true);
+		expect(parseQuickFiltersOpen("x")).toBe(true);
 	});
 });

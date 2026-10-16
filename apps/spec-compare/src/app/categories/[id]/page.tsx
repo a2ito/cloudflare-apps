@@ -7,6 +7,7 @@ import { FavoriteButton } from "@/components/favorite-button";
 import { ColumnResizer } from "@/components/column-resizer";
 import { FrozenColumns, PinButton } from "@/components/frozen-columns";
 import { QuickFilterMemory } from "@/components/quick-filter-memory";
+import { QuickFiltersPanel } from "@/components/quick-filters-panel";
 import { ConfirmForm, LinkButton, UsedBadge, inputClass } from "@/components/ui";
 import { getDb } from "@/db";
 import { getCategory, listCompareItems, listFields } from "@/db/queries";
@@ -128,7 +129,7 @@ function cellClass(isBest: boolean): string {
 const headerClass = `group/col relative px-3 py-2 text-right whitespace-nowrap data-[frozen]:bg-zinc-50 dark:data-[frozen]:bg-zinc-900 ${frozenEdge}`;
 
 /** ワンタップで絞り込むチップ。押すと URL の条件を差し替え、押し直すと外れる。テキストと比べない数値は複数選べる */
-function QuickFilters({ fields, items, query, params, base }: { fields: readonly FieldDef[]; items: readonly CompareItem[]; query: CompareQuery; params: Params; base: string }) {
+function QuickFilters({ categoryId, fields, items, query, params, base }: { categoryId: number; fields: readonly FieldDef[]; items: readonly CompareItem[]; query: CompareQuery; params: Params; base: string }) {
 	// メーカーはスペック項目ではないが、どのカテゴリでもよく絞るので先頭に出す。1 社だけなら絞り込みにならないので出さない
 	const makers = makerChips(items, query);
 	const rows = [
@@ -136,29 +137,33 @@ function QuickFilters({ fields, items, query, params, base }: { fields: readonly
 		...fields.map((f) => ({ key: `f${f.id}`, name: f.name, chips: quickFilterChips(items, f, query) })),
 	].filter((r) => r.chips.length > 0);
 	if (rows.length === 0) return null;
+	// 畳んでいても条件は効いているので、選んでいる数を見出しに出す
+	const activeCount = rows.flatMap((r) => r.chips).filter((c) => c.active).length;
 	return (
-		<div className="space-y-1.5">
-			{rows.map(({ key, name, chips }) => (
-				<div key={key} className="flex flex-wrap items-center gap-1.5 text-sm">
-					<span className="w-24 flex-none text-xs text-zinc-500">{name}</span>
-					{chips.map((chip) => (
-						<Link
-							key={chip.label}
-							href={hrefWith(base, params, chip.params)}
-							scroll={false}
-							aria-pressed={chip.active}
-							className={`rounded-full border px-2.5 py-0.5 text-xs ${
-								chip.active
-									? "border-indigo-600 bg-indigo-600 text-white"
-									: "border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-							}`}
-						>
-							{chip.label}
-						</Link>
-					))}
-				</div>
-			))}
-		</div>
+		<QuickFiltersPanel categoryId={categoryId} activeCount={activeCount}>
+			<div className="space-y-1.5">
+				{rows.map(({ key, name, chips }) => (
+					<div key={key} className="flex flex-wrap items-center gap-1.5 text-sm">
+						<span className="w-24 flex-none text-xs text-zinc-500">{name}</span>
+						{chips.map((chip) => (
+							<Link
+								key={chip.label}
+								href={hrefWith(base, params, chip.params)}
+								scroll={false}
+								aria-pressed={chip.active}
+								className={`rounded-full border px-2.5 py-0.5 text-xs ${
+									chip.active
+										? "border-indigo-600 bg-indigo-600 text-white"
+										: "border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+								}`}
+							>
+								{chip.label}
+							</Link>
+						))}
+					</div>
+				))}
+			</div>
+		</QuickFiltersPanel>
 	);
 }
 
@@ -300,7 +305,7 @@ export default async function ComparePage({ params, searchParams }: PageProps<"/
 			) : (
 				<>
 					<FilterForm fields={fields} query={query} params={sp} base={base} />
-					<QuickFilters fields={fields.filter((f) => f.quickFilter)} items={items} query={query} params={sp} base={base} />
+					<QuickFilters categoryId={id} fields={fields.filter((f) => f.quickFilter)} items={items} query={query} params={sp} base={base} />
 					{/* useSearchParams を使うので Suspense で包む */}
 					<Suspense fallback={null}>
 						<QuickFilterMemory categoryId={id} fieldIds={quickFieldIds} />

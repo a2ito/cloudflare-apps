@@ -39,7 +39,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
-    "miniflare": "^5.20260911.0-alpha",
+    "miniflare": "^5.20261006.1-alpha",
     "tailwindcss": "^4",
     "typescript": "7.0.2",
     "vitest": "^5.0.0",

@@ -1,0 +1,52 @@
+name: CodeQL
+
+# 自分たちが書いたコードの脆弱性（SSRF、XSS、インジェクション、Actions の危ない書き方など）を CodeQL で調べる。
+# 依存の脆弱性は Trivy（trivy.yml）が見る。
+#
+# リポジトリの設定画面の default setup ではなくこのファイルで持つのは、設定をコードとして残し PR で変えるため。
+# GitHub の Terraform プロバイダは code scanning の default setup を扱えない。
+# このファイルと default setup は同時に使えない（default setup が有効だと結果の送信が拒まれる）。
+#
+# required status checks（ci-result）には入れていない。見つかったものは Security タブで確かめ、
+# 直すか、理由を付けてアラートを閉じる。
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # 毎週月曜 6:30 (JST)。コードが変わらなくても、クエリの更新で新しく見つかるものを拾う
+    - cron: "30 21 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: codeql (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # 結果を Security タブ（code scanning）に載せる
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # actions は .github/workflows を、javascript-typescript は全アプリの TS/JS を見る。
+        # どちらもビルド不要（build-mode: none）
+        language: [actions, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}

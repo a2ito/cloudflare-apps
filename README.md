@@ -104,6 +104,17 @@ Worker の改名自体は非破壊で、Worker の実体 (tag) もカスタム�
 `account-book` は移行の際に `account-book-on-cf` から改名した。`-on-cf` は
 account-book という名前を Vercel 時代のリポジトリに取られていた名残りだった。
 
+## 脆弱性の検査
+
+依存の更新は Renovate が PR を作る。それとは別に [Trivy](.github/workflows/trivy.yml) が、
+`package-lock.json` の脆弱性（間接依存を含む）、`terraform/` の設定ミス、秘密情報のコミットを
+PR・main への push・毎日 6 時（JST）に調べ、HIGH 以上があれば失敗する。結果は Security タブ
+（code scanning）にも載る。
+
+- 直接の依存は Renovate の PR で上げる。間接依存は親の依存を上げるか、使っていなければ外す
+- 直せない・届かないと判断したものは `.trivyignore.yaml` に理由と見直す期限を書いて見送る
+- required status checks には入れていない。無関係な依存に新しい脆弱性が出たとき、他の PR のマージまで止めないため
+
 ## ゲーム
 
 認証の要らないゲームは、アプリを分けずに [apps/games](apps/games) の 1 本に

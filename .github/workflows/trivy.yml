@@ -1,0 +1,80 @@
+name: Trivy
+
+# 依存の脆弱性（package-lock.json）、Terraform などの設定ミス、秘密情報のコミットを Trivy で調べる。
+# Renovate は直接の依存を上げる PR を作るが、間接依存の脆弱性は直せず、Dependabot のアラートも
+# 見られないまま溜まっていた。毎日の定期実行で失敗させて、気付けるようにする。
+#
+# required status checks（ci-result）には入れていない。PR と関係の無い依存に新しい脆弱性が
+# 出たとき、無関係な PR のマージまで止めないため。
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # 毎日 6:00 (JST)
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Action はタグが書き換えられると知らないうちに中身が変わるので、trivy-action は使わない。
+  # 版を固定したリリースの tar をチェックサムで確かめてから使う。上げるときはここだけ変える
+  TRIVY_VERSION: 0.76.0
+
+jobs:
+  scan:
+    name: trivy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # 結果を Security タブ（code scanning）に載せる
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Trivy
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl -fsSLO "$base/$tarball"
+          curl -fsSLO "$base/trivy_${TRIVY_VERSION}_checksums.txt"
+          grep " ${tarball}\$" "trivy_${TRIVY_VERSION}_checksums.txt" | sha256sum -c -
+          tar xzf "$tarball" trivy
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      # 脆弱性 DB は 100MB を超えるので、日ごとにキャッシュする
+      - name: Get date
+        id: date
+        run: echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ steps.date.outputs.today }}
+          restore-keys: trivy-db-
+
+      - name: Scan
+        run: |
+          set -euo pipefail
+          # 結果を Security タブに載せる SARIF（重大度を問わず全部）
+          trivy fs --no-progress --scanners vuln,misconfig,secret --ignorefile .trivyignore.yaml \
+            --format sarif --output trivy.sarif .
+          # HIGH 以上があれば落とす。見送ると決めたものは .trivyignore.yaml に理由と一緒に書く
+          trivy fs --no-progress --skip-db-update --scanners vuln,misconfig,secret --ignorefile .trivyignore.yaml \
+            --severity HIGH,CRITICAL --exit-code 1 .
+
+      - name: Upload to code scanning
+        # 失敗したときこそ Security タブで中身を見たいので、Scan の結果に関わらず送る
+        if: ${{ !cancelled() && hashFiles('trivy.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy.sarif
+          category: trivy

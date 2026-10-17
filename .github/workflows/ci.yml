@@ -5,6 +5,10 @@ on:
   push:
     branches: [main]
 
+# どの job もリポジトリを読むだけ。GITHUB_TOKEN の既定の権限に頼らず、明示して最小にする
+permissions:
+  contents: read
+
 # 同じブランチで新しい実行が始まったら、古い実行は打ち切る
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

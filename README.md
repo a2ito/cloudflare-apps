@@ -115,6 +115,11 @@ PR・main への push・毎日 6 時（JST）に調べ、HIGH 以上があれば
 - 直せない・届かないと判断したものは `.trivyignore.yaml` に理由と見直す期限を書いて見送る
 - required status checks には入れていない。無関係な依存に新しい脆弱性が出たとき、他の PR のマージまで止めないため
 
+自分たちが書いたコード（全アプリの TS/JS と `.github/workflows`）は [CodeQL](.github/workflows/codeql.yml) が
+PR・main への push・毎週月曜に調べ、結果を同じ Security タブに載せる。リポジトリ設定の default setup は使わず、
+このファイルで持つ（GitHub の Terraform プロバイダが default setup を扱えず、設定をコードに残すため）。
+機能上避けられない指摘（例: OGP チェッカーの SSRF）や誤検知は、理由を書いてアラートを閉じる。
+
 ## ゲーム
 
 認証の要らないゲームは、アプリを分けずに [apps/games](apps/games) の 1 本に

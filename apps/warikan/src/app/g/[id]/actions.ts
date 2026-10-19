@@ -24,12 +24,12 @@ async function getGroupOrThrow(groupId: string) {
 
 // --- メンバー ---
 
-const addMemberSchema = z.object({
+const memberNameSchema = z.object({
   name: z.string().trim().min(1, "名前を入力してください").max(50),
 });
 
 export async function addMember(groupId: string, formData: FormData) {
-  const parsed = addMemberSchema.safeParse({ name: formData.get("name") });
+  const parsed = memberNameSchema.safeParse({ name: formData.get("name") });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
@@ -40,6 +40,26 @@ export async function addMember(groupId: string, formData: FormData) {
     name: parsed.data.name,
     createdAt: new Date(),
   });
+  revalidatePath(`/g/${groupId}`);
+}
+
+// 立替は ID でメンバーを指しているので、名前を変えても精算結果は変わらない
+export async function renameMember(groupId: string, formData: FormData) {
+  const memberId = String(formData.get("memberId") ?? "");
+  if (!memberId) throw new Error("メンバーが指定されていません");
+  const parsed = memberNameSchema.safeParse({ name: formData.get("name") });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const { db } = await getGroupOrThrow(groupId);
+  const updated = await db
+    .update(schema.members)
+    .set({ name: parsed.data.name })
+    .where(
+      and(eq(schema.members.id, memberId), eq(schema.members.groupId, groupId)),
+    )
+    .returning();
+  if (updated.length === 0) throw new Error("メンバーが見つかりません");
   revalidatePath(`/g/${groupId}`);
 }
 

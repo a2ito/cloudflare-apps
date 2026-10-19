@@ -18,15 +18,18 @@ export function MemberSection({
   members,
   balances,
   addAction,
+  renameAction,
   removeAction,
 }: {
   members: MemberView[];
   balances: BalanceView[];
   addAction: (formData: FormData) => Promise<void>;
+  renameAction: (formData: FormData) => Promise<void>;
   removeAction: (formData: FormData) => Promise<void>;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleAdd(formData: FormData) {
@@ -37,6 +40,18 @@ export function MemberSection({
         formRef.current?.reset();
       } catch (e) {
         setError(e instanceof Error ? e.message : "追加に失敗しました");
+      }
+    });
+  }
+
+  function handleRename(formData: FormData) {
+    setError(null);
+    startTransition(async () => {
+      try {
+        await renameAction(formData);
+        setEditingId(null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "名前の変更に失敗しました");
       }
     });
   }
@@ -69,6 +84,42 @@ export function MemberSection({
           {members.map((m) => {
             const b = balanceByMember.get(m.id);
             const net = b?.net ?? 0;
+            if (editingId === m.id) {
+              return (
+                <li key={m.id}>
+                  <form action={handleRename} className="flex gap-2">
+                    <input type="hidden" name="memberId" value={m.id} />
+                    <input
+                      name="name"
+                      type="text"
+                      required
+                      maxLength={50}
+                      defaultValue={m.name}
+                      autoFocus
+                      aria-label="新しい名前"
+                      className="flex-1 min-w-0 rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isPending}
+                      className="shrink-0 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-3 transition-colors disabled:opacity-50"
+                    >
+                      保存
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(null);
+                        setError(null);
+                      }}
+                      className="shrink-0 rounded-lg bg-black/5 hover:bg-black/10 text-sm px-3 transition-colors"
+                    >
+                      キャンセル
+                    </button>
+                  </form>
+                </li>
+              );
+            }
             return (
               <li
                 key={m.id}
@@ -88,9 +139,21 @@ export function MemberSection({
                 )}
                 <button
                   type="button"
+                  onClick={() => {
+                    setEditingId(m.id);
+                    setError(null);
+                  }}
+                  disabled={isPending}
+                  className="ml-auto text-xs text-black/40 hover:text-emerald-600 transition-colors disabled:opacity-50"
+                  aria-label={`${m.name}の名前を変更`}
+                >
+                  名前変更
+                </button>
+                <button
+                  type="button"
                   onClick={() => handleRemove(m.id)}
                   disabled={isPending}
-                  className="ml-auto text-xs text-black/30 hover:text-rose-500 transition-colors disabled:opacity-50"
+                  className="text-xs text-black/30 hover:text-rose-500 transition-colors disabled:opacity-50"
                   aria-label={`${m.name}を削除`}
                 >
                   削除

@@ -9,6 +9,7 @@ import {
 } from "@/lib/settlement";
 import {
   addMember,
+  renameMember,
   removeMember,
   addExpense,
   updateExpense,
@@ -186,6 +187,7 @@ export default async function GroupPage({
           netLabel: formatAmount(b.net, group.currency),
         }))}
         addAction={addMember.bind(null, id)}
+        renameAction={renameMember.bind(null, id)}
         removeAction={removeMember.bind(null, id)}
       />
 

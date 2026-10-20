@@ -18,6 +18,8 @@
 - 合計金額・各メンバーの受取/支払残高
 - 精算結果（最小回数の送金リスト）
 - 最近のグループ（この端末で開いたグループをトップに並べる。localStorage に保存し、サーバには送らない）
+- 管理画面（`/admin`）。許可した Google アカウントだけがログインでき、全グループの一覧と中身を見られる。
+  編集はできず、グループの削除だけできる。グループの画面は今までどおりログイン不要
 
 ## インストール（PWA）
 
@@ -58,6 +60,11 @@ npm test                   # vitest（換算・レート取得のテスト）
 
 `next dev` でも `initOpenNextCloudflareForDev()` によりローカル D1 バインディングが有効になります。
 
+管理画面（`/admin`）を手元で開くには、このディレクトリの `.dev.vars`（追跡しない）に
+`AUTH_SECRET`・`AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`・`ALLOWED_EMAILS` を書く。
+Google の OAuth クライアントに `http://localhost:3000/api/auth/callback/google` を登録していなければ、
+ログインは通らない。グループの画面はこれらが無くても動く。
+
 Workers ランタイムでの動作確認:
 
 ```bash
@@ -81,6 +88,7 @@ Wrangler 設定の `name`（`warikan`）と一致していなければビルド�
 | Git branch | `main` |
 | Build watch paths | `apps/warikan/*`、`package-lock.json` |
 | Build variables | `D1_DATABASE_ID`, `APP_HOSTNAME` |
+| Secrets | `ALLOWED_EMAILS`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`（管理画面のログイン用。`terraform/` で登録する） |
 
 `wrangler.jsonc` は実 ID と公開ホスト名を含むため追跡していない。`npm run cf:config` が
 雛形 `wrangler.jsonc.example` のプレースホルダを Build variables の値で埋めて生成する。
@@ -127,6 +135,9 @@ npx wrangler d1 create warikan-db
 | `src/lib/recent-groups.ts` | この端末で開いたグループの一覧（localStorage） |
 | `src/lib/weight.ts` | 傾斜の倍率の検証と表示（保存は 10 倍した整数） |
 | `src/lib/settlement.ts` | 重み付きの割り勘 + 最小送金の精算アルゴリズム（純粋関数） |
+| `src/lib/group-data.ts` | グループ 1 件の読み込みと精算の計算（公開ページと管理画面で共通） |
+| `src/lib/auth.ts` / `allowlist.ts` | 管理画面の Google ログイン（Auth.js）と許可リスト |
+| `src/lib/admin-summary.ts` | 管理画面のグループ一覧の集計（純粋関数） |
 | `src/app/page.tsx` | トップ（グループ作成） |
 | `src/app/g/[id]/` | グループ詳細ページ・Server Actions・クライアント UI |
 

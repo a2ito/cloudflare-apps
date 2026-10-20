@@ -11,6 +11,14 @@ describe("robots.txt", () => {
   });
 
   it("それ以外のクローラ（検索エンジン）には公開する", () => {
-    expect(robots().rules).toContainEqual({ userAgent: "*", allow: "/" });
+    expect(robots().rules).toContainEqual(
+      expect.objectContaining({ userAgent: "*", allow: "/" }),
+    );
+  });
+
+  it("管理画面はどのクローラにもたどらせない", () => {
+    expect(robots().rules).toContainEqual(
+      expect.objectContaining({ userAgent: "*", disallow: "/admin" }),
+    );
   });
 });

@@ -106,19 +106,20 @@ account-book という名前を Vercel 時代のリポジトリに取られて�
 
 ## 脆弱性の検査
 
-依存の更新は Renovate が PR を作る。それとは別に [Trivy](.github/workflows/trivy.yml) が、
-`package-lock.json` の脆弱性（間接依存を含む）、`terraform/` の設定ミス、秘密情報のコミットを
-PR・main への push・毎日 6 時（JST）に調べ、HIGH 以上があれば失敗する。結果は Security タブ
-（code scanning）にも載る。
+[security.yml](.github/workflows/security.yml) が PR・main への push・毎日 6 時（JST）に、
+[a2-ito/shared-workflows](https://github.com/a2-ito/shared-workflows) の再利用ワークフローで次の 2 つを回す。
+結果はどちらも Security タブ（code scanning）に載る。
+
+- **Trivy**: `package-lock.json` の脆弱性（間接依存を含む）、`terraform/` の設定ミス、秘密情報のコミット。HIGH 以上で失敗する
+- **CodeQL**: 自分たちが書いたコード（全アプリの TS/JS と `.github/workflows`）。リポジトリ設定の default setup は使わない
+  （GitHub の Terraform プロバイダが扱えず、設定をコードに残すため）
+
+依存の更新は Renovate が PR を作る。
 
 - 直接の依存は Renovate の PR で上げる。間接依存は親の依存を上げるか、使っていなければ外す
-- 直せない・届かないと判断したものは `.trivyignore.yaml` に理由と見直す期限を書いて見送る
+- 直せない・届かないと判断した Trivy の検出は `.trivyignore.yaml` に理由と見直す期限を書いて見送る
+- CodeQL の誤検知や機能上避けられない指摘（例: OGP チェッカーの SSRF）は、理由を書いてアラートを閉じる
 - required status checks には入れていない。無関係な依存に新しい脆弱性が出たとき、他の PR のマージまで止めないため
-
-自分たちが書いたコード（全アプリの TS/JS と `.github/workflows`）は [CodeQL](.github/workflows/codeql.yml) が
-PR・main への push・毎週月曜に調べ、結果を同じ Security タブに載せる。リポジトリ設定の default setup は使わず、
-このファイルで持つ（GitHub の Terraform プロバイダが default setup を扱えず、設定をコードに残すため）。
-機能上避けられない指摘（例: OGP チェッカーの SSRF）や誤検知は、理由を書いてアラートを閉じる。
 
 ## ゲーム
 

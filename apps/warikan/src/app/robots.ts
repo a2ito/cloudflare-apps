@@ -23,12 +23,12 @@ const AI_CRAWLERS = [
   "Claude-Web",
 ];
 
-/** 検索エンジンには公開したまま、AI のクローラだけを断る */
+/** 検索エンジンには公開したまま、AI のクローラだけを断る。管理画面はどのクローラにも見せない */
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       { userAgent: AI_CRAWLERS, disallow: "/" },
-      { userAgent: "*", allow: "/" },
+      { userAgent: "*", allow: "/", disallow: "/admin" },
     ],
   };
 }

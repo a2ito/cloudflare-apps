@@ -29,4 +29,11 @@
   "observability": {
     "enabled": true
   }
+  /**
+   * Secrets（terraform/ で登録する。値はリポジトリに含めない）。管理画面（/admin）のログインに使う:
+   *   AUTH_SECRET         セッション署名鍵（openssl rand -base64 32）
+   *   AUTH_GOOGLE_ID      Google OAuth クライアント ID
+   *   AUTH_GOOGLE_SECRET  Google OAuth クライアントシークレット
+   *   ALLOWED_EMAILS      管理画面にログインできるメールアドレス（カンマ区切り）
+   */
 }

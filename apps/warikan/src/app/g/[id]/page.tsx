@@ -1,12 +1,6 @@
 import { notFound } from "next/navigation";
-import { asc, desc, eq, inArray } from "drizzle-orm";
-import { getDb, schema } from "@/lib/db";
 import { formatAmount, getCurrency } from "@/lib/currency";
-import { convertToBase } from "@/lib/exchange";
-import {
-  calculateSettlement,
-  type SettlementParticipant,
-} from "@/lib/settlement";
+import { loadGroupData } from "@/lib/group-data";
 import {
   addMember,
   renameMember,
@@ -31,74 +25,20 @@ export default async function GroupPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const db = getDb();
-
-  const group = await db.query.groups.findFirst({
-    where: eq(schema.groups.id, id),
-  });
-  if (!group) notFound();
-
-  const members = await db.query.members.findMany({
-    where: eq(schema.members.groupId, id),
-    orderBy: asc(schema.members.createdAt),
-  });
-
-  const expenses = await db.query.expenses.findMany({
-    where: eq(schema.expenses.groupId, id),
-    orderBy: desc(schema.expenses.createdAt),
-  });
-
-  const expenseIds = expenses.map((e) => e.id);
-  const participants = expenseIds.length
-    ? await db.query.expenseParticipants.findMany({
-        where: inArray(schema.expenseParticipants.expenseId, expenseIds),
-      })
-    : [];
-
-  const participantsByExpense = new Map<string, SettlementParticipant[]>();
-  for (const p of participants) {
-    const arr = participantsByExpense.get(p.expenseId) ?? [];
-    arr.push({ memberId: p.memberId, weight: p.weight });
-    participantsByExpense.set(p.expenseId, arr);
-  }
-
-  const rates = await db.query.exchangeRates.findMany({
-    where: eq(schema.exchangeRates.groupId, id),
-  });
-  const rateByCurrency = new Map(rates.map((r) => [r.currency, r.rate]));
+  const data = await loadGroupData(id);
+  if (!data) notFound();
+  const {
+    group,
+    members,
+    expenses,
+    participantsByExpense,
+    rates,
+    baseAmountById,
+    settlement,
+  } = data;
 
   const memberName = new Map(members.map((m) => [m.id, m.name]));
   const currency = getCurrency(group.currency);
-
-  // 各立替を精算通貨に換算する。レートが無い外貨の立替は精算から外す。
-  const baseAmountById = new Map<string, number | null>();
-  for (const e of expenses) {
-    const rate = rateByCurrency.get(e.currency);
-    baseAmountById.set(
-      e.id,
-      e.currency === group.currency
-        ? e.amount
-        : rate
-          ? convertToBase(e.amount, e.currency, group.currency, rate)
-          : null,
-    );
-  }
-
-  const settlement = calculateSettlement(
-    members.map((m) => ({ id: m.id, name: m.name })),
-    expenses.flatMap((e) => {
-      const amount = baseAmountById.get(e.id);
-      if (amount == null) return [];
-      return [
-        {
-          id: e.id,
-          payerId: e.payerId,
-          amount,
-          participants: participantsByExpense.get(e.id) ?? [],
-        },
-      ];
-    }),
-  );
 
   // client 用に整形した立替リスト
   const expenseView = expenses.map((e) => {

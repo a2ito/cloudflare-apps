@@ -74,6 +74,12 @@ secrets = {
     AUTH_GOOGLE_SECRET = "FILL_ME"
     AUTH_SECRET        = "FILL_ME"
   }
+  "warikan" = {
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
+  }
 }
 
 build_variables = {

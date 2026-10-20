@@ -106,7 +106,8 @@ locals {
       trigger_uuid          = "903b588a-39ae-4906-b77f-1ab6fc9c7f76"
     }
     "warikan" = {
-      secrets               = []
+      # 管理画面（/admin）のログインだけに使う。グループの画面はログイン不要のまま
+      secrets               = local.google_login_secrets
       build_variables       = ["APP_HOSTNAME", "D1_DATABASE_ID"]
       build_token_uuid      = local.build_tokens.workers_builds_20260704
       build_caching_enabled = false

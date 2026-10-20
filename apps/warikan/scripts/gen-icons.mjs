@@ -4,6 +4,7 @@
  * 画像ライブラリを足さずに済ませたいので、4 倍の解像度で単純に塗ってから
  * 縮小して滑らかにし、zlib で PNG を書き出している（apps/tabilog と同じ作り）。
  * 図柄は src/app/icon.svg（緑の角丸に白い W）に合わせている。
+ * 管理画面（/admin）を別のアプリとしてホーム画面に置けるよう、色違いの版も作る。
  * デザインを変えたら `node scripts/gen-icons.mjs` で作り直す。
  */
 import { deflateSync } from "node:zlib";
@@ -13,8 +14,10 @@ import { dirname, join } from "node:path";
 const ICONS_DIR = join(process.cwd(), "public", "icons");
 const APP_DIR = join(process.cwd(), "src", "app");
 
-const BG = [16, 185, 129, 255]; // emerald-500
-const FG = [255, 255, 255, 255];
+// 一般向け: 緑の地に白い W
+const MAIN = { bg: [16, 185, 129, 255], fg: [255, 255, 255, 255] }; // emerald-500 / white
+// 管理画面: ホーム画面で一般向けと見分けられるよう、紺の地に緑の W
+const ADMIN = { bg: [30, 41, 59, 255], fg: [52, 211, 153, 255] }; // slate-800 / emerald-400
 const SS = 4; // スーパーサンプリング倍率
 
 /* ── 画素バッファ ───────────────────────────────────────────── */
@@ -97,10 +100,10 @@ function downsample(canvas, factor) {
  * 緑の地に白い W を描く。
  * maskable は端が切り落とされるため、地の色を全面に敷いて図柄を内側に寄せる。
  */
-function drawIcon(size, { maskable }) {
+function drawIcon(size, { maskable, colors }) {
   const canvas = createCanvas(size);
   const bgRadius = maskable ? 0 : size * 0.25; // icon.svg の rx=8/32 に合わせる
-  fillRoundRect(canvas, 0, 0, size - 1, size - 1, bgRadius, BG);
+  fillRoundRect(canvas, 0, 0, size - 1, size - 1, bgRadius, colors.bg);
 
   // 図柄を置く正方形（maskable は安全領域に収める）
   const box = size * (maskable ? 0.5 : 0.62);
@@ -114,7 +117,7 @@ function drawIcon(size, { maskable }) {
     [0.73, 0.88],
     [0.96, 0.12],
   ].map(at);
-  strokePolyline(canvas, w, box * 0.17, FG);
+  strokePolyline(canvas, w, box * 0.17, colors.fg);
 
   return canvas;
 }
@@ -173,7 +176,7 @@ function encodePng(canvas) {
 }
 
 function write(file, size, opts = {}) {
-  const canvas = downsample(drawIcon(size * SS, { maskable: false, ...opts }), SS);
+  const canvas = downsample(drawIcon(size * SS, { maskable: false, colors: MAIN, ...opts }), SS);
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, encodePng(canvas));
   console.log(`${file} (${size}x${size})`);
@@ -185,3 +188,9 @@ write(join(ICONS_DIR, "icon-maskable-512.png"), 512, { maskable: true });
 // iOS のホーム画面用。Next.js が app/apple-icon.png から <link> を足す。
 // 角丸は OS 側が付けるので四角いまま出す
 write(join(APP_DIR, "apple-icon.png"), 180, { maskable: true });
+
+write(join(ICONS_DIR, "admin-192.png"), 192, { colors: ADMIN });
+write(join(ICONS_DIR, "admin-512.png"), 512, { colors: ADMIN });
+write(join(ICONS_DIR, "admin-maskable-512.png"), 512, { maskable: true, colors: ADMIN });
+// app/admin/apple-icon.png は /admin の下のページだけで、全体の apple-icon.png に代わって使われる
+write(join(APP_DIR, "admin", "apple-icon.png"), 180, { maskable: true, colors: ADMIN });

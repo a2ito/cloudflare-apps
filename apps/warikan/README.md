@@ -33,6 +33,11 @@ HTML と Server Actions はキャッシュしない。
 
 アイコンは `node scripts/gen-icons.mjs` で `src/app/icon.svg` に合わせた PNG を生成している。
 
+管理画面（`/admin`）は、一般向けとは別のアプリとしてインストールできる。`/admin` を開いた状態で
+「ホーム画面に追加」「アプリをインストール」すると、紺地のアイコンの「warikan 管理」が入る。
+`/admin` の下では manifest（`/admin/manifest.webmanifest`、id と scope が `/admin`）と
+iOS 用のアイコン・名前を差し替えているため。Service Worker は一般向けと共有している。
+
 ## ローカル開発
 
 このアプリはモノレポ [cloudflare-apps](../../README.md) の一部。**依存はリポジトリ

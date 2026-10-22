@@ -25,6 +25,15 @@
       "matchPackageNames": ["next", "eslint-config-next", "@opennextjs/cloudflare", "wrangler"],
       "matchUpdateTypes": ["minor"],
       "automerge": false
+    },
+    {
+      "description": "Terraform の patch（本体・provider）は、共通設定の terraform グループから分けて別の PR にし、CI 通過後に自動マージする。minor と同じ PR に入ると、minor を手で見るために patch まで止まる（#132）。patch で plan に差分が出ることはまず無い。minor は今までどおり手元で make plan してからマージする",
+      "matchCategories": ["terraform"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "terraform (patch)",
+      "groupSlug": "terraform-patch",
+      "automerge": true,
+      "automergeStrategy": "squash"
     }
   ]
 }

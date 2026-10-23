@@ -1,0 +1,10 @@
+# Prettier（既定の設定）で整えないファイル。.gitignore にあるもの（.next や .open-next など）は元から外れる
+
+# npm が書き出す
+package-lock.json
+
+# wrangler types が生成する
+**/cloudflare-env.d.ts
+
+# drizzle-kit が生成するマイグレーションの記録
+**/drizzle/**/meta/

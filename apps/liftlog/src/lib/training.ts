@@ -8,12 +8,20 @@
  * 「前回より後に作ったメニューのうち最初のもの。無ければ先頭」とすると、
  * 前回のメニューが消されていても順番が崩れない（消えた位置の次から続く）。
  */
-export function nextMenu<T extends { id: number }>(menus: readonly T[], lastMenuId: number | null | undefined): T | undefined {
-	if (lastMenuId == null) return menus[0];
-	return menus.find((m) => m.id > lastMenuId) ?? menus[0];
+export function nextMenu<T extends { id: number }>(
+  menus: readonly T[],
+  lastMenuId: number | null | undefined,
+): T | undefined {
+  if (lastMenuId == null) return menus[0];
+  return menus.find((m) => m.id > lastMenuId) ?? menus[0];
 }
 
-export type Goal = { weight: number; targetSets: number; targetReps: number; increment: number };
+export type Goal = {
+  weight: number;
+  targetSets: number;
+  targetReps: number;
+  increment: number;
+};
 export type DoneSet = { weight: number; reps: number };
 
 /**
@@ -23,12 +31,16 @@ export type DoneSet = { weight: number; reps: number };
  * 自分で重量を下げた日や、回数が足りなかった日は据え置く。
  */
 export function nextWeight(goal: Goal, sets: readonly DoneSet[]): number {
-	const cleared = sets.filter((s) => s.weight >= goal.weight && s.reps >= goal.targetReps).length;
-	// 重量と上げ幅は 0.25kg 刻み（2 進数で割り切れる）に限っているので、足しても誤差は出ない
-	return cleared >= goal.targetSets ? goal.weight + goal.increment : goal.weight;
+  const cleared = sets.filter(
+    (s) => s.weight >= goal.weight && s.reps >= goal.targetReps,
+  ).length;
+  // 重量と上げ幅は 0.25kg 刻み（2 進数で割り切れる）に限っているので、足しても誤差は出ない
+  return cleared >= goal.targetSets
+    ? goal.weight + goal.increment
+    : goal.weight;
 }
 
 /** 重量の表示。整数なら小数点を出さない（60 / 62.5） */
 export function formatWeight(kg: number): string {
-	return `${Number.isInteger(kg) ? kg : kg.toFixed(2).replace(/0+$/, "")}kg`;
+  return `${Number.isInteger(kg) ? kg : kg.toFixed(2).replace(/0+$/, "")}kg`;
 }

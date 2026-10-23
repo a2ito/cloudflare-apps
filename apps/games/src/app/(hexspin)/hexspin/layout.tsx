@@ -7,7 +7,8 @@ import { APPLE_TOUCH_ICON, PWA_METADATA } from "@/lib/pwa";
 export const metadata: Metadata = {
   ...PWA_METADATA,
   title: "Hexspin",
-  description: "六角形のタイルを 3 枚ずつ回して、同じ色の三角形を作って消すパズル",
+  description:
+    "六角形のタイルを 3 枚ずつ回して、同じ色の三角形を作って消すパズル",
   icons: { icon: "/hexspin/favicon.svg", apple: APPLE_TOUCH_ICON },
 };
 

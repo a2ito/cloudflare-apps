@@ -212,7 +212,9 @@ export default async function AdminGroupPage({
       <section className={card}>
         <h2 className="font-semibold mb-3">精算結果</h2>
         {expenses.length === 0 ? (
-          <p className="text-sm text-black/40">立替がないため精算はありません。</p>
+          <p className="text-sm text-black/40">
+            立替がないため精算はありません。
+          </p>
         ) : settlement.transfers.length === 0 ? (
           <p className="text-sm text-black/60">精算の必要はありません。</p>
         ) : (

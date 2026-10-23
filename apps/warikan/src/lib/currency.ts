@@ -67,6 +67,7 @@ export function formatAmount(minor: number, code: string): string {
   const major = Math.floor(abs / divisor);
   const frac = abs % divisor;
   const majorStr = major.toLocaleString("en-US");
-  const fracStr = decimals > 0 ? "." + String(frac).padStart(decimals, "0") : "";
+  const fracStr =
+    decimals > 0 ? "." + String(frac).padStart(decimals, "0") : "";
   return `${sign}${symbol}${majorStr}${fracStr}`;
 }

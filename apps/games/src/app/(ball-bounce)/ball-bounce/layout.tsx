@@ -18,7 +18,8 @@ export const metadata: Metadata = {
   ...PWA_METADATA,
   title: "BounceLab",
   icons: { apple: APPLE_TOUCH_ICON },
-  description: "A 2D physics playground. Bounce balls and tweak friction and gravity in real time.",
+  description:
+    "A 2D physics playground. Bounce balls and tweak friction and gravity in real time.",
 };
 
 export default function RootLayout({

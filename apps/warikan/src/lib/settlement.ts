@@ -106,7 +106,11 @@ export function calculateSettlement(
     );
     participants.forEach((p, i) => {
       owed.set(p.memberId, (owed.get(p.memberId) ?? 0) + amounts[i]);
-      shares.push({ expenseId: e.id, memberId: p.memberId, amount: amounts[i] });
+      shares.push({
+        expenseId: e.id,
+        memberId: p.memberId,
+        amount: amounts[i],
+      });
     });
   }
 

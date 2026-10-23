@@ -1,21 +1,29 @@
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 const timestamp = (name: string) =>
-	text(name)
-		.notNull()
-		.default(sql`(datetime('now'))`);
+  text(name)
+    .notNull()
+    .default(sql`(datetime('now'))`);
 
 export const categories = sqliteTable("categories", {
-	id: integer("id").primaryKey({ autoIncrement: true }),
-	name: text("name").notNull().unique(),
-	/**
-	 * 比較表を開いたときに出すコスパ列の項目（spec_fields.id）。
-	 * 外部キーにすると categories と spec_fields が互いを参照するので付けていない。
-	 * 項目が消えたり大きいほど良い数値でなくなったりしたら、比較表の側で無視する
-	 */
-	defaultCostFieldId: integer("default_cost_field_id"),
-	createdAt: timestamp("created_at"),
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull().unique(),
+  /**
+   * 比較表を開いたときに出すコスパ列の項目（spec_fields.id）。
+   * 外部キーにすると categories と spec_fields が互いを参照するので付けていない。
+   * 項目が消えたり大きいほど良い数値でなくなったりしたら、比較表の側で無視する
+   */
+  defaultCostFieldId: integer("default_cost_field_id"),
+  createdAt: timestamp("created_at"),
 });
 
 /**
@@ -34,24 +42,28 @@ export type Better = (typeof BETTER)[number];
  * カテゴリごとのスペック項目。同じカテゴリの商品は同じ項目を埋めるので、比較表の列が揃う
  */
 export const specFields = sqliteTable(
-	"spec_fields",
-	{
-		id: integer("id").primaryKey({ autoIncrement: true }),
-		categoryId: integer("category_id")
-			.notNull()
-			.references(() => categories.id, { onDelete: "cascade" }),
-		name: text("name").notNull(),
-		/** 表示用の単位（GB、kg など）。text では使わない */
-		unit: text("unit"),
-		kind: text("kind", { enum: FIELD_KINDS }).notNull().default("number"),
-		better: text("better", { enum: BETTER }).notNull().default("none"),
-		/** 比較表の列の並び。小さいほど左 */
-		position: integer("position").notNull().default(0),
-		/** 比較表の上の簡易フィルタ（ワンタップで絞り込むチップ）に出すか */
-		quickFilter: integer("quick_filter", { mode: "boolean" }).notNull().default(false),
-		createdAt: timestamp("created_at"),
-	},
-	(t) => [uniqueIndex("spec_fields_category_name_idx").on(t.categoryId, t.name)],
+  "spec_fields",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** 表示用の単位（GB、kg など）。text では使わない */
+    unit: text("unit"),
+    kind: text("kind", { enum: FIELD_KINDS }).notNull().default("number"),
+    better: text("better", { enum: BETTER }).notNull().default("none"),
+    /** 比較表の列の並び。小さいほど左 */
+    position: integer("position").notNull().default(0),
+    /** 比較表の上の簡易フィルタ（ワンタップで絞り込むチップ）に出すか */
+    quickFilter: integer("quick_filter", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [
+    uniqueIndex("spec_fields_category_name_idx").on(t.categoryId, t.name),
+  ],
 );
 
 /**
@@ -59,64 +71,67 @@ export const specFields = sqliteTable(
  * カテゴリを変えると埋めたスペックが無意味になるので、登録後にカテゴリは変えさせない
  */
 export const products = sqliteTable(
-	"products",
-	{
-		id: integer("id").primaryKey({ autoIncrement: true }),
-		categoryId: integer("category_id")
-			.notNull()
-			.references(() => categories.id),
-		name: text("name").notNull(),
-		/** メーカー・ブランド名 */
-		maker: text("maker"),
-		imageKey: text("image_key"),
-		memo: text("memo"),
-		/** 候補から外した商品。消さずに比較表から隠す（「非表示の商品も表示」で見える） */
-		hidden: integer("hidden", { mode: "boolean" }).notNull().default(false),
-		/** お気に入り。比較表の ☆ で付け外しし、「お気に入りだけ」で絞り込める */
-		favorite: integer("favorite", { mode: "boolean" }).notNull().default(false),
-		createdAt: timestamp("created_at"),
-		updatedAt: timestamp("updated_at"),
-	},
-	(t) => [index("products_category_idx").on(t.categoryId)],
+  "products",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => categories.id),
+    name: text("name").notNull(),
+    /** メーカー・ブランド名 */
+    maker: text("maker"),
+    imageKey: text("image_key"),
+    memo: text("memo"),
+    /** 候補から外した商品。消さずに比較表から隠す（「非表示の商品も表示」で見える） */
+    hidden: integer("hidden", { mode: "boolean" }).notNull().default(false),
+    /** お気に入り。比較表の ☆ で付け外しし、「お気に入りだけ」で絞り込める */
+    favorite: integer("favorite", { mode: "boolean" }).notNull().default(false),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("products_category_idx").on(t.categoryId)],
 );
 
 /** 商品ごとのスペック値。number / bool は valueNum、text は valueText に入れる。未入力の項目は行を作らない */
 export const specValues = sqliteTable(
-	"spec_values",
-	{
-		productId: integer("product_id")
-			.notNull()
-			.references(() => products.id, { onDelete: "cascade" }),
-		fieldId: integer("field_id")
-			.notNull()
-			.references(() => specFields.id, { onDelete: "cascade" }),
-		valueNum: real("value_num"),
-		valueText: text("value_text"),
-	},
-	(t) => [primaryKey({ columns: [t.productId, t.fieldId] }), index("spec_values_field_idx").on(t.fieldId)],
+  "spec_values",
+  {
+    productId: integer("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    fieldId: integer("field_id")
+      .notNull()
+      .references(() => specFields.id, { onDelete: "cascade" }),
+    valueNum: real("value_num"),
+    valueText: text("value_text"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.productId, t.fieldId] }),
+    index("spec_values_field_idx").on(t.fieldId),
+  ],
 );
 
 /** 店舗ごとの価格。比較には商品ごとの最安値を使う */
 export const priceRecords = sqliteTable(
-	"price_records",
-	{
-		id: integer("id").primaryKey({ autoIncrement: true }),
-		productId: integer("product_id")
-			.notNull()
-			.references(() => products.id, { onDelete: "cascade" }),
-		store: text("store").notNull(),
-		/** 税込価格（円） */
-		price: integer("price").notNull(),
-		/** 中古の価格か。比較表は既定で、新品の記録があれば新品だけから最安値を選ぶ */
-		used: integer("used", { mode: "boolean" }).notNull().default(false),
-		/** 記録日 YYYY-MM-DD */
-		recordedAt: text("recorded_at").notNull(),
-		/** 商品ページへのリンク（http/https のみ） */
-		url: text("url"),
-		memo: text("memo"),
-		createdAt: timestamp("created_at"),
-	},
-	(t) => [index("price_records_product_idx").on(t.productId)],
+  "price_records",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    productId: integer("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    store: text("store").notNull(),
+    /** 税込価格（円） */
+    price: integer("price").notNull(),
+    /** 中古の価格か。比較表は既定で、新品の記録があれば新品だけから最安値を選ぶ */
+    used: integer("used", { mode: "boolean" }).notNull().default(false),
+    /** 記録日 YYYY-MM-DD */
+    recordedAt: text("recorded_at").notNull(),
+    /** 商品ページへのリンク（http/https のみ） */
+    url: text("url"),
+    memo: text("memo"),
+    createdAt: timestamp("created_at"),
+  },
+  (t) => [index("price_records_product_idx").on(t.productId)],
 );
 
 export type Category = typeof categories.$inferSelect;

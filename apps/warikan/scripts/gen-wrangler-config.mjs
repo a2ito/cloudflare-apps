@@ -35,7 +35,9 @@ if (missing.length > 0) {
 
 const leftover = Object.keys(PLACEHOLDERS).filter((p) => config.includes(p));
 if (leftover.length > 0) {
-  console.error(`置換されていないプレースホルダがあります: ${leftover.join(", ")}`);
+  console.error(
+    `置換されていないプレースホルダがあります: ${leftover.join(", ")}`,
+  );
   process.exit(1);
 }
 

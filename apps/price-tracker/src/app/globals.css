@@ -8,33 +8,35 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
-	--background: #fafaf9;
-	--foreground: #18181b;
+  --background: #fafaf9;
+  --foreground: #18181b;
 }
 
 [data-theme="dark"] {
-	--background: #0a0a0a;
-	--foreground: #ededed;
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--font-sans: var(--font-geist-sans), "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
-	--font-mono: var(--font-geist-mono), monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans:
+    var(--font-geist-sans), "Hiragino Sans", "Noto Sans JP", system-ui,
+    sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
 }
 
 body {
-	background: var(--background);
-	color: var(--foreground);
-	font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
 }
 
 /* フォームコントロールのネイティブ配色を data-theme に追従させる */
 [data-theme="light"] {
-	color-scheme: light;
+  color-scheme: light;
 }
 
 [data-theme="dark"] {
-	color-scheme: dark;
+  color-scheme: dark;
 }

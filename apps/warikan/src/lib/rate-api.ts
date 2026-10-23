@@ -62,7 +62,9 @@ export async function fetchRates(
   fetchImpl: typeof fetch = fetch,
 ): Promise<Map<string, FetchedRate>> {
   const results = await Promise.all(
-    froms.map(async (from) => [from, await fetchRate(from, to, fetchImpl)] as const),
+    froms.map(
+      async (from) => [from, await fetchRate(from, to, fetchImpl)] as const,
+    ),
   );
   const rates = new Map<string, FetchedRate>();
   for (const [from, rate] of results) {

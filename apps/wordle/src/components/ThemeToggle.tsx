@@ -13,7 +13,7 @@ export default function ThemeToggle() {
     const id = setTimeout(() => setMounted(true), 0);
 
     const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
+      "(prefers-color-scheme: dark)",
     ).matches;
 
     //setDark(prefersDark);

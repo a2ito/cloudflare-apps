@@ -27,7 +27,10 @@ export default function RootLayout({
         <div className="min-h-dvh flex flex-col">
           <header className="border-b border-black/5 bg-white/80 backdrop-blur sticky top-0 z-10">
             <div className="mx-auto max-w-3xl px-4 h-14 flex items-center">
-              <Link href="/" className="flex items-center gap-2 font-bold text-lg">
+              <Link
+                href="/"
+                className="flex items-center gap-2 font-bold text-lg"
+              >
                 <span className="inline-grid place-items-center w-7 h-7 rounded-lg bg-emerald-500 text-white text-sm">
                   W
                 </span>

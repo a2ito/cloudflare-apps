@@ -10,8 +10,8 @@ if (!i18next.isInitialized) {
     .use(initReactI18next)
     .use(
       resourcesToBackend(
-        (lng: string, ns: string) => import(`../locales/${lng}/${ns}.json`)
-      )
+        (lng: string, ns: string) => import(`../locales/${lng}/${ns}.json`),
+      ),
     )
     .init({
       fallbackLng: "ja",

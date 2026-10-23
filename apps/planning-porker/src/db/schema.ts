@@ -29,11 +29,11 @@ export const participants = sqliteTable(
   (table) => ({
     roomNameUnique: uniqueIndex("participants_room_name_unique").on(
       table.roomId,
-      table.name
+      table.name,
     ),
 
     roomIdx: index("participants_room_id_idx").on(table.roomId),
-  })
+  }),
 );
 
 /**
@@ -51,9 +51,9 @@ export const votes = sqliteTable(
   (table) => ({
     roomParticipantUnique: uniqueIndex("votes_room_participant_unique").on(
       table.roomId,
-      table.participantName
+      table.participantName,
     ),
 
     roomIdx: index("votes_room_id_idx").on(table.roomId),
-  })
+  }),
 );

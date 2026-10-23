@@ -97,14 +97,14 @@ Workers Builds の設定は Cloudflare ダッシュボードの **Settings > Bui
 モノレポなので **root directory にこのアプリのディレクトリを指す**。Worker 名は
 そこに置かれた Wrangler 設定の `name` と一致していなければビルドが落ちる。
 
-| 項目 | 値 |
-| --- | --- |
-| Root directory | `apps/price-tracker` |
-| Build command | `npm run cf:build` |
-| Deploy command | `npm run cf:deploy` |
-| Git branch | `main` |
-| Build watch paths | `apps/price-tracker/*`、`package-lock.json` |
-| Build variables | `D1_DATABASE_ID`, `APP_HOSTNAME`, `NEXT_PUBLIC_IMAGES_BASE_URL` |
+| 項目              | 値                                                              |
+| ----------------- | --------------------------------------------------------------- |
+| Root directory    | `apps/price-tracker`                                            |
+| Build command     | `npm run cf:build`                                              |
+| Deploy command    | `npm run cf:deploy`                                             |
+| Git branch        | `main`                                                          |
+| Build watch paths | `apps/price-tracker/*`、`package-lock.json`                     |
+| Build variables   | `D1_DATABASE_ID`, `APP_HOSTNAME`, `NEXT_PUBLIC_IMAGES_BASE_URL` |
 
 `wrangler.jsonc` は追跡していないため、`npm run cf:config` が雛形のプレースホルダを
 これらの変数で埋めて生成する。手元に `wrangler.jsonc` がある場合は上書きしない。
@@ -188,12 +188,12 @@ npm run db:migrate:local
 
 ## リソース
 
-| 種別 | 名前 |
-| --- | --- |
-| Worker | `price-tracker` |
-| D1 | `price-tracker-db` |
-| R2 | `price-tracker-images`（カスタムドメインを生やして公開配信） |
-| ビルド | Cloudflare Workers Builds |
+| 種別   | 名前                                                         |
+| ------ | ------------------------------------------------------------ |
+| Worker | `price-tracker`                                              |
+| D1     | `price-tracker-db`                                           |
+| R2     | `price-tracker-images`（カスタムドメインを生やして公開配信） |
+| ビルド | Cloudflare Workers Builds                                    |
 
 ログインを許可するアカウントを増やすときは、`ALLOWED_EMAILS` の Secret を
 カンマ区切りで登録し直してから再デプロイする。

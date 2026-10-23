@@ -4,7 +4,19 @@
  */
 
 /** 小数点以下の桁数が 0 の通貨。ここに無いものは 2 桁として扱う */
-const ZERO_DECIMAL_CURRENCIES = new Set(["JPY", "KRW", "VND", "CLP", "ISK", "PYG", "RWF", "UGX", "VUV", "XAF", "XOF"]);
+const ZERO_DECIMAL_CURRENCIES = new Set([
+  "JPY",
+  "KRW",
+  "VND",
+  "CLP",
+  "ISK",
+  "PYG",
+  "RWF",
+  "UGX",
+  "VUV",
+  "XAF",
+  "XOF",
+]);
 
 export const DEFAULT_CURRENCY = "JPY";
 
@@ -13,31 +25,33 @@ export const MAX_TRIP_CURRENCIES = 10;
 
 /** よく使う通貨（フォームの選択肢用） */
 export const CURRENCY_OPTIONS = [
-	{ code: "JPY", label: "日本円 (JPY)" },
-	{ code: "USD", label: "米ドル (USD)" },
-	{ code: "EUR", label: "ユーロ (EUR)" },
-	{ code: "KRW", label: "韓国ウォン (KRW)" },
-	{ code: "TWD", label: "台湾ドル (TWD)" },
-	{ code: "THB", label: "タイバーツ (THB)" },
-	{ code: "SGD", label: "シンガポールドル (SGD)" },
-	{ code: "GBP", label: "英ポンド (GBP)" },
-	{ code: "AUD", label: "豪ドル (AUD)" },
-	{ code: "CNY", label: "中国元 (CNY)" },
-	{ code: "VND", label: "ベトナムドン (VND)" },
+  { code: "JPY", label: "日本円 (JPY)" },
+  { code: "USD", label: "米ドル (USD)" },
+  { code: "EUR", label: "ユーロ (EUR)" },
+  { code: "KRW", label: "韓国ウォン (KRW)" },
+  { code: "TWD", label: "台湾ドル (TWD)" },
+  { code: "THB", label: "タイバーツ (THB)" },
+  { code: "SGD", label: "シンガポールドル (SGD)" },
+  { code: "GBP", label: "英ポンド (GBP)" },
+  { code: "AUD", label: "豪ドル (AUD)" },
+  { code: "CNY", label: "中国元 (CNY)" },
+  { code: "VND", label: "ベトナムドン (VND)" },
 ] as const;
 
 /** 選択肢にある通貨は日本語名で、それ以外はコードのまま見せる */
 export function currencyLabel(code: string): string {
-	const normalized = normalizeCurrency(code);
-	return CURRENCY_OPTIONS.find((c) => c.code === normalized)?.label ?? normalized;
+  const normalized = normalizeCurrency(code);
+  return (
+    CURRENCY_OPTIONS.find((c) => c.code === normalized)?.label ?? normalized
+  );
 }
 
 export function normalizeCurrency(code: string): string {
-	return code.trim().toUpperCase();
+  return code.trim().toUpperCase();
 }
 
 export function currencyDigits(code: string): number {
-	return ZERO_DECIMAL_CURRENCIES.has(normalizeCurrency(code)) ? 0 : 2;
+  return ZERO_DECIMAL_CURRENCIES.has(normalizeCurrency(code)) ? 0 : 2;
 }
 
 /**
@@ -45,47 +59,50 @@ export function currencyDigits(code: string): number {
  * 解釈できない場合や負数は null を返す（呼び出し側でエラーにする）。
  */
 export function parseAmountToMinor(input: string, code: string): number | null {
-	const cleaned = input.trim().replace(/[,\s]/g, "").replace(/^[¥$€£]/, "");
-	if (cleaned === "" || !/^\d+(\.\d+)?$/.test(cleaned)) return null;
+  const cleaned = input
+    .trim()
+    .replace(/[,\s]/g, "")
+    .replace(/^[¥$€£]/, "");
+  if (cleaned === "" || !/^\d+(\.\d+)?$/.test(cleaned)) return null;
 
-	const digits = currencyDigits(code);
-	const [intPart, fracPart = ""] = cleaned.split(".");
-	if (fracPart.length > digits) {
-		// 表現できない桁は四捨五入する（例: JPY に 100.4 が来たら 100）
-		const scaled = Math.round(Number(cleaned) * 10 ** digits);
-		return Number.isSafeInteger(scaled) ? scaled : null;
-	}
-	const padded = fracPart.padEnd(digits, "0");
-	const minor = Number(`${intPart}${padded}`);
-	return Number.isSafeInteger(minor) ? minor : null;
+  const digits = currencyDigits(code);
+  const [intPart, fracPart = ""] = cleaned.split(".");
+  if (fracPart.length > digits) {
+    // 表現できない桁は四捨五入する（例: JPY に 100.4 が来たら 100）
+    const scaled = Math.round(Number(cleaned) * 10 ** digits);
+    return Number.isSafeInteger(scaled) ? scaled : null;
+  }
+  const padded = fracPart.padEnd(digits, "0");
+  const minor = Number(`${intPart}${padded}`);
+  return Number.isSafeInteger(minor) ? minor : null;
 }
 
 /** 最小通貨単位の整数を入力欄に戻す（例: 1234 USD -> "12.34"） */
 export function minorToInput(minor: number, code: string): string {
-	const digits = currencyDigits(code);
-	if (digits === 0) return String(minor);
-	const sign = minor < 0 ? "-" : "";
-	const abs = Math.abs(minor);
-	const unit = 10 ** digits;
-	return `${sign}${Math.floor(abs / unit)}.${String(abs % unit).padStart(digits, "0")}`;
+  const digits = currencyDigits(code);
+  if (digits === 0) return String(minor);
+  const sign = minor < 0 ? "-" : "";
+  const abs = Math.abs(minor);
+  const unit = 10 ** digits;
+  return `${sign}${Math.floor(abs / unit)}.${String(abs % unit).padStart(digits, "0")}`;
 }
 
 /** 通貨記号つきで表示する（例: ¥1,200 / $12.34） */
 export function formatMoney(minor: number, code: string): string {
-	const currency = normalizeCurrency(code);
-	const digits = currencyDigits(currency);
-	const value = minor / 10 ** digits;
-	try {
-		return new Intl.NumberFormat("ja-JP", {
-			style: "currency",
-			currency,
-			minimumFractionDigits: digits,
-			maximumFractionDigits: digits,
-		}).format(value);
-	} catch {
-		// 未知の通貨コードでも落とさない
-		return `${value.toFixed(digits)} ${currency}`;
-	}
+  const currency = normalizeCurrency(code);
+  const digits = currencyDigits(currency);
+  const value = minor / 10 ** digits;
+  try {
+    return new Intl.NumberFormat("ja-JP", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }).format(value);
+  } catch {
+    // 未知の通貨コードでも落とさない
+    return `${value.toFixed(digits)} ${currency}`;
+  }
 }
 
 /**
@@ -93,21 +110,24 @@ export function formatMoney(minor: number, code: string): string {
  * 戻り値は円の整数。
  */
 export function toJpy(minor: number, code: string, rateToJpy: number): number {
-	const digits = currencyDigits(code);
-	return Math.round((minor / 10 ** digits) * rateToJpy);
+  const digits = currencyDigits(code);
+  return Math.round((minor / 10 ** digits) * rateToJpy);
 }
 
 export function formatJpy(yen: number): string {
-	return new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" }).format(yen);
+  return new Intl.NumberFormat("ja-JP", {
+    style: "currency",
+    currency: "JPY",
+  }).format(yen);
 }
 
 /** 円換算が意味を持つのは現地通貨が円以外のときだけ */
 export function needsJpyConversion(code: string): boolean {
-	return normalizeCurrency(code) !== "JPY";
+  return normalizeCurrency(code) !== "JPY";
 }
 
 export function sumMinor(amounts: readonly number[]): number {
-	return amounts.reduce((acc, n) => acc + n, 0);
+  return amounts.reduce((acc, n) => acc + n, 0);
 }
 
 /* ── 通貨が混ざった記録の集計 ─────────────────────────────── */
@@ -119,31 +139,38 @@ export type Amount = { minor: number; currency: string };
 export type Rates = Readonly<Record<string, number>>;
 
 /** 旅行に登録された通貨のリストからレート表を作る */
-export function toRates(currencies: readonly { code: string; rateToJpy: number }[]): Rates {
-	const rates: Record<string, number> = {};
-	for (const c of currencies) rates[normalizeCurrency(c.code)] = c.rateToJpy;
-	return rates;
+export function toRates(
+  currencies: readonly { code: string; rateToJpy: number }[],
+): Rates {
+  const rates: Record<string, number> = {};
+  for (const c of currencies) rates[normalizeCurrency(c.code)] = c.rateToJpy;
+  return rates;
 }
 
 /** 円に換算する。レートの分からない通貨は換算できないので 0 とする */
 export function amountToJpy(amount: Amount, rates: Rates): number {
-	const currency = normalizeCurrency(amount.currency);
-	if (currency === DEFAULT_CURRENCY) return amount.minor;
-	const rate = rates[currency];
-	return rate === undefined ? 0 : toJpy(amount.minor, currency, rate);
+  const currency = normalizeCurrency(amount.currency);
+  if (currency === DEFAULT_CURRENCY) return amount.minor;
+  const rate = rates[currency];
+  return rate === undefined ? 0 : toJpy(amount.minor, currency, rate);
 }
 
 /** 通貨が混ざっていても合計は円で持つのが一番ずれない */
 export function sumAsJpy(amounts: readonly Amount[], rates: Rates): number {
-	return amounts.reduce((acc, a) => acc + amountToJpy(a, rates), 0);
+  return amounts.reduce((acc, a) => acc + amountToJpy(a, rates), 0);
 }
 
 /** 通貨ごとに合計する。表示順は渡された順のまま */
-export function sumByCurrency(amounts: readonly Amount[]): { currency: string; minor: number }[] {
-	const totals = new Map<string, number>();
-	for (const a of amounts) {
-		const code = normalizeCurrency(a.currency);
-		totals.set(code, (totals.get(code) ?? 0) + a.minor);
-	}
-	return [...totals.entries()].map(([currency, minor]) => ({ currency, minor }));
+export function sumByCurrency(
+  amounts: readonly Amount[],
+): { currency: string; minor: number }[] {
+  const totals = new Map<string, number>();
+  for (const a of amounts) {
+    const code = normalizeCurrency(a.currency);
+    totals.set(code, (totals.get(code) ?? 0) + a.minor);
+  }
+  return [...totals.entries()].map(([currency, minor]) => ({
+    currency,
+    minor,
+  }));
 }

@@ -94,7 +94,11 @@ describe("回転", () => {
   });
 
   it("時計回りでは各タイルが次の位置へ移る", () => {
-    const b = paint(paint(paint(quietBoard(), [tri[0]], 0), [tri[1]], 1), [tri[2]], 2);
+    const b = paint(
+      paint(paint(quietBoard(), [tri[0]], 0), [tri[1]], 1),
+      [tri[2]],
+      2,
+    );
     const after = rotate(b, tri, "cw");
     expect(tri.map(({ c, r }) => after[c][r])).toEqual([2, 0, 1]);
   });
@@ -134,7 +138,14 @@ describe("落下と補充", () => {
   it("消えた分だけ上から詰め、列の中の順番は保つ", () => {
     const board = quietBoard();
     const before = board[3];
-    const after = dropAndFill(board, [{ c: 3, r: 5 }, { c: 3, r: 2 }], () => 0.99);
+    const after = dropAndFill(
+      board,
+      [
+        { c: 3, r: 5 },
+        { c: 3, r: 2 },
+      ],
+      () => 0.99,
+    );
     const kept = before.filter((_, r) => r !== 5 && r !== 2);
     expect(after[3].slice(2)).toEqual(kept);
     expect(after[3].slice(0, 2)).toEqual([COLOR_COUNT - 1, COLOR_COUNT - 1]);

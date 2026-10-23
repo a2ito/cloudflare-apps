@@ -11,11 +11,11 @@ const ROWS = 6;
 const COLS = 5;
 
 const emptyBoard: string[][] = Array.from({ length: ROWS }, () =>
-  Array.from({ length: COLS }, () => "")
+  Array.from({ length: COLS }, () => ""),
 );
 
 const emptyStatuses: TileStatus[][] = Array.from({ length: ROWS }, () =>
-  Array.from({ length: COLS }, () => "empty")
+  Array.from({ length: COLS }, () => "empty"),
 );
 
 const emptyFlippedRows: boolean[] = Array.from({ length: ROWS }, () => false);
@@ -61,16 +61,16 @@ export default function Board() {
 
   const [board, setBoard] = useState(() => saved?.board ?? emptyBoard);
   const [statuses, setStatuses] = useState(
-    () => saved?.statuses ?? emptyStatuses
+    () => saved?.statuses ?? emptyStatuses,
   );
   const [flippedRows, setFlippedRows] = useState(
-    () => saved?.flippedRows ?? emptyFlippedRows
+    () => saved?.flippedRows ?? emptyFlippedRows,
   );
   const [keyStatuses, setKeyStatuses] = useState(
-    () => saved?.keyStatuses ?? {}
+    () => saved?.keyStatuses ?? {},
   );
   const [gameState, setGameState] = useState<"playing" | "won" | "lost">(
-    () => saved?.gameState ?? "playing"
+    () => saved?.gameState ?? "playing",
   );
 
   const [currentRow, setCurrentRow] = useState(0);
@@ -248,7 +248,7 @@ export default function Board() {
       flippedRows,
       keyStatuses,
       answer,
-    ]
+    ],
   );
 
   useEffect(() => {
@@ -292,7 +292,7 @@ export default function Board() {
         flippedRows,
         keyStatuses,
         gameState,
-      })
+      }),
     );
   }, [
     board,

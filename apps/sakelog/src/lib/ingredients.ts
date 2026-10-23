@@ -17,19 +17,19 @@ export const MAX_INGREDIENT_LENGTH = 50;
 
 /** "カベルネ・ソーヴィニヨン, メルロー" -> ["カベルネ・ソーヴィニヨン", "メルロー"] */
 export function parseIngredients(input: string | undefined | null): string[] {
-	if (!input) return [];
-	const names: string[] = [];
-	// 日本語で書くと読点で区切られることがあるので、どちらも受ける
-	for (const raw of input.split(/[,、]/)) {
-		const name = raw.trim();
-		if (name === "" || name.length > MAX_INGREDIENT_LENGTH) continue;
-		// 同じ材料を 2 度書かれても DB の一意制約に当てない
-		if (!names.includes(name)) names.push(name);
-	}
-	return names.slice(0, MAX_INGREDIENTS);
+  if (!input) return [];
+  const names: string[] = [];
+  // 日本語で書くと読点で区切られることがあるので、どちらも受ける
+  for (const raw of input.split(/[,、]/)) {
+    const name = raw.trim();
+    if (name === "" || name.length > MAX_INGREDIENT_LENGTH) continue;
+    // 同じ材料を 2 度書かれても DB の一意制約に当てない
+    if (!names.includes(name)) names.push(name);
+  }
+  return names.slice(0, MAX_INGREDIENTS);
 }
 
 /** 保存済みの材料を入力欄に戻す */
 export function formatIngredients(names: readonly string[]): string {
-	return names.join(", ");
+  return names.join(", ");
 }

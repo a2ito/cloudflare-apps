@@ -16,12 +16,15 @@ Built with Next.js and designed to run primarily on the client side, making it f
 - Dark mode support
 
 # 🚀 Getting Started
+
 1. Install dependencies
+
 ```
 npm install
 ```
 
 2. Run development server
+
 ```
 npm run dev
 ```

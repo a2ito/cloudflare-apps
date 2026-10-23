@@ -130,8 +130,7 @@ export function ExpenseSection({
                     </div>
                     <div className="text-xs text-black/50 truncate">
                       {memberNames[e.payerId] ?? "?"} が立替 ・{" "}
-                      {participantsLabel(e.participants, memberNames)}{" "}
-                      で割り勘
+                      {participantsLabel(e.participants, memberNames)} で割り勘
                     </div>
                   </div>
                   <div className="ml-auto text-right shrink-0">
@@ -405,7 +404,8 @@ function ExpenseForm({
           <div className="rounded-lg bg-white border border-black/5 p-2.5 space-y-1.5">
             <p className="text-xs text-black/50">
               倍率の比で負担を分けます（{formatWeight(MIN_WEIGHT)}〜
-              {formatWeight(MAX_WEIGHT)}、0.5 刻み）。例: 2 の人は 1 の人の 2 倍。
+              {formatWeight(MAX_WEIGHT)}、0.5 刻み）。例: 2 の人は 1 の人の 2
+              倍。
             </p>
             {selectedMembers.map((m, i) => (
               <div key={m.id} className="flex items-center gap-2 text-sm">

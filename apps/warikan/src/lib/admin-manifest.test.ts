@@ -31,6 +31,8 @@ describe("adminManifest", () => {
   });
 
   it("iOS 用の管理画面のアイコンがある", () => {
-    expect(existsSync(join(process.cwd(), "src/app/admin/apple-icon.png"))).toBe(true);
+    expect(
+      existsSync(join(process.cwd(), "src/app/admin/apple-icon.png")),
+    ).toBe(true);
   });
 });

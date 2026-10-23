@@ -9,8 +9,8 @@ export async function initI18n(lang: string) {
   await i18n
     .use(
       resourcesToBackend(
-        (lng: string, ns: string) => import(`../locales/${lng}/${ns}.json`)
-      )
+        (lng: string, ns: string) => import(`../locales/${lng}/${ns}.json`),
+      ),
     )
     .init({
       lng: lang,

@@ -32,8 +32,7 @@ export function RateSection({
   const [isPending, startTransition] = useTransition();
   const base = getCurrency(baseCurrency);
   const addable = CURRENCY_LIST.filter(
-    (c) =>
-      c.code !== baseCurrency && !rates.some((r) => r.currency === c.code),
+    (c) => c.code !== baseCurrency && !rates.some((r) => r.currency === c.code),
   );
 
   function run(action: () => Promise<void>) {

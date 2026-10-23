@@ -32,14 +32,14 @@
 
 ## 技術構成
 
-| 領域 | 採用技術 |
-| --- | --- |
-| フレームワーク | Next.js 16 (App Router) |
-| 実行環境 | Cloudflare Workers (OpenNext) |
-| DB | Cloudflare D1 + Drizzle ORM |
-| 認証 | Auth.js (next-auth v5) + Google OAuth + 許可メールリスト |
-| UI | Tailwind CSS v4 |
-| テスト | Vitest + Miniflare（本物の D1 を起動して検証） |
+| 領域           | 採用技術                                                 |
+| -------------- | -------------------------------------------------------- |
+| フレームワーク | Next.js 16 (App Router)                                  |
+| 実行環境       | Cloudflare Workers (OpenNext)                            |
+| DB             | Cloudflare D1 + Drizzle ORM                              |
+| 認証           | Auth.js (next-auth v5) + Google OAuth + 許可メールリスト |
+| UI             | Tailwind CSS v4                                          |
+| テスト         | Vitest + Miniflare（本物の D1 を起動して検証）           |
 
 ## セットアップ
 
@@ -75,15 +75,15 @@ Google OAuth の承認済みリダイレクト URI には以下を登録する�
 
 ## よく使うコマンド
 
-| コマンド | 用途 |
-| --- | --- |
-| `npm run dev` | 開発サーバ |
-| `npm test` | テスト（Miniflare で D1 を起動） |
-| `npm run lint` / `npm run typecheck` | 静的チェック |
-| `npm run db:generate` | スキーマ変更からマイグレーション SQL を生成 |
-| `npm run db:migrate:local` / `:remote` | マイグレーション適用 |
-| `npm run preview` | Workers ランタイムでローカル確認 |
-| `npm run cf:deploy` | Cloudflare へデプロイ |
+| コマンド                               | 用途                                        |
+| -------------------------------------- | ------------------------------------------- |
+| `npm run dev`                          | 開発サーバ                                  |
+| `npm test`                             | テスト（Miniflare で D1 を起動）            |
+| `npm run lint` / `npm run typecheck`   | 静的チェック                                |
+| `npm run db:generate`                  | スキーマ変更からマイグレーション SQL を生成 |
+| `npm run db:migrate:local` / `:remote` | マイグレーション適用                        |
+| `npm run preview`                      | Workers ランタイムでローカル確認            |
+| `npm run cf:deploy`                    | Cloudflare へデプロイ                       |
 
 ## デプロイ
 
@@ -91,14 +91,14 @@ main への push を Cloudflare の [Workers Builds](https://developers.cloudfla
 が検知し、ビルドしてデプロイする。Workers Builds の設定と Worker の Secret は
 [terraform/](../../terraform) で管理している。
 
-| 項目 | 値 |
-| --- | --- |
-| Root directory | `apps/flash-english` |
-| Build command | `npm run cf:build` |
-| Deploy command | `npm run cf:deploy` |
-| Git branch | `main` |
+| 項目              | 値                                          |
+| ----------------- | ------------------------------------------- |
+| Root directory    | `apps/flash-english`                        |
+| Build command     | `npm run cf:build`                          |
+| Deploy command    | `npm run cf:deploy`                         |
+| Git branch        | `main`                                      |
 | Build watch paths | `apps/flash-english/*`、`package-lock.json` |
-| Build variables | `D1_DATABASE_ID`, `APP_HOSTNAME` |
+| Build variables   | `D1_DATABASE_ID`, `APP_HOSTNAME`            |
 
 `wrangler.jsonc` は実 ID と公開ホスト名を含むため追跡していない。`npm run cf:config` が
 雛形 `wrangler.jsonc.example` のプレースホルダをこれらの変数で埋めて生成する。

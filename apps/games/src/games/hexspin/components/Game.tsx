@@ -54,7 +54,16 @@ function TileMark({ kind, x, y }: { kind: string; x: number; y: number }) {
     case "circle":
       return <circle cx={x} cy={y} r={s} {...common} />;
     case "square":
-      return <rect x={x - s} y={y - s} width={s * 2} height={s * 2} rx={2} {...common} />;
+      return (
+        <rect
+          x={x - s}
+          y={y - s}
+          width={s * 2}
+          height={s * 2}
+          rx={2}
+          {...common}
+        />
+      );
     case "triangle":
       return (
         <polygon
@@ -237,7 +246,8 @@ export default function Game() {
           role="img"
           aria-label="Hexspin の盤面"
           onPointerMove={(e) => {
-            if (e.pointerType === "mouse") setHover(nearestPivot(e.clientX, e.clientY));
+            if (e.pointerType === "mouse")
+              setHover(nearestPivot(e.clientX, e.clientY));
           }}
           onPointerLeave={() => setHover(null)}
           onPointerUp={onPointerUp}

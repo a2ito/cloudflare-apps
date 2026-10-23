@@ -1,4 +1,9 @@
-import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  text,
+  integer,
+  primaryKey,
+} from "drizzle-orm/sqlite-core";
 
 // グループ（イベント単位）。currency は精算に使う通貨で、作成後は変えない。
 export const groups = sqliteTable("groups", {

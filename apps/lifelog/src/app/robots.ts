@@ -10,7 +10,7 @@ import type { MetadataRoute } from "next";
  * 「User-agent: * / Allow: /」が別に足されると、RFC 9309 では許可が優先される。
  */
 export default function robots(): MetadataRoute.Robots {
-	return {
-		rules: { userAgent: "*", disallow: "/" },
-	};
+  return {
+    rules: { userAgent: "*", disallow: "/" },
+  };
 }

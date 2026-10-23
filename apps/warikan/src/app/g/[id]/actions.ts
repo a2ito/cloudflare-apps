@@ -99,7 +99,9 @@ const expenseSchema = z.object({
   amount: z.string().min(1, "金額を入力してください"),
   currency: z.string().refine(isCurrencyCode, "対応していない通貨です"),
   description: z.string().trim().max(100).optional().default(""),
-  participantIds: z.array(z.string()).min(1, "割り勘対象を1人以上選択してください"),
+  participantIds: z
+    .array(z.string())
+    .min(1, "割り勘対象を1人以上選択してください"),
 });
 
 function parseExpenseForm(formData: FormData) {
@@ -121,7 +123,9 @@ function parseParticipantWeights(
   const weighted = formData.get("weighted") === "on";
   return participantIds.map((memberId) => {
     if (!weighted) return { memberId, weight: DEFAULT_WEIGHT };
-    const weight = parseWeight(String(formData.get(`weight:${memberId}`) ?? ""));
+    const weight = parseWeight(
+      String(formData.get(`weight:${memberId}`) ?? ""),
+    );
     if (weight === null) {
       throw new Error("傾斜は 0.5 から 10 までの 0.5 刻みで入力してください");
     }
@@ -374,7 +378,8 @@ export async function updateRate(groupId: string, formData: FormData) {
       ),
     )
     .returning();
-  if (updated.length === 0) throw new Error("このグループで使っていない通貨です");
+  if (updated.length === 0)
+    throw new Error("このグループで使っていない通貨です");
   revalidatePath(`/g/${groupId}`);
 }
 

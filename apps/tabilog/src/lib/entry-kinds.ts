@@ -7,32 +7,40 @@
  */
 
 /** 保存する値。並び順はフォームの選択肢と絞り込みボタンの並びでもある */
-export const ENTRY_KINDS = ["food", "shopping", "sightseeing", "other"] as const;
+export const ENTRY_KINDS = [
+  "food",
+  "shopping",
+  "sightseeing",
+  "other",
+] as const;
 export type EntryKind = (typeof ENTRY_KINDS)[number];
 
 const LABELS: Record<EntryKind, string> = {
-	food: "🍜 食べた",
-	shopping: "🛍️ 買った",
-	sightseeing: "👀 見た",
-	other: "📌 その他",
+  food: "🍜 食べた",
+  shopping: "🛍️ 買った",
+  sightseeing: "👀 見た",
+  other: "📌 その他",
 };
 
-export const ENTRY_KIND_OPTIONS = ENTRY_KINDS.map((value) => ({ value, label: LABELS[value] }));
+export const ENTRY_KIND_OPTIONS = ENTRY_KINDS.map((value) => ({
+  value,
+  label: LABELS[value],
+}));
 
 export function isEntryKind(value: string): value is EntryKind {
-	return (ENTRY_KINDS as readonly string[]).includes(value);
+  return (ENTRY_KINDS as readonly string[]).includes(value);
 }
 
 /** 絵文字だけが欲しい場面（写真の無いカードの代わりの絵など）のために取り出す */
 export function entryKindEmoji(kind: string): string {
-	const [emoji] = entryKindLabel(kind).split(" ");
-	// 知らない種別はラベルがそのまま返るので、絵文字が無ければ既定の印にする
-	return isEntryKind(kind) && emoji ? emoji : "📌";
+  const [emoji] = entryKindLabel(kind).split(" ");
+  // 知らない種別はラベルがそのまま返るので、絵文字が無ければ既定の印にする
+  return isEntryKind(kind) && emoji ? emoji : "📌";
 }
 
 /** 知らない種別（古いデータなど）はそのまま出して、表示が消えないようにする */
 export function entryKindLabel(kind: string): string {
-	return isEntryKind(kind) ? LABELS[kind] : kind;
+  return isEntryKind(kind) ? LABELS[kind] : kind;
 }
 
 /**
@@ -40,6 +48,6 @@ export function entryKindLabel(kind: string): string {
  * 見た目に文字が出なくても何の種別かが伝わるようにするため。
  */
 export function entryKindName(kind: string): string {
-	const [, name] = entryKindLabel(kind).split(" ");
-	return isEntryKind(kind) && name ? name : kind;
+  const [, name] = entryKindLabel(kind).split(" ");
+  return isEntryKind(kind) && name ? name : kind;
 }

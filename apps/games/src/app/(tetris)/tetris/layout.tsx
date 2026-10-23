@@ -18,7 +18,8 @@ export const metadata: Metadata = {
   ...PWA_METADATA,
   title: "Tetris",
   icons: { apple: APPLE_TOUCH_ICON },
-  description: "Classic falling-block puzzle. Clear lines and chase your high score.",
+  description:
+    "Classic falling-block puzzle. Clear lines and chase your high score.",
 };
 
 export default function RootLayout({

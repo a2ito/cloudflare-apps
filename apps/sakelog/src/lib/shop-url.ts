@@ -13,29 +13,29 @@ export const SHOP_URL_EXAMPLE = "https://example.com/wine/...";
  * 空文字も null（「未入力」は呼び出し側で分ける）。
  */
 export function normalizeShopUrl(input: string): string | null {
-	const trimmed = input.trim();
-	if (trimmed === "") return null;
+  const trimmed = input.trim();
+  if (trimmed === "") return null;
 
-	let url: URL;
-	try {
-		url = new URL(trimmed);
-	} catch {
-		return null;
-	}
-	// http は中身を書き換えられうるので受けない
-	if (url.protocol !== "https:") return null;
-	// user:pass@ を付けた URL は、表示されるホストと実際の飛び先が食い違って見える
-	if (url.username !== "" || url.password !== "") return null;
-	// ホスト名の形になっていないもの（https://localhost など）は弾く
-	if (!url.hostname.includes(".")) return null;
-	return url.toString();
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  // http は中身を書き換えられうるので受けない
+  if (url.protocol !== "https:") return null;
+  // user:pass@ を付けた URL は、表示されるホストと実際の飛び先が食い違って見える
+  if (url.username !== "" || url.password !== "") return null;
+  // ホスト名の形になっていないもの（https://localhost など）は弾く
+  if (!url.hostname.includes(".")) return null;
+  return url.toString();
 }
 
 /** 画面に出すときの短い表記（ホスト名だけ） */
 export function shopUrlHost(url: string): string {
-	try {
-		return new URL(url).hostname.replace(/^www\./, "");
-	} catch {
-		return url;
-	}
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
 }

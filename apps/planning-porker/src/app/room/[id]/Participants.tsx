@@ -11,13 +11,13 @@ type Props = {
 export function Participants({ participants, votes, revealed }: Props) {
   // サーバー状態から初期化
   const [votedMap, setVotedMap] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(participants.map((p) => [p, votes[p] !== undefined]))
+    Object.fromEntries(participants.map((p) => [p, votes[p] !== undefined])),
   );
 
   // サーバー再取得時に同期（revalidate / refresh 対応）
   useEffect(() => {
     setVotedMap(
-      Object.fromEntries(participants.map((p) => [p, votes[p] !== undefined]))
+      Object.fromEntries(participants.map((p) => [p, votes[p] !== undefined])),
     );
   }, [participants, votes]);
 

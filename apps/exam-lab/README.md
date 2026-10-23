@@ -48,15 +48,15 @@ Secret（`AUTH_SECRET`・`AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`・`ALLOWED_EMAI
 
 ## 🏗 技術スタック
 
-| 分類           | 技術                   |
-| -------------- | ---------------------- |
-| フロントエンド | Next.js (App Router)   |
-| 実行環境       | Cloudflare Workers     |
-| DB             | Cloudflare D1 (SQLite) |
-| ORM            | Drizzle ORM            |
-| 認証           | Auth.js（Google）      |
+| 分類           | 技術                      |
+| -------------- | ------------------------- |
+| フロントエンド | Next.js (App Router)      |
+| 実行環境       | Cloudflare Workers        |
+| DB             | Cloudflare D1 (SQLite)    |
+| ORM            | Drizzle ORM               |
+| 認証           | Auth.js（Google）         |
 | デプロイ       | Cloudflare Workers Builds |
-| スタイル       | Tailwind CSS           |
+| スタイル       | Tailwind CSS              |
 
 ## ローカル開発
 

@@ -17,23 +17,48 @@ describe("isSignInAllowed", () => {
   const allowed = parseAllowedEmails("me@example.com");
 
   it("許可リストのアドレスは通す（大文字小文字は無視）", () => {
-    expect(isSignInAllowed({ email: "Me@Example.com", emailVerified: true }, allowed)).toBe(true);
+    expect(
+      isSignInAllowed(
+        { email: "Me@Example.com", emailVerified: true },
+        allowed,
+      ),
+    ).toBe(true);
   });
   it("email_verified が不明でも通す", () => {
     expect(isSignInAllowed({ email: "me@example.com" }, allowed)).toBe(true);
-    expect(isSignInAllowed({ email: "me@example.com", emailVerified: null }, allowed)).toBe(true);
+    expect(
+      isSignInAllowed(
+        { email: "me@example.com", emailVerified: null },
+        allowed,
+      ),
+    ).toBe(true);
   });
   it("リスト外は拒否", () => {
-    expect(isSignInAllowed({ email: "other@example.com", emailVerified: true }, allowed)).toBe(false);
+    expect(
+      isSignInAllowed(
+        { email: "other@example.com", emailVerified: true },
+        allowed,
+      ),
+    ).toBe(false);
   });
   it("メール未確認は拒否", () => {
-    expect(isSignInAllowed({ email: "me@example.com", emailVerified: false }, allowed)).toBe(false);
+    expect(
+      isSignInAllowed(
+        { email: "me@example.com", emailVerified: false },
+        allowed,
+      ),
+    ).toBe(false);
   });
   it("メールが無ければ拒否", () => {
     expect(isSignInAllowed({ email: null }, allowed)).toBe(false);
     expect(isSignInAllowed({ email: "  " }, allowed)).toBe(false);
   });
   it("許可リストが空なら誰も入れない", () => {
-    expect(isSignInAllowed({ email: "me@example.com", emailVerified: true }, new Set())).toBe(false);
+    expect(
+      isSignInAllowed(
+        { email: "me@example.com", emailVerified: true },
+        new Set(),
+      ),
+    ).toBe(false);
   });
 });

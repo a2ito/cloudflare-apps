@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  calculateSettlement,
-  splitByWeight,
-  splitEqually,
-} from "./settlement";
+import { calculateSettlement, splitByWeight, splitEqually } from "./settlement";
 
 describe("splitByWeight", () => {
   it("重みの比で分ける", () => {
@@ -30,7 +26,9 @@ describe("splitByWeight", () => {
 
   it("重みが全員同じなら均等割りと同じ結果になる", () => {
     for (const amount of [1000, 1001, 1002, 7, 1]) {
-      expect(splitByWeight(amount, [10, 10, 10])).toEqual(splitEqually(amount, 3));
+      expect(splitByWeight(amount, [10, 10, 10])).toEqual(
+        splitEqually(amount, 3),
+      );
     }
   });
 

@@ -5,8 +5,18 @@ const at = (iso: string) => new Date(iso);
 
 describe("summarizeGroups", () => {
   const groups = [
-    { id: "a", name: "旅行", currency: "JPY", createdAt: at("2026-10-01T00:00:00Z") },
-    { id: "b", name: "飲み会", currency: "JPY", createdAt: at("2026-10-05T00:00:00Z") },
+    {
+      id: "a",
+      name: "旅行",
+      currency: "JPY",
+      createdAt: at("2026-10-01T00:00:00Z"),
+    },
+    {
+      id: "b",
+      name: "飲み会",
+      currency: "JPY",
+      createdAt: at("2026-10-05T00:00:00Z"),
+    },
   ];
 
   it("グループごとにメンバー数・立替件数・合計を出し、新しい順に並べる", () => {
@@ -14,8 +24,18 @@ describe("summarizeGroups", () => {
       groups,
       [{ groupId: "a" }, { groupId: "a" }, { groupId: "b" }],
       [
-        { groupId: "a", amount: 1000, currency: "JPY", createdAt: at("2026-10-02T00:00:00Z") },
-        { groupId: "a", amount: 500, currency: "JPY", createdAt: at("2026-10-03T00:00:00Z") },
+        {
+          groupId: "a",
+          amount: 1000,
+          currency: "JPY",
+          createdAt: at("2026-10-02T00:00:00Z"),
+        },
+        {
+          groupId: "a",
+          amount: 500,
+          currency: "JPY",
+          createdAt: at("2026-10-03T00:00:00Z"),
+        },
       ],
       [],
     );
@@ -41,8 +61,18 @@ describe("summarizeGroups", () => {
       [],
       [
         // 10.00 USD × 150 = 1500 円
-        { groupId: "a", amount: 1000, currency: "USD", createdAt: at("2026-10-02T00:00:00Z") },
-        { groupId: "a", amount: 500, currency: "EUR", createdAt: at("2026-10-02T00:00:00Z") },
+        {
+          groupId: "a",
+          amount: 1000,
+          currency: "USD",
+          createdAt: at("2026-10-02T00:00:00Z"),
+        },
+        {
+          groupId: "a",
+          amount: 500,
+          currency: "EUR",
+          createdAt: at("2026-10-02T00:00:00Z"),
+        },
       ],
       [
         { groupId: "a", currency: "USD", rate: "150" },

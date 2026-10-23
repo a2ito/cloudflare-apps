@@ -16,13 +16,23 @@
     },
     {
       "description": "Next.js と、それを Workers で動かす OpenNext・wrangler は 1 本の PR にまとめる。next 16.4.0 に OpenNext が追いつかず、全アプリが起動時に落ちた（2026-10-12）。組み合わせの相性を 1 本の PR の CI（起動確認）で確かめる",
-      "matchPackageNames": ["next", "eslint-config-next", "@opennextjs/cloudflare", "wrangler"],
+      "matchPackageNames": [
+        "next",
+        "eslint-config-next",
+        "@opennextjs/cloudflare",
+        "wrangler"
+      ],
       "groupName": "Next.js と OpenNext",
       "groupSlug": "next-opennext"
     },
     {
       "description": "上のグループの minor は自動マージしない（共通設定の minor 自動マージを打ち消す）。OpenNext の issue で対応状況を見てから手でマージする。patch は脆弱性修正が多いので、他と同じく CI 通過後に自動マージする",
-      "matchPackageNames": ["next", "eslint-config-next", "@opennextjs/cloudflare", "wrangler"],
+      "matchPackageNames": [
+        "next",
+        "eslint-config-next",
+        "@opennextjs/cloudflare",
+        "wrangler"
+      ],
       "matchUpdateTypes": ["minor"],
       "automerge": false
     },

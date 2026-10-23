@@ -20,25 +20,26 @@ export const MAP_URL_EXAMPLE = "https://maps.app.goo.gl/...";
  * 空文字も null（「未入力」は呼び出し側で分ける）。
  */
 export function normalizeMapUrl(input: string): string | null {
-	const trimmed = input.trim();
-	if (trimmed === "") return null;
+  const trimmed = input.trim();
+  if (trimmed === "") return null;
 
-	let url: URL;
-	try {
-		url = new URL(trimmed);
-	} catch {
-		return null;
-	}
-	if (url.protocol !== "https:") return null;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
 
-	const host = url.hostname.toLowerCase();
-	if (SHORT_LINK_HOSTS.has(host)) {
-		// goo.gl は地図以外の短縮にも使われていたので、/maps 配下だけ受ける
-		if (host === "goo.gl" && !url.pathname.startsWith("/maps/")) return null;
-		return url.toString();
-	}
-	if (!GOOGLE_HOST.test(host)) return null;
-	// google.com/search のような地図以外のページは受けない
-	if (!url.pathname.startsWith("/maps") && !host.startsWith("maps.")) return null;
-	return url.toString();
+  const host = url.hostname.toLowerCase();
+  if (SHORT_LINK_HOSTS.has(host)) {
+    // goo.gl は地図以外の短縮にも使われていたので、/maps 配下だけ受ける
+    if (host === "goo.gl" && !url.pathname.startsWith("/maps/")) return null;
+    return url.toString();
+  }
+  if (!GOOGLE_HOST.test(host)) return null;
+  // google.com/search のような地図以外のページは受けない
+  if (!url.pathname.startsWith("/maps") && !host.startsWith("maps."))
+    return null;
+  return url.toString();
 }

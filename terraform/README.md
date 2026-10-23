@@ -3,16 +3,16 @@
 各アプリの Worker の定義を Terraform で管理する。コードのデプロイは今までどおり
 Workers Builds（main への push → `npm run cf:deploy`）が行い、Terraform は触らない。
 
-| 対象 | 管理する場所 |
-| --- | --- |
-| Worker の Secret（`AUTH_SECRET` など） | **Terraform**（`cloudflare_workers_script`） |
-| Workers Builds の設定（Build command・Deploy command・Root directory・watch paths・Build variables） | **Terraform**（`cloudflare_workers_build_trigger`） |
-| workers.dev のサブドメインとプレビュー URL（無効にする） | **Terraform**（`cloudflare_workers_script_subdomain`、公式 provider） |
-| D1 データベース・R2 バケット・画像のカスタムドメイン（`config_apps.tf` の `d1_databases` / `r2_buckets` に載せたアプリ） | **Terraform**（公式 provider） |
-| コード・D1 の中身（マイグレーション）・assets・平文の変数（`vars`）・互換性設定・Worker のカスタムドメイン | `apps/<name>/wrangler.jsonc.example`（デプロイのたびに wrangler が反映する） |
-| 上に載せていないアプリの D1 / R2 | 手作業か cloud-management の `cloudflare/` |
-| 画像をキャッシュに乗せるルール（ゾーンに 1 つ） | cloud-management の `cloudflare/`（`r2_buckets` に足したらホスト名を足す） |
-| Google OAuth の設定、GitHub との接続、ビルドトークン | ダッシュボード（手作業） |
+| 対象                                                                                                                     | 管理する場所                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Worker の Secret（`AUTH_SECRET` など）                                                                                   | **Terraform**（`cloudflare_workers_script`）                                 |
+| Workers Builds の設定（Build command・Deploy command・Root directory・watch paths・Build variables）                     | **Terraform**（`cloudflare_workers_build_trigger`）                          |
+| workers.dev のサブドメインとプレビュー URL（無効にする）                                                                 | **Terraform**（`cloudflare_workers_script_subdomain`、公式 provider）        |
+| D1 データベース・R2 バケット・画像のカスタムドメイン（`config_apps.tf` の `d1_databases` / `r2_buckets` に載せたアプリ） | **Terraform**（公式 provider）                                               |
+| コード・D1 の中身（マイグレーション）・assets・平文の変数（`vars`）・互換性設定・Worker のカスタムドメイン               | `apps/<name>/wrangler.jsonc.example`（デプロイのたびに wrangler が反映する） |
+| 上に載せていないアプリの D1 / R2                                                                                         | 手作業か cloud-management の `cloudflare/`                                   |
+| 画像をキャッシュに乗せるルール（ゾーンに 1 つ）                                                                          | cloud-management の `cloudflare/`（`r2_buckets` に足したらホスト名を足す）   |
+| Google OAuth の設定、GitHub との接続、ビルドトークン                                                                     | ダッシュボード（手作業）                                                     |
 
 provider は公式の `cloudflare/cloudflare` ではなく
 [`a2ito/cloudflare`](https://registry.terraform.io/providers/a2ito/cloudflare)。
@@ -22,12 +22,12 @@ Workers Builds のトリガーと、コードに触らずに Secret だけを持
 
 ## 前提
 
-| もの | 置き場所 | 作るところ |
-| --- | --- | --- |
-| state のバケット `a2ito-cloudflare-apps-tfstate` | GCS | cloud-management の `gcp/bootstrap` |
-| `CLOUDFLARE_APPS_TERRAFORM_TOKEN`（アカウントのトークン、Workers Scripts Write・D1 Write・Workers R2 Storage Write、ゾーンの Zone Read・DNS Write） | `~/.secrets` | cloud-management の `cloudflare/bootstrap` |
-| `CLOUDFLARE_APPS_TERRAFORM_BUILDS_TOKEN`（**ユーザーの**トークン、Workers CI Write） | `~/.secrets` | 〃 |
-| `terraform.tfvars`（Secret と Build variables の値） | 手元のみ | `terraform.tfvars.example` をコピーして埋める |
+| もの                                                                                                                                                | 置き場所     | 作るところ                                    |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | --------------------------------------------- |
+| state のバケット `a2ito-cloudflare-apps-tfstate`                                                                                                    | GCS          | cloud-management の `gcp/bootstrap`           |
+| `CLOUDFLARE_APPS_TERRAFORM_TOKEN`（アカウントのトークン、Workers Scripts Write・D1 Write・Workers R2 Storage Write、ゾーンの Zone Read・DNS Write） | `~/.secrets` | cloud-management の `cloudflare/bootstrap`    |
+| `CLOUDFLARE_APPS_TERRAFORM_BUILDS_TOKEN`（**ユーザーの**トークン、Workers CI Write）                                                                | `~/.secrets` | 〃                                            |
+| `terraform.tfvars`（Secret と Build variables の値）                                                                                                | 手元のみ     | `terraform.tfvars.example` をコピーして埋める |
 
 トークンが 2 本あるのは、Workers Builds の API がアカウントのトークンを受け付けないため
 （`12006: Invalid token` が返る）。

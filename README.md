@@ -104,6 +104,17 @@ Worker の改名自体は非破壊で、Worker の実体 (tag) もカスタム�
 `account-book` は移行の際に `account-book-on-cf` から改名した。`-on-cf` は
 account-book という名前を Vercel 時代のリポジトリに取られていた名残りだった。
 
+## lint と書式
+
+[lint.yml](.github/workflows/lint.yml) が PR と main への push で、[a2-ito/shared-workflows](https://github.com/a2-ito/shared-workflows) の
+再利用ワークフローを使って formatter と linter を回す。1 つでも引っかかれば失敗する。
+
+- **Prettier**（既定の設定）: TS/JS・CSS・JSON・YAML・Markdown。生成されるファイルはルートの `.prettierignore` で外す
+- **ESLint**: 各アプリの `npm run lint`（CI の quality ジョブ）
+- **terraform fmt / tflint**、**shfmt / shellcheck**（スペース 2 つ）、**actionlint**
+
+手元で整えるときは、ルートで `npx prettier@3.9.10 --write .` を流す。
+
 ## 脆弱性の検査
 
 [security.yml](.github/workflows/security.yml) が PR・main への push・毎日 6 時（JST）に、

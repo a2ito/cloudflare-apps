@@ -1,5 +1,7 @@
 /** ALLOWED_EMAILS（カンマ区切り）を正規化した Set にする */
-export function parseAllowedEmails(raw: string | undefined | null): ReadonlySet<string> {
+export function parseAllowedEmails(
+  raw: string | undefined | null,
+): ReadonlySet<string> {
   return new Set(
     (raw ?? "")
       .split(",")
@@ -15,7 +17,10 @@ export type SignInCandidate = {
 };
 
 /** 許可リストに載っていて、メール確認済み（または不明）のアカウントだけ通す */
-export function isSignInAllowed(candidate: SignInCandidate, allowed: ReadonlySet<string>): boolean {
+export function isSignInAllowed(
+  candidate: SignInCandidate,
+  allowed: ReadonlySet<string>,
+): boolean {
   const email = (candidate.email ?? "").trim().toLowerCase();
   if (email === "") return false;
   if (candidate.emailVerified === false) return false;

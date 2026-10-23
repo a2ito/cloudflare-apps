@@ -12,7 +12,7 @@ import { deleteImage } from "./images";
  * 参照が消えたことを判定するため、DB を更新したあとに呼ぶこと。
  */
 export async function releaseImage(db: Db, key: string | null): Promise<void> {
-	if (!key) return;
-	if (await isImageKeyReferenced(db, key)) return;
-	await deleteImage(key);
+  if (!key) return;
+  if (await isImageKeyReferenced(db, key)) return;
+  await deleteImage(key);
 }

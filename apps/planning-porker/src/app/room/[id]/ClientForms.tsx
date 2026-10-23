@@ -78,7 +78,7 @@ export function ClientForms({
 
     localStorage.setItem(
       `${STORAGE_PREFIX}${roomId}`,
-      JSON.stringify({ name: n })
+      JSON.stringify({ name: n }),
     );
 
     setName(n);

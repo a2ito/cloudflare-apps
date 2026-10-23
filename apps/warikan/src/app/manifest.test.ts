@@ -30,7 +30,9 @@ describe("manifest", () => {
   });
 
   it("iOS 用のアイコンがある", () => {
-    expect(existsSync(join(process.cwd(), "src/app/apple-icon.png"))).toBe(true);
+    expect(existsSync(join(process.cwd(), "src/app/apple-icon.png"))).toBe(
+      true,
+    );
   });
 
   it("名前と色が設定されている", () => {

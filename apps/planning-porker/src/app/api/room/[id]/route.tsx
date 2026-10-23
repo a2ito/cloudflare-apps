@@ -7,7 +7,7 @@ import { getDB } from "@/db";
 
 export async function GET(
   _req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const db = getDB();
@@ -48,7 +48,7 @@ export async function GET(
         }
         return acc;
       },
-      {} as Record<string, number>
+      {} as Record<string, number>,
     );
 
     const response: RoomData = {
@@ -64,7 +64,7 @@ export async function GET(
     console.error("[GET /api/room/:id]", err);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

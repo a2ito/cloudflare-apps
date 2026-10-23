@@ -69,10 +69,12 @@ export function summarizeGroups(
           total += e.amount;
         } else {
           const rate = rateByKey.get(`${g.id}:${e.currency}`);
-          if (rate) total += convertToBase(e.amount, e.currency, g.currency, rate);
+          if (rate)
+            total += convertToBase(e.amount, e.currency, g.currency, rate);
           else unconvertedCount += 1;
         }
-        if (!lastExpenseAt || e.createdAt > lastExpenseAt) lastExpenseAt = e.createdAt;
+        if (!lastExpenseAt || e.createdAt > lastExpenseAt)
+          lastExpenseAt = e.createdAt;
       }
       return {
         id: g.id,

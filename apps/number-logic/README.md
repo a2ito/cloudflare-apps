@@ -1,4 +1,3 @@
-
 # Number Logic
 
 数独をベースにしたロジックパズルゲームです。Next.js App Router と Cloudflare Workers 上で動作し、ブラウザだけでプレイできます。
@@ -11,37 +10,37 @@
 
 **Number Logic** は、数独ルールをベースにしたブラウザ向けロジックパズルゲームです。
 
-* 問題は自動生成
-* 難易度選択（Easy / Normal / Hard）
-* 常に **唯一解** を保証
-* タイムアタック形式
-* 難易度別ハイスコアを localStorage に保存
-* ダークモード / ライトモード切り替え対応
+- 問題は自動生成
+- 難易度選択（Easy / Normal / Hard）
+- 常に **唯一解** を保証
+- タイムアタック形式
+- 難易度別ハイスコアを localStorage に保存
+- ダークモード / ライトモード切り替え対応
 
 ### 使用技術
 
-* Next.js (App Router)
-* TypeScript
-* Tailwind CSS
-* Cloudflare Workers
-* localStorage（ハイスコア保存）
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
+- Cloudflare Workers
+- localStorage（ハイスコア保存）
 
 ### 機能一覧
 
-* トップ画面
+- トップ画面
 
-  * 難易度プルダウン選択
-  * Start Game ボタン
-  * 難易度別ハイスコア表示
-  * ダークモード切り替え
+  - 難易度プルダウン選択
+  - Start Game ボタン
+  - 難易度別ハイスコア表示
+  - ダークモード切り替え
 
-* ゲーム画面
+- ゲーム画面
 
-  * 数独問題の自動生成
-  * 唯一解保証（バックトラッキングによる解数検証）
-  * タイマー計測
-  * ゲームクリア時メッセージ表示
-  * ハイスコア更新判定
+  - 数独問題の自動生成
+  - 唯一解保証（バックトラッキングによる解数検証）
+  - タイマー計測
+  - ゲームクリア時メッセージ表示
+  - ハイスコア更新判定
 
 ### ディレクトリ構成（抜粋）
 
@@ -65,11 +64,11 @@ Cloudflare Workers へデプロイする場合は、`@cloudflare/next-on-pages` 
 
 ### 今後の拡張アイデア
 
-* ヒント機能
-* URL seed による問題共有
-* デイリーチャレンジ
-* 難易度別ランキング（上位 N 件）
-* 効果音・演出強化
+- ヒント機能
+- URL seed による問題共有
+- デイリーチャレンジ
+- 難易度別ランキング（上位 N 件）
+- 効果音・演出強化
 
 ---
 
@@ -82,30 +81,30 @@ It runs on **Next.js App Router** and **Cloudflare Workers**, and requires no ba
 
 ### Features
 
-* Automatically generated Sudoku puzzles
-* Difficulty selection (Easy / Normal / Hard)
-* Guaranteed **unique solution** for every puzzle
-* Time-based gameplay
-* High scores saved per difficulty using localStorage
-* Dark mode / Light mode toggle
+- Automatically generated Sudoku puzzles
+- Difficulty selection (Easy / Normal / Hard)
+- Guaranteed **unique solution** for every puzzle
+- Time-based gameplay
+- High scores saved per difficulty using localStorage
+- Dark mode / Light mode toggle
 
 ### Tech Stack
 
-* Next.js (App Router)
-* TypeScript
-* Tailwind CSS
-* Cloudflare Workers
-* localStorage (for high score persistence)
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
+- Cloudflare Workers
+- localStorage (for high score persistence)
 
 ### Gameplay
 
-* Select difficulty on the home screen
-* Start a new game
-* Solve the puzzle as fast as possible
-* On clear:
+- Select difficulty on the home screen
+- Start a new game
+- Solve the puzzle as fast as possible
+- On clear:
 
-  * Your time is recorded
-  * High score is updated if it’s a new record
+  - Your time is recorded
+  - High score is updated if it’s a new record
 
 ### Project Structure (excerpt)
 
@@ -138,13 +137,12 @@ This guarantees every puzzle has a unique solution.
 
 ### Future Improvements
 
-* Hint system based on logical solving steps
-* Shareable puzzles using URL seeds
-* Daily challenge mode
-* Leaderboards per difficulty
-* Sound effects and animations
+- Hint system based on logical solving steps
+- Shareable puzzles using URL seeds
+- Daily challenge mode
+- Leaderboards per difficulty
+- Sound effects and animations
 
 ---
 
 Enjoy solving puzzles with **Number Logic** 🧩
-

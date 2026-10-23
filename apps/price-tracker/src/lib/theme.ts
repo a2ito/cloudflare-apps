@@ -6,30 +6,35 @@ export type ResolvedTheme = "light" | "dark";
 export const THEME_STORAGE_KEY = "price-tracker-theme";
 
 export function isTheme(value: unknown): value is Theme {
-	return typeof value === "string" && (THEMES as readonly string[]).includes(value);
+  return (
+    typeof value === "string" && (THEMES as readonly string[]).includes(value)
+  );
 }
 
 /** 保存値を読み取る。壊れていれば system に倒す */
 export function parseTheme(raw: unknown): Theme {
-	return isTheme(raw) ? raw : "system";
+  return isTheme(raw) ? raw : "system";
 }
 
 /** 設定と OS の設定から、実際に適用する配色を決める */
-export function resolveTheme(theme: Theme, systemPrefersDark: boolean): ResolvedTheme {
-	if (theme === "system") return systemPrefersDark ? "dark" : "light";
-	return theme;
+export function resolveTheme(
+  theme: Theme,
+  systemPrefersDark: boolean,
+): ResolvedTheme {
+  if (theme === "system") return systemPrefersDark ? "dark" : "light";
+  return theme;
 }
 
 /** トグルボタンを押したときの次の設定（light → dark → system → light） */
 export function nextTheme(current: Theme): Theme {
-	const i = THEMES.indexOf(current);
-	return THEMES[(i + 1) % THEMES.length];
+  const i = THEMES.indexOf(current);
+  return THEMES[(i + 1) % THEMES.length];
 }
 
 export const THEME_LABELS: Record<Theme, string> = {
-	light: "ライト",
-	dark: "ダーク",
-	system: "システム",
+  light: "ライト",
+  dark: "ダーク",
+  system: "システム",
 };
 
 /**

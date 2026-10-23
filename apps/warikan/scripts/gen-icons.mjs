@@ -47,7 +47,8 @@ function insideRoundRect(x, y, x0, y0, x1, y1, r) {
 function fillRoundRect(canvas, x0, y0, x1, y1, r, color) {
   for (let y = Math.floor(y0); y <= Math.ceil(y1); y++) {
     for (let x = Math.floor(x0); x <= Math.ceil(x1); x++) {
-      if (insideRoundRect(x + 0.5, y + 0.5, x0, y0, x1, y1, r)) setPixel(canvas, x, y, color);
+      if (insideRoundRect(x + 0.5, y + 0.5, x0, y0, x1, y1, r))
+        setPixel(canvas, x, y, color);
     }
   }
 }
@@ -56,7 +57,10 @@ function fillRoundRect(canvas, x0, y0, x1, y1, r, color) {
 function distanceToSegment(px, py, [ax, ay], [bx, by]) {
   const dx = bx - ax;
   const dy = by - ay;
-  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
+  const t = Math.max(
+    0,
+    Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)),
+  );
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
@@ -65,11 +69,21 @@ function strokePolyline(canvas, points, width, color) {
   const half = width / 2;
   const xs = points.map((p) => p[0]);
   const ys = points.map((p) => p[1]);
-  for (let y = Math.floor(Math.min(...ys) - half); y <= Math.ceil(Math.max(...ys) + half); y++) {
-    for (let x = Math.floor(Math.min(...xs) - half); x <= Math.ceil(Math.max(...xs) + half); x++) {
+  for (
+    let y = Math.floor(Math.min(...ys) - half);
+    y <= Math.ceil(Math.max(...ys) + half);
+    y++
+  ) {
+    for (
+      let x = Math.floor(Math.min(...xs) - half);
+      x <= Math.ceil(Math.max(...xs) + half);
+      x++
+    ) {
       const near = points
         .slice(1)
-        .some((b, i) => distanceToSegment(x + 0.5, y + 0.5, points[i], b) <= half);
+        .some(
+          (b, i) => distanceToSegment(x + 0.5, y + 0.5, points[i], b) <= half,
+        );
       if (near) setPixel(canvas, x, y, color);
     }
   }
@@ -88,7 +102,12 @@ function downsample(canvas, factor) {
           for (let c = 0; c < 4; c++) sum[c] += canvas.data[i + c];
         }
       }
-      setPixel(out, x, y, sum.map((v) => Math.round(v / (factor * factor))));
+      setPixel(
+        out,
+        x,
+        y,
+        sum.map((v) => Math.round(v / (factor * factor))),
+      );
     }
   }
   return out;
@@ -176,7 +195,10 @@ function encodePng(canvas) {
 }
 
 function write(file, size, opts = {}) {
-  const canvas = downsample(drawIcon(size * SS, { maskable: false, colors: MAIN, ...opts }), SS);
+  const canvas = downsample(
+    drawIcon(size * SS, { maskable: false, colors: MAIN, ...opts }),
+    SS,
+  );
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, encodePng(canvas));
   console.log(`${file} (${size}x${size})`);
@@ -191,6 +213,12 @@ write(join(APP_DIR, "apple-icon.png"), 180, { maskable: true });
 
 write(join(ICONS_DIR, "admin-192.png"), 192, { colors: ADMIN });
 write(join(ICONS_DIR, "admin-512.png"), 512, { colors: ADMIN });
-write(join(ICONS_DIR, "admin-maskable-512.png"), 512, { maskable: true, colors: ADMIN });
+write(join(ICONS_DIR, "admin-maskable-512.png"), 512, {
+  maskable: true,
+  colors: ADMIN,
+});
 // app/admin/apple-icon.png は /admin の下のページだけで、全体の apple-icon.png に代わって使われる
-write(join(APP_DIR, "admin", "apple-icon.png"), 180, { maskable: true, colors: ADMIN });
+write(join(APP_DIR, "admin", "apple-icon.png"), 180, {
+  maskable: true,
+  colors: ADMIN,
+});

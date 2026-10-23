@@ -6,4 +6,9 @@
 export const revalidated: string[] = [];
 
 /** requireUser() の戻り値。id はテスト側で最初に作るユーザに合わせる */
-export const fakeUser = { id: 1, email: "tester@example.com", name: "Tester", image: null };
+export const fakeUser = {
+  id: 1,
+  email: "tester@example.com",
+  name: "Tester",
+  image: null,
+};

@@ -8,8 +8,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: system-ui, -apple-system, "Segoe UI", "Helvetica Neue",
-    "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
+  --font-sans:
+    system-ui, -apple-system, "Segoe UI", "Helvetica Neue", "Hiragino Sans",
+    "Noto Sans JP", Meiryo, sans-serif;
 }
 
 html {

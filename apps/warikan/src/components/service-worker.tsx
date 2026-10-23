@@ -16,7 +16,8 @@ export function ServiceWorkerRegistrar() {
       });
       if ("caches" in window) {
         void caches.keys().then((keys) => {
-          for (const key of keys) if (key.startsWith("warikan-")) void caches.delete(key);
+          for (const key of keys)
+            if (key.startsWith("warikan-")) void caches.delete(key);
         });
       }
       return;

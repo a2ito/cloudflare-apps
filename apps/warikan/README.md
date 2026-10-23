@@ -85,15 +85,15 @@ Workers Builds の設定は Cloudflare ダッシュボードの **Settings > Bui
 モノレポなので **root directory にこのアプリのディレクトリを指す**。Worker 名は
 Wrangler 設定の `name`（`warikan`）と一致していなければビルドが落ちる。
 
-| 項目 | 値 |
-| --- | --- |
-| Root directory | `apps/warikan` |
-| Build command | `npm run cf:build` |
-| Deploy command | `npm run cf:deploy` |
-| Git branch | `main` |
-| Build watch paths | `apps/warikan/*`、`package-lock.json` |
-| Build variables | `D1_DATABASE_ID`, `APP_HOSTNAME` |
-| Secrets | `ALLOWED_EMAILS`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`（管理画面のログイン用。`terraform/` で登録する） |
+| 項目              | 値                                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Root directory    | `apps/warikan`                                                                                                           |
+| Build command     | `npm run cf:build`                                                                                                       |
+| Deploy command    | `npm run cf:deploy`                                                                                                      |
+| Git branch        | `main`                                                                                                                   |
+| Build watch paths | `apps/warikan/*`、`package-lock.json`                                                                                    |
+| Build variables   | `D1_DATABASE_ID`, `APP_HOSTNAME`                                                                                         |
+| Secrets           | `ALLOWED_EMAILS`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`（管理画面のログイン用。`terraform/` で登録する） |
 
 `wrangler.jsonc` は実 ID と公開ホスト名を含むため追跡していない。`npm run cf:config` が
 雛形 `wrangler.jsonc.example` のプレースホルダを Build variables の値で埋めて生成する。
@@ -129,22 +129,22 @@ npx wrangler d1 create warikan-db
 
 ## 構成
 
-| パス | 役割 |
-| --- | --- |
-| `src/db/schema.ts` | Drizzle スキーマ（groups / members / expenses / expense_participants / exchange_rates） |
-| `src/lib/db.ts` | D1 バインディングから Drizzle クライアント取得 |
-| `src/lib/currency.ts` | 通貨定義・最小単位(minor units)変換・整形 |
-| `src/lib/exchange.ts` | 為替レートの検証と精算通貨への換算（BigInt で計算） |
-| `src/lib/rate-api.ts` | 為替レートの自動取得（[fawazahmed0/exchange-api](https://github.com/fawazahmed0/exchange-api)、キー不要） |
-| `src/lib/group-currencies.ts` | グループへの通貨登録とレートの取得・更新 |
-| `src/lib/recent-groups.ts` | この端末で開いたグループの一覧（localStorage） |
-| `src/lib/weight.ts` | 傾斜の倍率の検証と表示（保存は 10 倍した整数） |
-| `src/lib/settlement.ts` | 重み付きの割り勘 + 最小送金の精算アルゴリズム（純粋関数） |
-| `src/lib/group-data.ts` | グループ 1 件の読み込みと精算の計算（公開ページと管理画面で共通） |
-| `src/lib/auth.ts` / `allowlist.ts` | 管理画面の Google ログイン（Auth.js）と許可リスト |
-| `src/lib/admin-summary.ts` | 管理画面のグループ一覧の集計（純粋関数） |
-| `src/app/page.tsx` | トップ（グループ作成） |
-| `src/app/g/[id]/` | グループ詳細ページ・Server Actions・クライアント UI |
+| パス                               | 役割                                                                                                      |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `src/db/schema.ts`                 | Drizzle スキーマ（groups / members / expenses / expense_participants / exchange_rates）                   |
+| `src/lib/db.ts`                    | D1 バインディングから Drizzle クライアント取得                                                            |
+| `src/lib/currency.ts`              | 通貨定義・最小単位(minor units)変換・整形                                                                 |
+| `src/lib/exchange.ts`              | 為替レートの検証と精算通貨への換算（BigInt で計算）                                                       |
+| `src/lib/rate-api.ts`              | 為替レートの自動取得（[fawazahmed0/exchange-api](https://github.com/fawazahmed0/exchange-api)、キー不要） |
+| `src/lib/group-currencies.ts`      | グループへの通貨登録とレートの取得・更新                                                                  |
+| `src/lib/recent-groups.ts`         | この端末で開いたグループの一覧（localStorage）                                                            |
+| `src/lib/weight.ts`                | 傾斜の倍率の検証と表示（保存は 10 倍した整数）                                                            |
+| `src/lib/settlement.ts`            | 重み付きの割り勘 + 最小送金の精算アルゴリズム（純粋関数）                                                 |
+| `src/lib/group-data.ts`            | グループ 1 件の読み込みと精算の計算（公開ページと管理画面で共通）                                         |
+| `src/lib/auth.ts` / `allowlist.ts` | 管理画面の Google ログイン（Auth.js）と許可リスト                                                         |
+| `src/lib/admin-summary.ts`         | 管理画面のグループ一覧の集計（純粋関数）                                                                  |
+| `src/app/page.tsx`                 | トップ（グループ作成）                                                                                    |
+| `src/app/g/[id]/`                  | グループ詳細ページ・Server Actions・クライアント UI                                                       |
 
 金額は通貨の最小単位の整数で保持し、精算計算を整数で行うことで丸め誤差を回避しています。
 外貨の立替は元の通貨のまま保存し、表示のたびにグループのレートで精算通貨へ換算します

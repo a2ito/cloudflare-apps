@@ -33,11 +33,11 @@ Next.js を Cloudflare Workers 上で動かすことを前提にした
 
 ```ts
 export type Question = {
-  id: string
-  sentence: string
-  choices: string[]
-  answer: string
-}
+  id: string;
+  sentence: string;
+  choices: string[];
+  answer: string;
+};
 
 export const QUESTIONS: Question[] = [
   {
@@ -46,21 +46,27 @@ export const QUESTIONS: Question[] = [
     choices: ["quit", "hire", "train", "borrow"],
     answer: "quit",
   },
-]
+];
 ```
 
 🚀 Getting Started
+
 1. Install dependencies
+
 ```bash
 Copy code
 npm install
 ```
+
 2. Run locally
+
 ```bash
 Copy code
 npm run dev
 ```
+
 3. Build for Cloudflare Pages
+
 ```bash
 Copy code
 npm run build

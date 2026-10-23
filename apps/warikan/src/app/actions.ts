@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
 import { isCurrencyCode } from "@/lib/currency";
-import { MAX_GROUP_CURRENCIES, registerCurrencies } from "@/lib/group-currencies";
+import {
+  MAX_GROUP_CURRENCIES,
+  registerCurrencies,
+} from "@/lib/group-currencies";
 
 const createGroupSchema = z.object({
   name: z.string().trim().min(1, "グループ名を入力してください").max(100),

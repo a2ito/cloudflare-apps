@@ -13,7 +13,11 @@ export function DeleteGroupButton({
   const [isPending, startTransition] = useTransition();
 
   function handleDelete() {
-    if (!window.confirm(`「${groupName}」を削除します。元に戻せません。よろしいですか？`)) {
+    if (
+      !window.confirm(
+        `「${groupName}」を削除します。元に戻せません。よろしいですか？`,
+      )
+    ) {
       return;
     }
     setError(null);

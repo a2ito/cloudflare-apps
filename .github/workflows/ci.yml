@@ -61,7 +61,7 @@ jobs:
           else
             changed=$(git diff --name-only "$BASE_SHA" HEAD)
             echo "変更されたファイル:"
-            echo "$changed" | sed 's/^/  /'
+            while IFS= read -r f; do echo "  $f"; done <<< "$changed"
 
             # apps/ の外 (ルートの package.json、workflow など) が変わったら
             # 影響範囲が読めないので全アプリを回す。terraform/ はアプリのビルドに関わらないので除く
@@ -79,8 +79,8 @@ jobs:
           existing=$(for a in $apps; do [ -d "apps/$a" ] && echo "$a"; done)
 
           echo "対象アプリ: ${existing:-なし}"
-          # 空のまま printf に渡すと [""] になる（terraform/ だけの変更で起きる）ため、空行を落とす。
-          json=$(printf '%s\n' $existing | jq -R . | jq -sc 'map(select(. != ""))')
+          # existing は 1 行に 1 アプリ。空のまま渡すと [""] になる（terraform/ だけの変更で起きる）ため、空行を落とす。
+          json=$(printf '%s\n' "$existing" | jq -R . | jq -sc 'map(select(. != ""))')
           echo "apps=$json" >> "$GITHUB_OUTPUT"
 
   quality:

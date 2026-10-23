@@ -7,7 +7,11 @@ export const metadata: Metadata = {
   title: "管理 | warikan",
   robots: { index: false, follow: false },
   manifest: "/admin/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "warikan 管理", statusBarStyle: "default" },
+  appleWebApp: {
+    capable: true,
+    title: "warikan 管理",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {

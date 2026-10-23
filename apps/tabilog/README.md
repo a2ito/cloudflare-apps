@@ -25,15 +25,15 @@ HTML と API はキャッシュしない。
 
 ## 技術構成
 
-| 領域 | 採用技術 |
-| --- | --- |
-| フレームワーク | Next.js 16 (App Router / Server Actions) |
-| 実行環境 | Cloudflare Workers (OpenNext) |
-| DB | Cloudflare D1 + Drizzle ORM |
-| 写真 | Cloudflare R2 |
-| 認証 | Auth.js (next-auth v5) + Google OAuth + 許可メールリスト |
-| UI | Tailwind CSS v4 |
-| テスト | Vitest + Miniflare（本物の D1 / R2 を起動して検証） |
+| 領域           | 採用技術                                                 |
+| -------------- | -------------------------------------------------------- |
+| フレームワーク | Next.js 16 (App Router / Server Actions)                 |
+| 実行環境       | Cloudflare Workers (OpenNext)                            |
+| DB             | Cloudflare D1 + Drizzle ORM                              |
+| 写真           | Cloudflare R2                                            |
+| 認証           | Auth.js (next-auth v5) + Google OAuth + 許可メールリスト |
+| UI             | Tailwind CSS v4                                          |
+| テスト         | Vitest + Miniflare（本物の D1 / R2 を起動して検証）      |
 
 ## 設計メモ
 
@@ -93,15 +93,15 @@ Google OAuth の承認済みリダイレクト URI には以下を登録しま�
 
 ## よく使うコマンド
 
-| コマンド | 用途 |
-| --- | --- |
-| `npm run dev` | 開発サーバ |
-| `npm test` | テスト（Miniflare で D1 / R2 を起動） |
-| `npm run lint` / `npm run typecheck` | 静的チェック |
-| `npm run db:generate` | スキーマ変更からマイグレーション SQL を生成 |
-| `npm run db:migrate:local` / `:remote` | マイグレーション適用 |
-| `npm run preview` | Workers ランタイムでローカル確認 |
-| `npm run cf:deploy` | Cloudflare へデプロイ |
+| コマンド                               | 用途                                        |
+| -------------------------------------- | ------------------------------------------- |
+| `npm run dev`                          | 開発サーバ                                  |
+| `npm test`                             | テスト（Miniflare で D1 / R2 を起動）       |
+| `npm run lint` / `npm run typecheck`   | 静的チェック                                |
+| `npm run db:generate`                  | スキーマ変更からマイグレーション SQL を生成 |
+| `npm run db:migrate:local` / `:remote` | マイグレーション適用                        |
+| `npm run preview`                      | Workers ランタイムでローカル確認            |
+| `npm run cf:deploy`                    | Cloudflare へデプロイ                       |
 
 ## CI / CD
 
@@ -121,11 +121,11 @@ main への push を Cloudflare の [Workers Builds](https://developers.cloudfla
 が検知し、ビルドしてデプロイする。GitHub 側にデプロイ用の認証情報は置かない。
 設定は Cloudflare ダッシュボードの **Settings > Build** で行う。
 
-| 項目 | 値 |
-| --- | --- |
-| Build command | `npm run cf:build` |
-| Deploy command | `npm run cf:deploy` |
-| Git branch | `main` |
+| 項目            | 値                                                              |
+| --------------- | --------------------------------------------------------------- |
+| Build command   | `npm run cf:build`                                              |
+| Deploy command  | `npm run cf:deploy`                                             |
+| Git branch      | `main`                                                          |
 | Build variables | `D1_DATABASE_ID`, `APP_HOSTNAME`, `NEXT_PUBLIC_PHOTOS_BASE_URL` |
 
 `wrangler.jsonc` は追跡していないため、`npm run cf:config` が雛形のプレースホルダを

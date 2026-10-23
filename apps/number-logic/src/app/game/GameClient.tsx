@@ -148,9 +148,7 @@ function createBoard(puzzle: (number | null)[][]): Board {
 export default function GamePage() {
   const searchParams = useSearchParams();
   const difficulty = (searchParams.get("difficulty") ?? "normal") as
-    | "easy"
-    | "normal"
-    | "hard";
+    "easy" | "normal" | "hard";
 
   const [solution, setSolution] = useState<number[][]>([]);
   const [board, setBoard] = useState<Board>([]);
@@ -251,29 +249,28 @@ export default function GamePage() {
               cell.value !== null && cell.value !== solution[r]?.[c];
 
             return (
-
-<button
-  key={`${r}-${c}`}
-  onClick={() => !cell.fixed && setSelected([r, c])}
-  className={`
+              <button
+                key={`${r}-${c}`}
+                onClick={() => !cell.fixed && setSelected([r, c])}
+                className={`
     w-10 h-10 flex items-center justify-center
     text-lg font-semibold
 
     bg-white dark:bg-slate-800
-    ${cell.fixed ? 'font-bold text-gray-800 dark:text-gray-200' : ''}
-    ${selectedCell ? 'ring-2 ring-blue-500' : ''}
-    ${wrong ? 'text-red-500' : ''}
+    ${cell.fixed ? "font-bold text-gray-800 dark:text-gray-200" : ""}
+    ${selectedCell ? "ring-2 ring-blue-500" : ""}
+    ${wrong ? "text-red-500" : ""}
 
     border border-gray-400 dark:border-gray-600
 
-    ${r % 3 === 0 ? 'border-t-2 border-t-black dark:border-t-gray-300' : ''}
-    ${c % 3 === 0 ? 'border-l-2 border-l-black dark:border-l-gray-300' : ''}
-    ${r === 8 ? 'border-b-2 border-b-black dark:border-b-gray-300' : ''}
-    ${c === 8 ? 'border-r-2 border-r-black dark:border-r-gray-300' : ''}
+    ${r % 3 === 0 ? "border-t-2 border-t-black dark:border-t-gray-300" : ""}
+    ${c % 3 === 0 ? "border-l-2 border-l-black dark:border-l-gray-300" : ""}
+    ${r === 8 ? "border-b-2 border-b-black dark:border-b-gray-300" : ""}
+    ${c === 8 ? "border-r-2 border-r-black dark:border-r-gray-300" : ""}
   `}
->
-  {cell.value ?? ''}
-</button>
+              >
+                {cell.value ?? ""}
+              </button>
             );
           }),
         )}

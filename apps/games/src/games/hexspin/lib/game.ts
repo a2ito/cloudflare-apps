@@ -248,7 +248,11 @@ export function newBoard(rng: Rng = Math.random): Board {
       Array.from({ length: ROWS }, () => randomColor(rng)),
     );
     // 最初から揃っている所は、揃わなくなるまで塗り直す
-    for (let m = findMatches(board); m.cleared.length > 0; m = findMatches(board)) {
+    for (
+      let m = findMatches(board);
+      m.cleared.length > 0;
+      m = findMatches(board)
+    ) {
       board = withCells(
         board,
         m.cleared.map((cell): [Cell, Color] => [cell, randomColor(rng)]),

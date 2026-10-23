@@ -6,7 +6,10 @@ describe("robots.txt", () => {
     const rules = robots().rules;
     expect(Array.isArray(rules)).toBe(true);
     expect(rules).toContainEqual(
-      expect.objectContaining({ disallow: "/", userAgent: expect.arrayContaining(["GPTBot", "ClaudeBot", "CCBot"]) }),
+      expect.objectContaining({
+        disallow: "/",
+        userAgent: expect.arrayContaining(["GPTBot", "ClaudeBot", "CCBot"]),
+      }),
     );
   });
 

@@ -8,7 +8,7 @@ import type { MetadataRoute } from "next";
  * 404 になっていたので、明示的に「全部たどらないで」と返す。
  */
 export default function robots(): MetadataRoute.Robots {
-	return {
-		rules: { userAgent: "*", disallow: "/" },
-	};
+  return {
+    rules: { userAgent: "*", disallow: "/" },
+  };
 }

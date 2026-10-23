@@ -18,7 +18,8 @@ export const metadata: Metadata = {
   ...PWA_METADATA,
   title: "English Vocabulary Quiz",
   icons: { apple: APPLE_TOUCH_ICON },
-  description: "Pick the English word that matches the meaning. 10 questions per round.",
+  description:
+    "Pick the English word that matches the meaning. 10 questions per round.",
 };
 
 export default function RootLayout({

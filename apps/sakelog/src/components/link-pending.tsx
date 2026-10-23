@@ -11,15 +11,15 @@ import { Spinner } from "./spinner";
  * 先読みが済んでいる遷移では pending にならないので、何も出ない。
  */
 export function LinkPending({ className = "" }: { className?: string }) {
-	const { pending } = useLinkStatus();
-	return (
-		<span
-			aria-hidden="true"
-			className={`inline-flex h-4 w-4 shrink-0 items-center justify-center transition-opacity ${
-				pending ? "opacity-100" : "opacity-0"
-			} ${className}`}
-		>
-			<Spinner />
-		</span>
-	);
+  const { pending } = useLinkStatus();
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center transition-opacity ${
+        pending ? "opacity-100" : "opacity-0"
+      } ${className}`}
+    >
+      <Spinner />
+    </span>
+  );
 }

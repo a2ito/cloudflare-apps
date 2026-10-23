@@ -57,22 +57,15 @@
           "name": "exchange_rates_group_id_groups_id_fk",
           "tableFrom": "exchange_rates",
           "tableTo": "groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "exchange_rates_group_id_currency_pk": {
-          "columns": [
-            "group_id",
-            "currency"
-          ],
+          "columns": ["group_id", "currency"],
           "name": "exchange_rates_group_id_currency_pk"
         }
       },
@@ -103,12 +96,8 @@
           "name": "expense_participants_expense_id_expenses_id_fk",
           "tableFrom": "expense_participants",
           "tableTo": "expenses",
-          "columnsFrom": [
-            "expense_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["expense_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -116,22 +105,15 @@
           "name": "expense_participants_member_id_members_id_fk",
           "tableFrom": "expense_participants",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "expense_participants_expense_id_member_id_pk": {
-          "columns": [
-            "expense_id",
-            "member_id"
-          ],
+          "columns": ["expense_id", "member_id"],
           "name": "expense_participants_expense_id_member_id_pk"
         }
       },
@@ -199,12 +181,8 @@
           "name": "expenses_group_id_groups_id_fk",
           "tableFrom": "expenses",
           "tableTo": "groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -212,12 +190,8 @@
           "name": "expenses_payer_id_members_id_fk",
           "tableFrom": "expenses",
           "tableTo": "members",
-          "columnsFrom": [
-            "payer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["payer_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -303,12 +277,8 @@
           "name": "members_group_id_groups_id_fk",
           "tableFrom": "members",
           "tableTo": "groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

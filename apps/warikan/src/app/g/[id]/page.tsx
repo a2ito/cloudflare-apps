@@ -70,10 +70,7 @@ export default async function GroupPage({
     expenseCount: expenses.filter((e) => e.currency === r.currency).length,
   }));
   // 立替で選べる通貨（精算通貨が先頭）
-  const expenseCurrencies = [
-    group.currency,
-    ...rates.map((r) => r.currency),
-  ];
+  const expenseCurrencies = [group.currency, ...rates.map((r) => r.currency)];
 
   const memberView = members.map((m) => ({ id: m.id, name: m.name }));
 
@@ -85,8 +82,7 @@ export default async function GroupPage({
     paidLabel: formatAmount(b.paid, group.currency),
     owedLabel: formatAmount(b.owed, group.currency),
     net: b.net,
-    netLabel:
-      (b.net > 0 ? "+" : "") + formatAmount(b.net, group.currency),
+    netLabel: (b.net > 0 ? "+" : "") + formatAmount(b.net, group.currency),
     items: settlement.shares
       .filter((s) => s.memberId === b.memberId && s.amount > 0)
       .map((s) => {
@@ -191,7 +187,9 @@ function SettlementSection({
     <section className="bg-white rounded-2xl shadow-sm border border-black/5 p-5">
       <h2 className="font-semibold mb-3">精算結果</h2>
       {!hasExpenses ? (
-        <p className="text-sm text-black/40">立替を記録すると精算結果が表示されます。</p>
+        <p className="text-sm text-black/40">
+          立替を記録すると精算結果が表示されます。
+        </p>
       ) : transfers.length === 0 ? (
         <p className="text-sm text-black/60">🎉 精算の必要はありません。</p>
       ) : (

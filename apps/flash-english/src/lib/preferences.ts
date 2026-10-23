@@ -12,42 +12,45 @@ import { useCallback, useSyncExternalStore } from "react";
 const listeners = new Set<() => void>();
 
 function read(key: string): string | null {
-	try {
-		return window.localStorage.getItem(key);
-	} catch {
-		return null;
-	}
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
 }
 
 function subscribe(listener: () => void) {
-	listeners.add(listener);
-	window.addEventListener("storage", listener);
-	return () => {
-		listeners.delete(listener);
-		window.removeEventListener("storage", listener);
-	};
+  listeners.add(listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener("storage", listener);
+  };
 }
 
 /** オン・オフの設定。サーバーでの描画では既定値を返す */
-export function useBooleanPreference(key: string, defaultValue: boolean): [boolean, (value: boolean) => void] {
-	const value = useSyncExternalStore(
-		subscribe,
-		() => {
-			const raw = read(key);
-			return raw === null ? defaultValue : raw === "1";
-		},
-		() => defaultValue,
-	);
-	const set = useCallback(
-		(next: boolean) => {
-			try {
-				window.localStorage.setItem(key, next ? "1" : "0");
-			} catch {
-				// 保存できなくても、この画面の間だけ効けば足りる
-			}
-			for (const l of listeners) l();
-		},
-		[key],
-	);
-	return [value, set];
+export function useBooleanPreference(
+  key: string,
+  defaultValue: boolean,
+): [boolean, (value: boolean) => void] {
+  const value = useSyncExternalStore(
+    subscribe,
+    () => {
+      const raw = read(key);
+      return raw === null ? defaultValue : raw === "1";
+    },
+    () => defaultValue,
+  );
+  const set = useCallback(
+    (next: boolean) => {
+      try {
+        window.localStorage.setItem(key, next ? "1" : "0");
+      } catch {
+        // 保存できなくても、この画面の間だけ効けば足りる
+      }
+      for (const l of listeners) l();
+    },
+    [key],
+  );
+  return [value, set];
 }

@@ -14,7 +14,7 @@ LOG="$(mktemp)"
 # 手元で実行したときに既存の .dev.vars を壊さないよう、無いときだけ作って最後に消す
 created_dev_vars=false
 if [ ! -f .dev.vars ]; then
-  cat > .dev.vars <<'EOF'
+  cat >.dev.vars <<'EOF'
 AUTH_SECRET=smoke-test-secret-0123456789abcdef
 AUTH_TRUST_HOST=true
 AUTH_GOOGLE_ID=smoke-test
@@ -35,10 +35,10 @@ trap cleanup EXIT
 
 # D1 を使うアプリは、テーブルが無いとページの描画で落ちる。ローカルの D1 にスキーマを入れる
 if npm pkg get scripts.db:migrate:local | grep -q wrangler; then
-  npm run db:migrate:local > /dev/null
+  npm run db:migrate:local >/dev/null
 fi
 
-npx wrangler dev --port "$PORT" > "$LOG" 2>&1 &
+npx wrangler dev --port "$PORT" >"$LOG" 2>&1 &
 pid=$!
 # 最後に止めたときの「Terminated」をログに出さない
 disown "$pid"

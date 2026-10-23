@@ -52,18 +52,16 @@ export async function createCategory(
 
   if (preset) {
     const categoryId = id;
-    await db
-      .insert(specFields)
-      .values(
-        preset.fields.map((f, i) => ({
-          categoryId,
-          name: f.name,
-          unit: f.unit ?? null,
-          kind: f.kind,
-          better: f.better,
-          position: i,
-        })),
-      );
+    await db.insert(specFields).values(
+      preset.fields.map((f, i) => ({
+        categoryId,
+        name: f.name,
+        unit: f.unit ?? null,
+        kind: f.kind,
+        better: f.better,
+        position: i,
+      })),
+    );
   }
 
   revalidatePath("/");

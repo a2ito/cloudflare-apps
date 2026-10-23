@@ -121,15 +121,13 @@ export async function createProduct(
 
   await replaceSpecs(db, id, specs.values);
   if (store !== undefined && price !== undefined) {
-    await db
-      .insert(priceRecords)
-      .values({
-        productId: id,
-        store,
-        price,
-        recordedAt: today(),
-        url: url ?? null,
-      });
+    await db.insert(priceRecords).values({
+      productId: id,
+      store,
+      price,
+      recordedAt: today(),
+      url: url ?? null,
+    });
   }
 
   revalidatePath(`/categories/${categoryId}`);

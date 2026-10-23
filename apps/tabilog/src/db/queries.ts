@@ -217,16 +217,14 @@ async function replaceTripCurrencies(
 ): Promise<void> {
   await db.delete(tripCurrencies).where(eq(tripCurrencies.tripId, tripId));
   if (currencies.length === 0) return;
-  await db
-    .insert(tripCurrencies)
-    .values(
-      currencies.map((c, i) => ({
-        tripId,
-        code: c.code,
-        rateToJpy: c.rateToJpy,
-        sortOrder: i,
-      })),
-    );
+  await db.insert(tripCurrencies).values(
+    currencies.map((c, i) => ({
+      tripId,
+      code: c.code,
+      rateToJpy: c.rateToJpy,
+      sortOrder: i,
+    })),
+  );
 }
 
 /**
@@ -462,16 +460,14 @@ export async function addPhotos(
     .from(entryPhotos)
     .where(eq(entryPhotos.entryId, entryId));
   const base = maxOrder === null ? 0 : Number(maxOrder) + 1;
-  await db
-    .insert(entryPhotos)
-    .values(
-      photos.map((p, i) => ({
-        entryId,
-        key: p.key,
-        contentType: p.contentType,
-        sortOrder: base + i,
-      })),
-    );
+  await db.insert(entryPhotos).values(
+    photos.map((p, i) => ({
+      entryId,
+      key: p.key,
+      contentType: p.contentType,
+      sortOrder: base + i,
+    })),
+  );
 }
 
 export async function getPhoto(db: Db, id: number): Promise<EntryPhoto | null> {

@@ -125,13 +125,11 @@ export async function createProduct(
 
   const id = inserted[0]?.id;
   if (id === undefined) return { error: "商品の登録に失敗しました" };
-  await db
-    .insert(variants)
-    .values({
-      productId: id,
-      amount: parsed.data.amount,
-      count: parsed.data.count,
-    });
+  await db.insert(variants).values({
+    productId: id,
+    amount: parsed.data.amount,
+    count: parsed.data.count,
+  });
 
   revalidatePath("/");
   redirect(`/products/${id}`);

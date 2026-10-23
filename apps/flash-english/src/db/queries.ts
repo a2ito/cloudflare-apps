@@ -130,16 +130,14 @@ export async function createSentences(
   if (!(await getDeck(db, userId, deckId))) return 0;
   // D1 は 1 文のバインド変数が 100 個までなので、行を分けて batch で流す
   const statements = inputs.map((s) =>
-    db
-      .insert(sentences)
-      .values({
-        userId,
-        deckId,
-        ja: s.ja,
-        en: s.en,
-        note: s.note ?? null,
-        dueOn: today,
-      }),
+    db.insert(sentences).values({
+      userId,
+      deckId,
+      ja: s.ja,
+      en: s.en,
+      note: s.note ?? null,
+      dueOn: today,
+    }),
   );
   const [first, ...rest] = statements;
   await db.batch([first, ...rest]);

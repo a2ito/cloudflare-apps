@@ -26,13 +26,11 @@ export async function createVariant(
   if (!parsed.ok) return { error: parsed.error };
 
   const db = await getDb();
-  await db
-    .insert(variants)
-    .values({
-      productId: parsed.data.productId,
-      amount: parsed.data.amount,
-      count: parsed.data.count,
-    });
+  await db.insert(variants).values({
+    productId: parsed.data.productId,
+    amount: parsed.data.amount,
+    count: parsed.data.count,
+  });
 
   revalidatePath("/");
   revalidatePath(`/products/${parsed.data.productId}`);

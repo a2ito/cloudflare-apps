@@ -334,16 +334,14 @@ export async function addPhotos(
     .from(drinkPhotos)
     .where(eq(drinkPhotos.drinkId, drinkId));
   const base = maxOrder === null ? 0 : Number(maxOrder) + 1;
-  await db
-    .insert(drinkPhotos)
-    .values(
-      photos.map((p, i) => ({
-        drinkId,
-        key: p.key,
-        contentType: p.contentType,
-        sortOrder: base + i,
-      })),
-    );
+  await db.insert(drinkPhotos).values(
+    photos.map((p, i) => ({
+      drinkId,
+      key: p.key,
+      contentType: p.contentType,
+      sortOrder: base + i,
+    })),
+  );
 }
 
 export async function getPhoto(db: Db, id: number): Promise<DrinkPhoto | null> {

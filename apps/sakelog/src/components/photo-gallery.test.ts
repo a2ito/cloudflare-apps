@@ -25,7 +25,7 @@ describe("写真のビューア", () => {
 
   it("ダウンロードはファイル名を指定した download リンクで出す", () => {
     expect(source).toMatch(
-      /<a href=\{open\.src\} download=\{open\.downloadName\}/,
+      /<a\s+href=\{open\.src\}\s+download=\{open\.downloadName\}/,
     );
   });
 

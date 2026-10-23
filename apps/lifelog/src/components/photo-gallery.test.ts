@@ -25,11 +25,11 @@ describe("写真のビューア", () => {
 
   it("ダウンロードはファイル名を指定した download リンクで出す", () => {
     expect(source).toMatch(
-      /<a href=\{open\.src\} download=\{open\.downloadName\}/,
+      /<a\s+href=\{open\.src\}\s+download=\{open\.downloadName\}/,
     );
   });
 
   it("写真の削除は確認してから行う", () => {
-    expect(source).toMatch(/<ConfirmForm action=\{deletePhotoAction\}/);
+    expect(source).toMatch(/<ConfirmForm\s+action=\{deletePhotoAction\}/);
   });
 });

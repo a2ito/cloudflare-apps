@@ -42,7 +42,7 @@ describe("処理中の表示", () => {
   it("処理中のボタンは押せない（二重送信を防ぐ）", () => {
     const buttons =
       source.match(
-        /function (SubmitButton|DangerButton|QuietButton)[\s\S]*?\n}/g,
+        /function (SubmitButton|DangerButton|QuietButton)[\s\S]*?\n}\n/g,
       ) ?? [];
     expect(buttons).toHaveLength(3);
     for (const button of buttons)

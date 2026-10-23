@@ -29,7 +29,7 @@ describe("表示に失敗したときの画面", () => {
   });
 
   it("この版の Next.js の retry を受け取る", () => {
-    expect(source).toMatch(/retry\s*\}:/);
+    expect(source).toMatch(/retry,?\s*\}:/);
     expect(source).toContain("retry()");
   });
 

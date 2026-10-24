@@ -138,9 +138,16 @@ function listParam(value: string | string[] | undefined): string[] {
 
 type Params = Record<string, string | string[] | undefined>;
 
-/** 中古も含めるか（?used=1）。最安値は項目の定義より先に決めるので、parseCompareQuery とは別に読めるようにしている */
+/**
+ * 中古も含めるか。既定は含める（中古で買う候補も最安値で並べたいため）。
+ * 外すときは ?used=0。フォームはチェックボックスの前に used=0 の hidden を置くので、
+ * チェックすると used=0&used=1 が届く。1 が 1 つでもあれば含める。
+ * 最安値は項目の定義より先に決めるので、parseCompareQuery とは別に読めるようにしている
+ */
 export function parseIncludeUsed(params: Params): boolean {
-  return params.used === "1";
+  const used = params.used;
+  if (used === undefined) return true;
+  return [used].flat().includes("1");
 }
 
 /**

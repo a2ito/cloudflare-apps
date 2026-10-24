@@ -263,7 +263,7 @@ function FilterForm({
     query.required.length +
     query.contains.length +
     (query.maxPrice !== undefined ? 1 : 0) +
-    (query.includeUsed ? 1 : 0) +
+    (query.includeUsed ? 0 : 1) +
     (query.showHidden ? 1 : 0) +
     (query.favoritesOnly ? 1 : 0) +
     query.textIn.length +
@@ -315,6 +315,8 @@ function FilterForm({
             />
           </label>
           <label className="flex items-center gap-2 self-end py-2 text-sm">
+            {/* チェックを外して送ったことを used=0 で伝える（外したチェックボックスは何も送らないため） */}
+            <input type="hidden" name="used" value="0" />
             <input
               type="checkbox"
               name="used"

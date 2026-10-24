@@ -37,7 +37,8 @@ export default async function ProductPage({
   if (!product) notFound();
   const [fields, items, records, stores] = await Promise.all([
     listFields(db, product.categoryId),
-    listCompareItems(db, product.categoryId),
+    // 比較表の既定（中古を含める）とそろえる
+    listCompareItems(db, product.categoryId, true),
     listRecords(db, id),
     listStores(db),
   ]);
@@ -83,8 +84,7 @@ export default async function ProductPage({
           )}
           {self?.best && (
             <p className="text-lg">
-              {self.best.used ? "最安値（新品の記録なし）" : "新品の最安値"}{" "}
-              {self.best.used && <UsedBadge />}
+              最安値 {self.best.used && <UsedBadge />}
               <span className="font-bold text-indigo-700 dark:text-indigo-400">
                 {formatYen(self.best.price)}
               </span>

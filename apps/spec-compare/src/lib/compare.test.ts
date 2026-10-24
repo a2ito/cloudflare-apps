@@ -87,7 +87,7 @@ const baseQuery: CompareQuery = {
   ranges: [],
   required: [],
   contains: [],
-  includeUsed: false,
+  includeUsed: true,
   showHidden: false,
   favoritesOnly: false,
   textIn: [],
@@ -186,7 +186,7 @@ describe("parseCompareQuery", () => {
       contains: [{ fieldId: 1, text: "ryzen" }],
       maxPrice: 200000,
       costFieldId: 2,
-      includeUsed: false,
+      includeUsed: true,
       showHidden: false,
       favoritesOnly: false,
       textIn: [],
@@ -216,9 +216,14 @@ describe("parseCompareQuery", () => {
     expect(q.costFieldId).toBeUndefined();
   });
 
-  it("used=1 のときだけ中古を含める", () => {
+  it("中古は既定で含め、used=0 のときだけ外す", () => {
+    expect(parseCompareQuery({}, FIELDS).includeUsed).toBe(true);
     expect(parseCompareQuery({ used: "1" }, FIELDS).includeUsed).toBe(true);
     expect(parseCompareQuery({ used: "0" }, FIELDS).includeUsed).toBe(false);
+    // フォームの hidden（0）とチェックボックス（1）が両方届いたらチェックが入っている
+    expect(parseCompareQuery({ used: ["0", "1"] }, FIELDS).includeUsed).toBe(
+      true,
+    );
   });
 
   it("cost が無ければ既定のコスパ項目を使い、空なら出さない", () => {

@@ -30,7 +30,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        {/* スマホ向けの画面なので、PC では中央の 1 列に収める */}
+        <div className="mx-auto max-w-3xl">{children}</div>
       </body>
     </html>
   );

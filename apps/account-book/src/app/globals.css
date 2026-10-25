@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  /* 各ページの背景（bg-gray-50）と揃え、PC で中央の列の外側も同じ色にする */
+  --background: var(--color-gray-50);
   --foreground: #171717;
 }
 
@@ -14,7 +15,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: var(--color-gray-900);
     --foreground: #ededed;
   }
 }

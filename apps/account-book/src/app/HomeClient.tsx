@@ -331,7 +331,7 @@ export default function DashboardPage() {
       {/* カテゴリページ */}
       <Link
         href="/categories"
-        className="fixed bottom-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg"
+        className="fixed bottom-4 left-[max(1rem,calc(50%-23rem))] bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg"
         //className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700
         //         text-sm hover:opacity-80"
       >
@@ -358,7 +358,7 @@ export default function DashboardPage() {
       {/* 年次ページ */}
       <Link
         href="/yearly"
-        className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg"
+        className="fixed bottom-4 right-[max(1rem,calc(50%-23rem))] bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg"
       >
         📅 年間
       </Link>

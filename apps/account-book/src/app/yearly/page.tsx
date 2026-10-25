@@ -89,6 +89,27 @@ export default function YearlyPage() {
     );
   }, [monthly]);
 
+  /* ---------- derive: 年間合計とカテゴリ内訳 ---------- */
+
+  // D1 の sum は文字列で返ることがあるため Number で揃える
+  const yearlyTotal = useMemo(
+    () => categories.reduce((sum, c) => sum + Number(c.total), 0),
+    [categories],
+  );
+
+  // 金額の大きい順に並べ、年間合計に対する割合を添える
+  const breakdown = useMemo(
+    () =>
+      categories
+        .map((c) => ({ category: c.category, total: Number(c.total) }))
+        .sort((a, b) => b.total - a.total)
+        .map((c) => ({
+          ...c,
+          rate: yearlyTotal === 0 ? 0 : (c.total / yearlyTotal) * 100,
+        })),
+    [categories, yearlyTotal],
+  );
+
   /* ---------- handlers ---------- */
 
   const goMonth = (month: string) => {
@@ -118,6 +139,35 @@ export default function YearlyPage() {
           })}
         </select>
       </div>
+
+      {/* ===== 年間合計 ===== */}
+      <section className="rounded-xl bg-white dark:bg-gray-800 p-4 shadow">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {year}年の合計
+        </p>
+        <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-gray-100">
+          ¥{yearlyTotal.toLocaleString()}
+        </p>
+
+        {breakdown.length > 0 && (
+          <ul className="mt-4 space-y-1">
+            {breakdown.map((c) => (
+              <li
+                key={c.category}
+                className="flex items-center justify-between text-sm"
+              >
+                <span>{c.category}</span>
+                <span className="tabular-nums">
+                  ¥{c.total.toLocaleString()}
+                  <span className="ml-2 inline-block w-14 text-right text-gray-500 dark:text-gray-400">
+                    {c.rate.toFixed(1)}%
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {/* ===== 月別合計 ===== */}
       <section className="space-y-2">

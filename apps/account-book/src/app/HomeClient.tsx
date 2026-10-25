@@ -166,12 +166,20 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             家計簿
           </h1>
-          <Link
-            href="/tags"
-            className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-          >
-            🏷️ タグ管理
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              href="/subscriptions"
+              className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            >
+              🔁 サブスク
+            </Link>
+            <Link
+              href="/tags"
+              className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            >
+              🏷️ タグ管理
+            </Link>
+          </div>
         </div>
 
         <div className="flex items-center justify-between mb-4">

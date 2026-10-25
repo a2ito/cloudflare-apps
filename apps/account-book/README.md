@@ -42,6 +42,15 @@
 - カテゴリ別管理
 - 月別表示
 
+### サブスク
+
+- 月額・年額のサブスクを登録 / 編集 / 停止 / 削除（`/subscriptions`）
+- 請求日を迎えたものを Cron Trigger で毎日 0:05 JST に支出として自動計上する
+  - Cron の入口は `worker.ts`（OpenNext の Worker をラップして `scheduled` を足している）
+  - 同じサブスク・同じ請求日は一意制約で二重計上しない
+  - Cron が止まっても前月（年額は前年）分までは次の実行で取り戻す
+  - 手元では `npx wrangler dev --test-scheduled` で起動し、`/__scheduled` を叩くと試せる
+
 ### ダッシュボード
 
 - 月次合計金額

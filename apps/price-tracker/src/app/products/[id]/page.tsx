@@ -24,6 +24,7 @@ import { requireUser } from "@/lib/auth";
 import { imageUrl } from "@/lib/images";
 import {
   amountChangeLabel,
+  bestPriceHistory,
   effectiveAmount,
   formatAmount,
   formatPackage,
@@ -130,6 +131,8 @@ function VariantSection({
     });
   const changeOf = (r: PriceRecord) =>
     amountChangeLabel(r.amount, variant.amount);
+  // 新しい更新を上に出す
+  const history = bestPriceHistory(records, perUnit).reverse();
 
   return (
     <section className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
@@ -197,6 +200,56 @@ function VariantSection({
         </div>
       ) : (
         <p className="text-sm text-zinc-400">価格はまだ記録されていません</p>
+      )}
+
+      {history.length > 1 && (
+        <details className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+          <summary className="cursor-pointer text-sm font-semibold">
+            最安値の更新履歴（{history.length} 件）
+          </summary>
+          <ol className="space-y-2 pt-3 text-sm">
+            {history.map((r, i) => {
+              const previous = history[i + 1];
+              const current = perUnit(r);
+              // 1 つ前の最安値からの値下がり幅。履歴は単価が下がった記録だけなので常に正
+              const drop = previous ? perUnit(previous) - current : null;
+              return (
+                <li
+                  key={r.id}
+                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
+                >
+                  <span className="whitespace-nowrap text-zinc-500">
+                    {r.recordedAt}
+                  </span>
+                  <span className="font-semibold">
+                    {formatYen(current)}
+                    <span className="ml-1 text-xs font-normal text-zinc-500">
+                      / {unitBaseLabel(product.unit)}
+                    </span>
+                  </span>
+                  {drop !== null && previous && (
+                    <span className="text-xs text-emerald-700 dark:text-emerald-400">
+                      −{formatYen(drop)}（−
+                      {((drop / perUnit(previous)) * 100).toLocaleString(
+                        "ja-JP",
+                        { maximumFractionDigits: 1 },
+                      )}
+                      %）
+                    </span>
+                  )}
+                  <span className="text-zinc-600 dark:text-zinc-300">
+                    {formatYen(r.price, 0)} /{" "}
+                    {formatAmount(totalOf(r), r.quantity, product.unit)}
+                    <ChangeBadge label={changeOf(r)} />
+                  </span>
+                  <span className="text-zinc-600 dark:text-zinc-300">
+                    <StoreLabel store={r.store} url={r.url} />
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </details>
       )}
 
       <details

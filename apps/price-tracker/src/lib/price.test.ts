@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   amountChangeLabel,
+  bestPriceHistory,
   effectiveAmount,
   formatAmount,
   formatPackage,
@@ -202,5 +203,48 @@ describe("metricUnitPrice", () => {
 
   it("ラベルは「名前 1単位」", () => {
     expect(metricLabel(protein)).toBe("タンパク質 1g");
+  });
+});
+
+describe("bestPriceHistory", () => {
+  const rec = (id: number, recordedAt: string, cost: number) => ({
+    id,
+    recordedAt,
+    cost,
+  });
+  const ids = (records: { id: number }[]) => records.map((r) => r.id);
+  const costOf = (r: { cost: number }) => r.cost;
+
+  it("記録日の古い順に、単価が下がった記録だけを返す", () => {
+    const records = [
+      rec(1, "2026-03-01", 20),
+      rec(2, "2026-01-01", 30),
+      rec(3, "2026-02-01", 35),
+      rec(4, "2026-04-01", 18),
+      rec(5, "2026-05-01", 25),
+    ];
+    expect(ids(bestPriceHistory(records, costOf))).toEqual([2, 1, 4]);
+  });
+
+  it("同じ単価は更新とみなさない", () => {
+    const records = [rec(1, "2026-01-01", 20), rec(2, "2026-02-01", 20)];
+    expect(ids(bestPriceHistory(records, costOf))).toEqual([1]);
+  });
+
+  it("同じ日付の記録は id の小さい順にたどる", () => {
+    const records = [rec(2, "2026-01-01", 15), rec(1, "2026-01-01", 20)];
+    expect(ids(bestPriceHistory(records, costOf))).toEqual([1, 2]);
+  });
+
+  it("単価が出せない記録は飛ばす", () => {
+    const records = [
+      rec(1, "2026-01-01", Number.NaN),
+      rec(2, "2026-02-01", 20),
+    ];
+    expect(ids(bestPriceHistory(records, costOf))).toEqual([2]);
+  });
+
+  it("記録が無ければ空", () => {
+    expect(bestPriceHistory([], costOf)).toEqual([]);
   });
 });

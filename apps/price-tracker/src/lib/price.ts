@@ -124,6 +124,29 @@ export function metricLabel(metric: Metric): string {
   return `${metric.name} 1${metric.unit}`;
 }
 
+/**
+ * 最安値の更新履歴。記録日の古い順に記録をたどり、それまでの最安値より単価が下がった記録だけを返す。
+ * 同じ単価は更新とみなさない。同じ日付の記録は登録順（id の小さい順）に並べる。
+ * 単価が出せない記録（容量 0 など）は飛ばす
+ */
+export function bestPriceHistory<T extends { id: number; recordedAt: string }>(
+  records: readonly T[],
+  costOf: (record: T) => number,
+): T[] {
+  const sorted = [...records].sort(
+    (a, b) => a.recordedAt.localeCompare(b.recordedAt) || a.id - b.id,
+  );
+  const history: T[] = [];
+  let best = Number.POSITIVE_INFINITY;
+  for (const r of sorted) {
+    const cost = costOf(r);
+    if (!Number.isFinite(cost) || cost >= best) continue;
+    best = cost;
+    history.push(r);
+  }
+  return history;
+}
+
 export function formatYen(value: number, fractionDigits = 1): string {
   if (!Number.isFinite(value)) return "-";
   return `¥${value.toLocaleString("ja-JP", { maximumFractionDigits: fractionDigits })}`;

@@ -343,6 +343,12 @@ function VariantSection({
                     <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
+                          href={`/products/${product.id}/records/${r.id}/renew`}
+                          className="whitespace-nowrap text-xs text-emerald-700 hover:underline dark:text-emerald-400"
+                        >
+                          価格を更新
+                        </Link>
+                        <Link
                           href={`/products/${product.id}/records/${r.id}/edit`}
                           className="text-xs text-zinc-600 hover:underline dark:text-zinc-300"
                         >

@@ -1,10 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { PriceRecord, Unit, Variant } from "@/db/schema";
 import { initialActionState, type ActionState } from "@/lib/form";
 import { imageUrl } from "@/lib/images";
-import { formatAmount, formatPackage, todayIso } from "@/lib/price";
+import { formatAmount, formatPackage, formatYen, todayIso } from "@/lib/price";
 import { RECORD_PHOTO } from "@/lib/image-shrink";
 import { ImageInput } from "./image-input";
 import { Field, FormMessage, inputClass, LinkButton, SubmitButton } from "./ui";
@@ -19,6 +20,11 @@ type Props = {
   stores: string[];
   /** 渡すと編集フォームになる */
   record?: PriceRecord;
+  /**
+   * 同じ店の価格を更新するときの元の記録。店舗・個数・容量・リンクを引き継いで新しく記録する。
+   * 記録したら商品ページへ戻る
+   */
+  previous?: PriceRecord;
 };
 
 export function RecordForm({
@@ -29,23 +35,32 @@ export function RecordForm({
   variant,
   stores,
   record,
+  previous,
 }: Props) {
   const [state, formAction] = useActionState(action, initialActionState);
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   // 記録するたびに画像入力を初期状態へ戻すための鍵
   const [imageResetKey, setImageResetKey] = useState(0);
   const isEdit = record !== undefined;
+  // 価格・日付・メモ・写真はその時々で変わるので引き継がない
+  const initial = record ?? previous;
 
   // 新規登録が成功したら入力欄を空にして、続けて別の店を記録できるようにする
   useEffect(() => {
-    if (isEdit || !state.success || !formRef.current) return;
+    if (isEdit || previous || !state.success || !formRef.current) return;
     for (const name of ["price", "amount", "url", "memo"]) {
       const el = formRef.current.elements.namedItem(name);
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)
         el.value = "";
     }
     setImageResetKey((n) => n + 1);
-  }, [state, isEdit]);
+  }, [state, isEdit, previous]);
+
+  // 同じ店の価格を更新したら、履歴と並べて確かめられるよう商品ページへ戻る
+  useEffect(() => {
+    if (previous && state.success) router.push(`/products/${productId}`);
+  }, [state, previous, productId, router]);
 
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
@@ -60,7 +75,7 @@ export function RecordForm({
             name="store"
             required
             list={`store-suggestions-${variantId}`}
-            defaultValue={record?.store}
+            defaultValue={initial?.store}
             className={inputClass}
             placeholder="例: OK ストア"
           />
@@ -79,7 +94,14 @@ export function RecordForm({
             className={inputClass}
           />
         </Field>
-        <Field label="税込価格（円）">
+        <Field
+          label="税込価格（円）"
+          hint={
+            previous
+              ? `前回 ${formatYen(previous.price, 0)}（${previous.recordedAt}）`
+              : undefined
+          }
+        >
           <input
             name="price"
             type="number"
@@ -101,7 +123,7 @@ export function RecordForm({
             inputMode="numeric"
             min={1}
             step={1}
-            defaultValue={record?.quantity ?? 1}
+            defaultValue={initial?.quantity ?? 1}
             className={inputClass}
           />
         </Field>
@@ -115,7 +137,7 @@ export function RecordForm({
             inputMode="decimal"
             min={0.01}
             step="any"
-            defaultValue={record?.amount ?? ""}
+            defaultValue={initial?.amount ?? ""}
             className={inputClass}
             placeholder={String(variant.amount)}
           />
@@ -128,7 +150,7 @@ export function RecordForm({
           type="url"
           inputMode="url"
           maxLength={2000}
-          defaultValue={record?.url ?? ""}
+          defaultValue={initial?.url ?? ""}
           className={inputClass}
           placeholder="https://..."
         />
@@ -162,7 +184,7 @@ export function RecordForm({
         <SubmitButton pendingText={isEdit ? "保存中…" : "記録中…"}>
           {isEdit ? "更新する" : "価格を記録する"}
         </SubmitButton>
-        {isEdit && (
+        {(isEdit || previous) && (
           <LinkButton href={`/products/${productId}`}>キャンセル</LinkButton>
         )}
       </div>

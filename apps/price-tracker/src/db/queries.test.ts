@@ -216,6 +216,61 @@ describe("listProducts", () => {
     expect(item.variants[0].best?.store).toBe("新しい店");
   });
 
+  it("同じ店に新しい記録があれば、古い記録は最安値にしない", async () => {
+    await seedProduct({ name: "値上げ", unit: "g" }, [{ amount: 100 }]);
+    await t.db.insert(priceRecords).values([
+      // OK ストアは 100 円から 150 円に値上げした。古い 100 円はもう買えない
+      {
+        variantId: 1,
+        store: "OKストア",
+        price: 100,
+        quantity: 1,
+        recordedAt: "2026-01-01",
+      },
+      {
+        variantId: 1,
+        store: "OKストア",
+        price: 150,
+        quantity: 1,
+        recordedAt: "2026-06-01",
+      },
+      {
+        variantId: 1,
+        store: "ライフ",
+        price: 120,
+        quantity: 1,
+        recordedAt: "2026-03-01",
+      },
+    ]);
+    const [item] = await listProducts(t.db);
+    expect(item.variants[0].best).toMatchObject({
+      store: "ライフ",
+      price: 120,
+    });
+  });
+
+  it("同じ店・同じ日付の記録は後から登録したものを使う", async () => {
+    await seedProduct({ name: "同日", unit: "g" }, [{ amount: 100 }]);
+    await t.db.insert(priceRecords).values([
+      {
+        variantId: 1,
+        store: "OKストア",
+        price: 100,
+        quantity: 1,
+        recordedAt: "2026-01-01",
+      },
+      {
+        variantId: 1,
+        store: "OKストア",
+        price: 150,
+        quantity: 1,
+        recordedAt: "2026-01-01",
+      },
+    ]);
+    const [item] = await listProducts(t.db);
+    expect(item.variants[0].best?.price).toBe(150);
+  });
+
   it("カテゴリで絞り込める", async () => {
     await seed();
     const items = await listProducts(t.db, { categoryId: 2 });

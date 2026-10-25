@@ -125,6 +125,27 @@ export function metricLabel(metric: Metric): string {
 }
 
 /**
+ * アクティブな記録の id。同じ店で新しい価格が記録されたら、古い記録はアクティブでなくなる。
+ * 店ごとに記録日の最も新しい記録（同じ日付なら後から登録したもの）だけを残す。
+ * 最安値はアクティブな記録の中で判定する。もう買えない昔の値段が最安値に居座らないようにするため
+ */
+export function activeRecordIds(
+  records: readonly { id: number; store: string; recordedAt: string }[],
+): Set<number> {
+  const latest = new Map<string, { id: number; recordedAt: string }>();
+  for (const r of records) {
+    const current = latest.get(r.store);
+    if (
+      !current ||
+      r.recordedAt > current.recordedAt ||
+      (r.recordedAt === current.recordedAt && r.id > current.id)
+    )
+      latest.set(r.store, r);
+  }
+  return new Set([...latest.values()].map((r) => r.id));
+}
+
+/**
  * 最安値の更新履歴。記録日の古い順に記録をたどり、それまでの最安値より単価が下がった記録だけを返す。
  * 同じ単価は更新とみなさない。同じ日付の記録は登録順（id の小さい順）に並べる。
  * 単価が出せない記録（容量 0 など）は飛ばす

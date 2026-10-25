@@ -85,6 +85,14 @@ export const PRESETS: readonly Preset[] = [
         scoreWeight: 3,
       },
       {
+        // 自分の携帯電話の料金を払ったときの還元率。キャリア系カードはここが基本還元率と大きく違う
+        name: "ケータイ料金還元率",
+        unit: "%",
+        kind: "number",
+        better: "higher",
+        scoreWeight: 2,
+      },
+      {
         // 回数制限なしは大きな数（99 など）で入れる
         name: "海外ラウンジ無料回数",
         unit: "回/年",

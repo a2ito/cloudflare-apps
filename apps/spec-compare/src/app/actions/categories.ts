@@ -5,10 +5,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
+import { listFields } from "@/db/queries";
 import { categories, products, specFields } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { isUniqueViolation } from "@/lib/errors";
-import { isCostField } from "@/lib/compare";
+import { isCostField, isRankable } from "@/lib/compare";
 import {
   idFromForm,
   optionalIdFromForm,
@@ -40,7 +41,10 @@ export async function createCategory(
   try {
     const inserted = await db
       .insert(categories)
-      .values({ name: parsed.data.name })
+      .values({
+        name: parsed.data.name,
+        priceScoreWeight: preset?.priceScoreWeight ?? 0,
+      })
       .returning({ id: categories.id });
     id = inserted[0]?.id;
   } catch (e) {
@@ -59,6 +63,7 @@ export async function createCategory(
         unit: f.unit ?? null,
         kind: f.kind,
         better: f.better,
+        scoreWeight: f.scoreWeight ?? 0,
         position: i,
       })),
     );
@@ -132,6 +137,63 @@ export async function setDefaultCostField(
     .set({ defaultCostFieldId: fieldId })
     .where(eq(categories.id, parsed.data.id));
   revalidatePath(`/categories/${parsed.data.id}`, "layout");
+  return { success: "変更しました" };
+}
+
+/** 重みの入力。空欄は 0（スコアに入れない）として扱う */
+const weightFromForm = z.preprocess(
+  (v) =>
+    v === undefined || (typeof v === "string" && v.trim() === "") ? 0 : v,
+  z.coerce
+    .number()
+    .int("重みは整数で入力してください")
+    .min(0, "重みは 0〜10 で入力してください")
+    .max(10, "重みは 0〜10 で入力してください"),
+);
+
+/**
+ * 総合スコアの重みを保存する。価格は w_price、項目は w_<id>。
+ * 項目はこのカテゴリの比べられる項目から読む。送られてきた id をそのまま信じない
+ */
+export async function setScoreWeights(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireUser();
+  const parsed = parseForm(
+    z.object({ id: idFromForm, w_price: weightFromForm }),
+    formData,
+  );
+  if (!parsed.ok) return { error: parsed.error };
+  const categoryId = parsed.data.id;
+
+  const db = await getDb();
+  const fields = (await listFields(db, categoryId)).filter(isRankable);
+  const fieldWeights: { id: number; weight: number }[] = [];
+  for (const field of fields) {
+    const weight = weightFromForm.safeParse(
+      formData.get(`w_${field.id}`) ?? undefined,
+    );
+    if (!weight.success)
+      return { error: `${field.name}: ${weight.error.issues[0]?.message}` };
+    fieldWeights.push({ id: field.id, weight: weight.data });
+  }
+
+  await db.batch([
+    db
+      .update(categories)
+      .set({ priceScoreWeight: parsed.data.w_price })
+      .where(eq(categories.id, categoryId)),
+    ...fieldWeights.map((f) =>
+      db
+        .update(specFields)
+        .set({ scoreWeight: f.weight })
+        .where(
+          and(eq(specFields.id, f.id), eq(specFields.categoryId, categoryId)),
+        ),
+    ),
+  ]);
+  revalidatePath(`/categories/${categoryId}`, "layout");
   return { success: "変更しました" };
 }
 

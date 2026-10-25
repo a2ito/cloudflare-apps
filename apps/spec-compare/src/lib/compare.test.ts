@@ -11,6 +11,9 @@ import {
   pickBest,
   quickFilterChips,
   rankIn,
+  hasScore,
+  scoreItems,
+  scoreRanks,
   sortItems,
   type CompareItem,
   type CompareQuery,
@@ -541,6 +544,133 @@ describe("compare", () => {
     });
     expect(rows.map((r) => r.id)).toEqual([1, 2]);
     expect(best.get(2)).toBe(16);
+  });
+});
+
+describe("hasScore", () => {
+  it("重みのある比べられる項目か価格があれば出す", () => {
+    expect(hasScore(FIELDS, { price: 0, fields: {} })).toBe(false);
+    expect(hasScore(FIELDS, { price: 1, fields: {} })).toBe(true);
+    expect(hasScore(FIELDS, { price: 0, fields: { 2: 1 } })).toBe(true);
+  });
+  it("比べない項目に重みがあっても出さない", () => {
+    expect(hasScore(FIELDS, { price: 0, fields: { 1: 3 } })).toBe(false);
+  });
+});
+
+describe("scoreItems", () => {
+  it("基準ごとに一番良い値を 1、一番悪い値を 0 にして重み付きで平均する", () => {
+    const items = [
+      item(1, 100000, { 2: 8, 3: 1.0 }),
+      item(2, 200000, { 2: 32, 3: 2.0 }),
+      item(3, 150000, { 2: 16, 3: 1.5 }),
+    ];
+    const scores = scoreItems(items, FIELDS, {
+      price: 1,
+      fields: { 2: 2, 3: 1 },
+    });
+    // 1: 価格 1・メモリ 0・重量 1 → (1 + 0 + 1) / 4
+    expect(scores.get(1)).toBeCloseTo(50);
+    // 2: 価格 0・メモリ 1・重量 0 → (0 + 2 + 0) / 4
+    expect(scores.get(2)).toBeCloseTo(50);
+    // 3: 価格 0.5・メモリ 1/3・重量 0.5 → (0.5 + 2/3 + 0.5) / 4
+    expect(scores.get(3)).toBeCloseTo(41.67, 1);
+  });
+  it("あり / なしは あり = 1 として比べる", () => {
+    const scores = scoreItems(
+      [item(1, 1, { 4: 1 }), item(2, 1, { 4: 0 })],
+      FIELDS,
+      {
+        price: 0,
+        fields: { 4: 1 },
+      },
+    );
+    expect(scores.get(1)).toBe(100);
+    expect(scores.get(2)).toBe(0);
+  });
+  it("値の無い基準は 0 として数える", () => {
+    const scores = scoreItems(
+      [item(1, null, { 2: 8 }), item(2, 100, { 2: 16 })],
+      FIELDS,
+      {
+        price: 1,
+        fields: { 2: 1 },
+      },
+    );
+    expect(scores.get(1)).toBe(0);
+    expect(scores.get(2)).toBe(100);
+  });
+  it("全員が同じ値の基準は値のある商品を 1 にする", () => {
+    const scores = scoreItems(
+      [item(1, 100), item(2, 100), item(3, null)],
+      FIELDS,
+      {
+        price: 1,
+        fields: {},
+      },
+    );
+    expect([...scores.values()]).toEqual([100, 100, 0]);
+  });
+  it("重みが無ければ空", () => {
+    expect(
+      scoreItems([item(1, 1)], FIELDS, { price: 0, fields: {} }).size,
+    ).toBe(0);
+  });
+});
+
+describe("scoreRanks", () => {
+  it("同じスコアは同じ順位", () => {
+    const ranks = scoreRanks(
+      new Map([
+        [1, 50],
+        [2, 80],
+        [3, 50],
+        [4, 10],
+      ]),
+    );
+    expect(Object.fromEntries(ranks)).toEqual({ 1: 2, 2: 1, 3: 2, 4: 4 });
+  });
+});
+
+describe("総合スコアでの並べ替え", () => {
+  const items = [
+    item(1, 100, { 2: 8 }),
+    item(2, 300, { 2: 32 }),
+    item(3, 200, { 2: 16 }),
+  ];
+  const weights = { price: 1, fields: { 2: 3 } };
+
+  it("スコアを出すカテゴリは既定でスコアの高い順", () => {
+    const query = parseCompareQuery({}, FIELDS, null, true);
+    expect(query.sort).toBe("score");
+    expect(query.dir).toBe("desc");
+    const { rows, ranks, best } = compare(items, FIELDS, query, weights);
+    // 1: 1/4=25, 2: 3/4=75, 3: (0.5 + 3 * 1/3)/4=37.5
+    expect(rows.map((r) => r.id)).toEqual([2, 3, 1]);
+    expect(ranks?.get(2)).toBe(1);
+    expect(best.get("score")).toBeCloseTo(75);
+  });
+  it("スコアを出さないカテゴリでは sort=score を無視する", () => {
+    expect(parseCompareQuery({ sort: "score" }, FIELDS).sort).toBe("price");
+  });
+  it("向きを指定すればスコアの低い順にもできる", () => {
+    const query = parseCompareQuery(
+      { sort: "score", dir: "asc" },
+      FIELDS,
+      null,
+      true,
+    );
+    expect(
+      compare(items, FIELDS, query, weights).rows.map((r) => r.id),
+    ).toEqual([1, 3, 2]);
+  });
+  it("重みが無ければスコアも順位も出さない", () => {
+    const { scores, ranks } = compare(items, FIELDS, baseQuery, {
+      price: 0,
+      fields: {},
+    });
+    expect(scores).toBeUndefined();
+    expect(ranks).toBeUndefined();
   });
 });
 

@@ -23,6 +23,8 @@ export const categories = sqliteTable("categories", {
    * 項目が消えたり大きいほど良い数値でなくなったりしたら、比較表の側で無視する
    */
   defaultCostFieldId: integer("default_cost_field_id"),
+  /** 総合スコアでの最安値の重み。0 なら価格をスコアに入れない */
+  priceScoreWeight: integer("price_score_weight").notNull().default(0),
   createdAt: timestamp("created_at"),
 });
 
@@ -59,6 +61,11 @@ export const specFields = sqliteTable(
     quickFilter: integer("quick_filter", { mode: "boolean" })
       .notNull()
       .default(false),
+    /**
+     * 総合スコアでの重み。0 ならスコアに入れない。
+     * 既存のカテゴリで勝手にスコア列が出ないよう、既定は 0 にしている
+     */
+    scoreWeight: integer("score_weight").notNull().default(0),
     createdAt: timestamp("created_at"),
   },
   (t) => [

@@ -6,9 +6,10 @@ import {
   deleteCategory,
   renameCategory,
   setDefaultCostField,
+  setScoreWeights,
 } from "@/app/actions/categories";
 import type { Category, SpecField } from "@/db/schema";
-import { costLabel, isCostField } from "@/lib/compare";
+import { costLabel, isCostField, isRankable } from "@/lib/compare";
 import { initialActionState } from "@/lib/form";
 import { PRESETS } from "@/lib/presets";
 import { Field, FormMessage, inputClass, SubmitButton } from "./ui";
@@ -142,6 +143,54 @@ export function DefaultCostForm({
         </select>
         <SubmitButton pendingText="…">変更</SubmitButton>
       </div>
+      <FormMessage state={state} />
+    </form>
+  );
+}
+
+/** 総合スコアの重み。比べられる項目（大きい / 小さいほど良い）と最安値に 0〜10 を付ける */
+export function ScoreWeightsForm({
+  category,
+  fields,
+}: {
+  category: Category;
+  fields: readonly SpecField[];
+}) {
+  const [state, formAction] = useActionState(
+    setScoreWeights,
+    initialActionState,
+  );
+  const rows = [
+    { name: "w_price", label: "最安値", weight: category.priceScoreWeight },
+    ...fields.filter(isRankable).map((f) => ({
+      name: `w_${f.id}`,
+      label: f.name,
+      weight: f.scoreWeight,
+    })),
+  ];
+  return (
+    <form action={formAction} className="space-y-3">
+      <input type="hidden" name="id" value={category.id} />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {rows.map((r) => (
+          <label key={r.name} className="block space-y-1 text-sm">
+            <span className="block truncate font-medium text-zinc-700 dark:text-zinc-300">
+              {r.label}
+            </span>
+            <input
+              name={r.name}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={10}
+              step={1}
+              defaultValue={r.weight}
+              className={inputClass}
+            />
+          </label>
+        ))}
+      </div>
+      <SubmitButton pendingText="…">変更</SubmitButton>
       <FormMessage state={state} />
     </form>
   );

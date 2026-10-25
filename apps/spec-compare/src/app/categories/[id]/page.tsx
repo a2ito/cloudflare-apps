@@ -21,8 +21,10 @@ import {
   compare,
   costLabel,
   costPer,
+  formatNumber,
   formatSpec,
   formatYen,
+  hasScore,
   isCostField,
   makerChips,
   parseCompareQuery,
@@ -32,6 +34,7 @@ import {
   type CompareQuery,
   type FieldDef,
   type HighlightKey,
+  type ScoreWeights,
   type SortDir,
   type SortKey,
 } from "@/lib/compare";
@@ -56,6 +59,7 @@ function hrefWith(base: string, params: Params, overrides: Params): string {
 
 /** 列を初めて押したときの向き。良い順に並ぶようにする */
 function defaultDir(key: SortKey, fields: readonly FieldDef[]): SortDir {
+  if (key === "score") return "desc";
   if (!key.startsWith("f")) return "asc";
   const field = fields.find((f) => `f${f.id}` === key);
   return field?.better === "higher" ? "desc" : "asc";
@@ -457,8 +461,17 @@ export default async function ComparePage({
   ]);
   if (!category) notFound();
 
-  const query = parseCompareQuery(sp, fields, category.defaultCostFieldId);
-  const { rows, best } = compare(items, fields, query);
+  const weights: ScoreWeights = {
+    price: category.priceScoreWeight,
+    fields: Object.fromEntries(fields.map((f) => [f.id, f.scoreWeight])),
+  };
+  const query = parseCompareQuery(
+    sp,
+    fields,
+    category.defaultCostFieldId,
+    hasScore(fields, weights),
+  );
+  const { rows, best, scores, ranks } = compare(items, fields, query, weights);
   const costField = fields.find((f) => f.id === query.costFieldId);
   const base = `/categories/${id}`;
   const quickFieldIds = fields.filter((f) => f.quickFilter).map((f) => f.id);
@@ -544,6 +557,28 @@ export default async function ComparePage({
                         label="商品"
                       />
                     </th>
+                    {scores && (
+                      <th data-col="score" className={headerClass}>
+                        <SortHeader
+                          label="総合"
+                          sortKey="score"
+                          query={query}
+                          fields={fields}
+                          base={base}
+                          params={sp}
+                        />
+                        <PinButton
+                          categoryId={id}
+                          column="score"
+                          label="総合"
+                        />
+                        <ColumnResizer
+                          categoryId={id}
+                          column="score"
+                          label="総合"
+                        />
+                      </th>
+                    )}
                     <th data-col="price" className={headerClass}>
                       <SortHeader
                         label="最安値"
@@ -670,6 +705,19 @@ export default async function ComparePage({
                             </Link>
                           </span>
                         </td>
+                        {scores && (
+                          <td
+                            data-col="score"
+                            className={cellClass(
+                              isBest("score", scores.get(item.id)),
+                            )}
+                          >
+                            {formatNumber(scores.get(item.id) ?? 0, 0)} 点
+                            <span className="block text-xs font-normal text-zinc-500">
+                              {ranks?.get(item.id)} 位
+                            </span>
+                          </td>
+                        )}
                         <td
                           data-col="price"
                           className={cellClass(
@@ -743,6 +791,20 @@ export default async function ComparePage({
                 </tbody>
               </table>
             </div>
+          )}
+          {scores && (
+            <p className="text-xs text-zinc-500">
+              総合 = 重みを付けた項目ごとに、表示中の商品で一番良い値を
+              100、一番悪い値を 0 にした重み付きの平均。値の無い項目は 0
+              として数えます。重みは
+              <Link
+                href={`/categories/${id}/settings`}
+                className="mx-0.5 underline"
+              >
+                カテゴリの設定
+              </Link>
+              で変えられます
+            </p>
           )}
           {costField && (
             <p className="text-xs text-zinc-500">

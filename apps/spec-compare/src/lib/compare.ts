@@ -30,8 +30,8 @@ export type CompareItem = {
   favorite: boolean;
 };
 
-/** 並べ替えの軸。f<id> はスペック項目 */
-export type SortKey = "price" | "name" | "cost" | `f${number}`;
+/** 並べ替えの軸。f<id> はスペック項目、score は総合スコア */
+export type SortKey = "price" | "name" | "cost" | "score" | `f${number}`;
 export type SortDir = "asc" | "desc";
 
 export type RangeFilter = { fieldId: number; min?: number; max?: number };
@@ -118,6 +118,108 @@ export function costPer(
   return price / value;
 }
 
+/**
+ * 総合スコアの重み。fields のキーは項目 id。
+ * 重みは比較表の条件（URL）ではなくカテゴリの設定なので、CompareQuery とは分けて持つ
+ */
+export type ScoreWeights = { price: number; fields: Record<number, number> };
+
+/** スコアに入れる基準。値を取り出す関数と、どちらが良いかを持つ */
+type ScoreCriterion = {
+  weight: number;
+  better: "higher" | "lower";
+  value: (item: CompareItem) => number | null | undefined;
+};
+
+function scoreCriteria(
+  fields: readonly FieldDef[],
+  weights: ScoreWeights,
+): ScoreCriterion[] {
+  const criteria: ScoreCriterion[] = [];
+  if (weights.price > 0)
+    criteria.push({
+      weight: weights.price,
+      better: "lower",
+      value: (i) => i.best?.price,
+    });
+  for (const field of fields) {
+    const weight = weights.fields[field.id] ?? 0;
+    // isRankable と同じ条件。better を絞り込むため直接書く
+    if (weight <= 0 || field.kind === "text" || field.better === "none")
+      continue;
+    criteria.push({
+      weight,
+      better: field.better,
+      value: (i) => i.specs[field.id]?.num,
+    });
+  }
+  return criteria;
+}
+
+/** 総合スコアを出せるか。重みのある比べられる項目か価格が 1 つでもあれば出す */
+export function hasScore(
+  fields: readonly FieldDef[],
+  weights: ScoreWeights,
+): boolean {
+  return scoreCriteria(fields, weights).length > 0;
+}
+
+/**
+ * 総合スコア（0〜100）。基準ごとに、並べた商品の中で一番良い値を 1、一番悪い値を 0 にして重み付きで平均する。
+ * 単位の違う項目（GB と kg など）をそのまま足せないので、商品どうしの相対的な位置に直している。
+ * そのため絞り込みで並べる商品が変わるとスコアも変わる。
+ * 値の無い基準は 0 として数える。分からない項目が多い商品を上に出さないため。
+ * 全員が同じ値の基準は差が付かないので、値のある商品をすべて 1 にする
+ */
+export function scoreItems(
+  items: readonly CompareItem[],
+  fields: readonly FieldDef[],
+  weights: ScoreWeights,
+): Map<number, number> {
+  const criteria = scoreCriteria(fields, weights);
+  const scores = new Map<number, number>();
+  if (criteria.length === 0) return scores;
+  const totalWeight = criteria.reduce((sum, c) => sum + c.weight, 0);
+
+  const normalizers = criteria.map((c) => {
+    const present = items
+      .map(c.value)
+      .filter((v): v is number => v !== null && v !== undefined);
+    const min = Math.min(...present);
+    const max = Math.max(...present);
+    return (v: number) =>
+      max === min
+        ? 1
+        : c.better === "higher"
+          ? (v - min) / (max - min)
+          : (max - v) / (max - min);
+  });
+
+  for (const item of items) {
+    const sum = criteria.reduce((acc, c, k) => {
+      const v = c.value(item);
+      return v === null || v === undefined
+        ? acc
+        : acc + c.weight * normalizers[k](v);
+    }, 0);
+    scores.set(item.id, (sum / totalWeight) * 100);
+  }
+  return scores;
+}
+
+/** スコアの高い順の順位。同じスコアは同じ順位にする（1, 1, 3 位） */
+export function scoreRanks(
+  scores: ReadonlyMap<number, number>,
+): Map<number, number> {
+  const values = [...scores.values()];
+  return new Map(
+    [...scores].map(([id, score]) => [
+      id,
+      values.filter((v) => v > score).length + 1,
+    ]),
+  );
+}
+
 function numberParam(value: string | string[] | undefined): number | undefined {
   if (typeof value !== "string" || value.trim() === "") return undefined;
   const n = Number(value);
@@ -154,12 +256,14 @@ export function parseIncludeUsed(params: Params): boolean {
  * URL の検索パラメータを比較条件に直す。
  * 項目ごとのパラメータ名は min_<id> / max_<id> / has_<id> / q_<id>、簡易フィルタの複数選択は in_<id>（複数並べる）。
  * 存在しない項目や型の合わない指定は黙って捨てる（項目を消したあとの古いリンクでも開けるように）。
- * cost が無ければカテゴリの既定のコスパ項目を使う。フォームで「出さない」を選ぶと cost が空で届くので、そのときは出さない
+ * cost が無ければカテゴリの既定のコスパ項目を使う。フォームで「出さない」を選ぶと cost が空で届くので、そのときは出さない。
+ * 総合スコアを出すカテゴリ（scoreEnabled）は、sort が無ければスコアの高い順（ランキング）で開く
  */
 export function parseCompareQuery(
   params: Params,
   fields: readonly FieldDef[],
   defaultCostFieldId?: number | null,
+  scoreEnabled = false,
 ): CompareQuery {
   const byId = new Map(fields.map((f) => [f.id, f]));
 
@@ -173,14 +277,21 @@ export function parseCompareQuery(
   const validCost =
     costField && isCostField(costField) ? costField.id : undefined;
 
-  let sort: SortKey = "price";
+  let sort: SortKey = scoreEnabled ? "score" : "price";
   if (rawSort === "name" || rawSort === "price") sort = rawSort;
   else if (rawSort === "cost" && validCost !== undefined) sort = "cost";
+  else if (rawSort === "score" && scoreEnabled) sort = "score";
   else if (rawSort?.startsWith("f")) {
     const field = byId.get(Number(rawSort.slice(1)));
     if (field) sort = `f${field.id}`;
   }
-  const dir: SortDir = params.dir === "desc" ? "desc" : "asc";
+  // スコアは高いほど良いので、向きの指定が無ければ高い順にする
+  const dir: SortDir =
+    params.dir === "desc" || params.dir === "asc"
+      ? params.dir
+      : sort === "score"
+        ? "desc"
+        : "asc";
 
   const ranges: RangeFilter[] = [];
   const required: number[] = [];
@@ -264,9 +375,11 @@ export function matches(item: CompareItem, query: CompareQuery): boolean {
 function sortValue(
   item: CompareItem,
   query: CompareQuery,
+  scores: ReadonlyMap<number, number> | undefined,
 ): number | string | null {
   if (query.sort === "price") return item.best?.price ?? null;
   if (query.sort === "name") return item.name;
+  if (query.sort === "score") return scores?.get(item.id) ?? null;
   if (query.sort === "cost") {
     return query.costFieldId === undefined
       ? null
@@ -280,11 +393,12 @@ function sortValue(
 export function sortItems(
   items: readonly CompareItem[],
   query: CompareQuery,
+  scores?: ReadonlyMap<number, number>,
 ): CompareItem[] {
   const sign = query.dir === "desc" ? -1 : 1;
   return [...items].sort((a, b) => {
-    const va = sortValue(a, query);
-    const vb = sortValue(b, query);
+    const va = sortValue(a, query, scores);
+    const vb = sortValue(b, query, scores);
     if (va === null && vb === null) return a.id - b.id;
     if (va === null) return 1;
     if (vb === null) return -1;
@@ -296,8 +410,8 @@ export function sortItems(
   });
 }
 
-/** ハイライトの対象。price・cost はどちらも小さいほど良い */
-export type HighlightKey = "price" | "cost" | number;
+/** ハイライトの対象。price・cost はどちらも小さいほど良く、score は大きいほど良い */
+export type HighlightKey = "price" | "cost" | "score" | number;
 
 /**
  * 列ごとに一番良い値を求める。
@@ -307,6 +421,7 @@ export function bestValues(
   items: readonly CompareItem[],
   fields: readonly FieldDef[],
   costFieldId?: number,
+  scores?: ReadonlyMap<number, number>,
 ): Map<HighlightKey, number> {
   const result = new Map<HighlightKey, number>();
   const consider = (
@@ -334,6 +449,13 @@ export function bestValues(
       "cost",
       items.map((i) => costPer(i.best?.price, i.specs[costFieldId]?.num)),
       "lower",
+    );
+  }
+  if (scores !== undefined) {
+    consider(
+      "score",
+      items.map((i) => scores.get(i.id)),
+      "higher",
     );
   }
   for (const field of fields) {
@@ -504,17 +626,28 @@ export function makerChips(
   });
 }
 
-/** 比較表に出す行と、列ごとの最良値 */
+/**
+ * 比較表に出す行と、列ごとの最良値。
+ * weights があれば、絞り込んだ行の中で総合スコアと順位も出す（スコアが無ければ scores は undefined）
+ */
 export function compare(
   items: readonly CompareItem[],
   fields: readonly FieldDef[],
   query: CompareQuery,
+  weights?: ScoreWeights,
 ) {
-  const rows = sortItems(
-    items.filter((i) => matches(i, query)),
-    query,
-  );
-  return { rows, best: bestValues(rows, fields, query.costFieldId) };
+  const filtered = items.filter((i) => matches(i, query));
+  const scores =
+    weights && hasScore(fields, weights)
+      ? scoreItems(filtered, fields, weights)
+      : undefined;
+  const rows = sortItems(filtered, query, scores);
+  return {
+    rows,
+    best: bestValues(rows, fields, query.costFieldId, scores),
+    scores,
+    ranks: scores ? scoreRanks(scores) : undefined,
+  };
 }
 
 /** 数値を桁区切りで。小数は必要なぶんだけ（最大 2 桁）出す */

@@ -10,7 +10,7 @@ import {
 import { expectRedirect, revalidated } from "@/test/action-mocks";
 import { createTestEnv, formData, type TestEnv } from "@/test/d1";
 import { categories, products, specFields } from "@/db/schema";
-import { listCategories, listFields } from "@/db/queries";
+import { getCategory, listCategories, listFields } from "@/db/queries";
 
 let t: TestEnv;
 vi.mock("@/lib/auth", async () => ({
@@ -29,8 +29,13 @@ vi.mock("next/navigation", async () => {
     },
   };
 });
-const { createCategory, deleteCategory, renameCategory, setDefaultCostField } =
-  await import("./categories");
+const {
+  createCategory,
+  deleteCategory,
+  renameCategory,
+  setDefaultCostField,
+  setScoreWeights,
+} = await import("./categories");
 
 beforeAll(async () => {
   t = await createTestEnv();
@@ -72,6 +77,17 @@ describe("createCategory", () => {
       better: "higher",
       position: 1,
     });
+  });
+
+  it("ひな形の総合スコアの重みも入れる", async () => {
+    await expectRedirect(() =>
+      createCategory({}, formData({ name: "カード", preset: "credit-card" })),
+    );
+    expect((await getCategory(t.db, 1))?.priceScoreWeight).toBe(2);
+    const fields = await listFields(t.db, 1);
+    expect(
+      Object.fromEntries(fields.map((f) => [f.name, f.scoreWeight])),
+    ).toMatchObject({ 国際ブランド: 0, 基本還元率: 3, コンシェルジュ: 1 });
   });
 
   it("知らないひな形は無視する", async () => {
@@ -147,6 +163,50 @@ describe("setDefaultCostField", () => {
       (await setDefaultCostField({}, formData({ id: 1, fieldId: 3 }))).error,
     ).toMatch(/大きいほど良い/);
     expect(await defaultOf(1)).toBeNull();
+  });
+});
+
+describe("setScoreWeights", () => {
+  beforeEach(async () => {
+    await t.db.insert(categories).values([{ name: "PC" }, { name: "スマホ" }]);
+    await t.db.insert(specFields).values([
+      { categoryId: 1, name: "メモリ", kind: "number", better: "higher" },
+      { categoryId: 1, name: "CPU", kind: "text", better: "none" },
+      { categoryId: 2, name: "AnTuTu", kind: "number", better: "higher" },
+    ]);
+  });
+  const weightsOf = async (categoryId: number) =>
+    Object.fromEntries(
+      (await listFields(t.db, categoryId)).map((f) => [f.name, f.scoreWeight]),
+    );
+
+  it("価格と比べられる項目の重みを保存し、空欄は 0 にする", async () => {
+    expect(
+      await setScoreWeights({}, formData({ id: 1, w_price: 2, w_1: 3 })),
+    ).toEqual({ success: "変更しました" });
+    expect((await getCategory(t.db, 1))?.priceScoreWeight).toBe(2);
+    expect(await weightsOf(1)).toEqual({ メモリ: 3, CPU: 0 });
+
+    await setScoreWeights({}, formData({ id: 1, w_price: "", w_1: "" }));
+    expect((await getCategory(t.db, 1))?.priceScoreWeight).toBe(0);
+    expect(await weightsOf(1)).toEqual({ メモリ: 0, CPU: 0 });
+  });
+
+  it("比べない項目や別のカテゴリの項目には付けない", async () => {
+    await setScoreWeights({}, formData({ id: 1, w_price: 1, w_2: 5, w_3: 5 }));
+    expect(await weightsOf(1)).toEqual({ メモリ: 0, CPU: 0 });
+    expect(await weightsOf(2)).toEqual({ AnTuTu: 0 });
+  });
+
+  it("0〜10 の整数でなければ保存しない", async () => {
+    expect(
+      (await setScoreWeights({}, formData({ id: 1, w_price: 1, w_1: 11 })))
+        .error,
+    ).toMatch(/メモリ: 重みは 0〜10/);
+    expect(
+      (await setScoreWeights({}, formData({ id: 1, w_price: 1.5 }))).error,
+    ).toMatch(/整数/);
+    expect((await getCategory(t.db, 1))?.priceScoreWeight).toBe(0);
   });
 });
 

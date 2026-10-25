@@ -43,6 +43,13 @@
       "when": 1791983346258,
       "tag": "0005_young_speed_demon",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792905128714,
+      "tag": "0006_slim_spacker_dave",
+      "breakpoints": true
     }
   ]
 }

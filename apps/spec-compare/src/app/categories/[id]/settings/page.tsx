@@ -4,6 +4,7 @@ import {
   DefaultCostForm,
   DeleteCategoryForm,
   RenameCategoryForm,
+  ScoreWeightsForm,
 } from "@/components/category-forms";
 import { FieldManager } from "@/components/field-manager";
 import { getDb } from "@/db";
@@ -56,6 +57,17 @@ export default async function CategorySettingsPage({
           比較表を開いたときに出すコスパ列です。比較表の「絞り込み・コスパ」で一時的に切り替えられます。
         </p>
         <DefaultCostForm category={category} fields={fields} />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-semibold">総合スコアの重み</h2>
+        <p className="text-sm text-zinc-500">
+          0〜10 で、大きいほどスコアで重く見ます。0
+          の項目はスコアに入れません。1 つでも 0
+          より大きければ、比較表は総合スコアの高い順（ランキング）で開きます。
+          比べない項目とテキストの項目は選べません。
+        </p>
+        <ScoreWeightsForm category={category} fields={fields} />
       </section>
 
       <section className="space-y-2 border-t border-zinc-200 pt-6 dark:border-zinc-800">

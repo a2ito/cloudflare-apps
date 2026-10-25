@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  activeRecordIds,
   amountChangeLabel,
   bestPriceHistory,
   effectiveAmount,
@@ -246,5 +247,32 @@ describe("bestPriceHistory", () => {
 
   it("記録が無ければ空", () => {
     expect(bestPriceHistory([], costOf)).toEqual([]);
+  });
+});
+
+describe("activeRecordIds", () => {
+  const rec = (id: number, store: string, recordedAt: string) => ({
+    id,
+    store,
+    recordedAt,
+  });
+
+  it("店ごとに記録日の最も新しい記録だけがアクティブ", () => {
+    const records = [
+      rec(1, "A", "2026-01-01"),
+      rec(2, "A", "2026-03-01"),
+      rec(3, "B", "2026-02-01"),
+      rec(4, "A", "2026-02-01"),
+    ];
+    expect([...activeRecordIds(records)].sort()).toEqual([2, 3]);
+  });
+
+  it("同じ日付なら後から登録した記録がアクティブ", () => {
+    const records = [rec(2, "A", "2026-01-01"), rec(1, "A", "2026-01-01")];
+    expect([...activeRecordIds(records)]).toEqual([2]);
+  });
+
+  it("記録が無ければ空", () => {
+    expect(activeRecordIds([]).size).toBe(0);
   });
 });

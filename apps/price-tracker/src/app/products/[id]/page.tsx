@@ -23,6 +23,7 @@ import type { PriceRecord, Product, Variant } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { imageUrl } from "@/lib/images";
 import {
+  activeRecordIds,
   amountChangeLabel,
   bestPriceHistory,
   effectiveAmount,
@@ -83,6 +84,15 @@ function ChangeBadge({
   );
 }
 
+/** 同じ店で新しい価格が記録され、アクティブでなくなった記録に付ける印 */
+function PastBadge() {
+  return (
+    <span className="ml-1 whitespace-nowrap rounded bg-zinc-100 px-1 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+      過去
+    </span>
+  );
+}
+
 function parseId(raw: string): number | null {
   const n = Number(raw);
   return Number.isInteger(n) && n > 0 ? n : null;
@@ -107,7 +117,15 @@ function VariantSection({
   deletable,
   formOpen,
 }: VariantSectionProps) {
-  const best = records[0];
+  // 同じ店で新しい価格が記録された古い記録は、最安値の判定から外して表の下にまとめる
+  const active = activeRecordIds(records);
+  const isActive = (r: PriceRecord) => active.has(r.id);
+  const rows = [
+    ...records.filter(isActive),
+    ...records.filter((r) => !isActive(r)),
+  ];
+  const best = rows.find(isActive);
+  const hasInactive = rows.length > active.size;
   // 記録が容量を上書きしていればその容量で計算する
   const amountOf = (r: PriceRecord) =>
     effectiveAmount(r.amount, variant.amount);
@@ -244,6 +262,7 @@ function VariantSection({
                   </span>
                   <span className="text-zinc-600 dark:text-zinc-300">
                     <StoreLabel store={r.store} url={r.url} />
+                    {!isActive(r) && <PastBadge />}
                   </span>
                 </li>
               );
@@ -274,6 +293,11 @@ function VariantSection({
       {records.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-semibold">価格記録（単価が安い順）</h3>
+          {hasInactive && (
+            <p className="text-xs text-zinc-500">
+              同じ店で新しい価格を記録した古い記録は「過去」として下にまとめ、最安値の判定から外しています
+            </p>
+          )}
           <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
             <table className="w-full text-sm">
               <thead className="bg-zinc-50 text-left text-xs text-zinc-500 dark:bg-zinc-900">
@@ -294,13 +318,15 @@ function VariantSection({
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {records.map((r, i) => (
+                {rows.map((r) => (
                   <tr
                     key={r.id}
                     className={
-                      i === 0
+                      r === best
                         ? "bg-emerald-50/60 dark:bg-emerald-950/40"
-                        : undefined
+                        : isActive(r)
+                          ? undefined
+                          : "text-zinc-400 dark:text-zinc-500"
                     }
                   >
                     <td className="px-3 py-2 font-semibold">
@@ -313,6 +339,7 @@ function VariantSection({
                     )}
                     <td className="px-3 py-2">
                       <StoreLabel store={r.store} url={r.url} />
+                      {!isActive(r) && <PastBadge />}
                     </td>
                     <td className="px-3 py-2">{formatYen(r.price, 0)}</td>
                     <td className="px-3 py-2 whitespace-nowrap">
@@ -342,12 +369,15 @@ function VariantSection({
                     <td className="px-3 py-2 text-zinc-500">{r.memo}</td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Link
-                          href={`/products/${product.id}/records/${r.id}/renew`}
-                          className="whitespace-nowrap text-xs text-emerald-700 hover:underline dark:text-emerald-400"
-                        >
-                          価格を更新
-                        </Link>
+                        {/* 価格の更新はその店の最新の記録から行う */}
+                        {isActive(r) && (
+                          <Link
+                            href={`/products/${product.id}/records/${r.id}/renew`}
+                            className="whitespace-nowrap text-xs text-emerald-700 hover:underline dark:text-emerald-400"
+                          >
+                            価格を更新
+                          </Link>
+                        )}
                         <Link
                           href={`/products/${product.id}/records/${r.id}/edit`}
                           className="text-xs text-zinc-600 hover:underline dark:text-zinc-300"

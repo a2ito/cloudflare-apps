@@ -41,7 +41,8 @@ export async function listCategories(db: Db): Promise<Category[]> {
 }
 
 /**
- * 荷姿ごとに単価最小（同率なら新しい記録）の 1 件を結合して返す。合計容量の小さい順。
+ * 荷姿ごとに、アクティブな記録のうち単価最小（同率なら新しい記録）の 1 件を結合して返す。合計容量の小さい順。
+ * アクティブの判定は `activeRecordIds()` と同じで、同じ店に新しい記録があれば古い記録は外す。
  * 商品 ID を IN で渡すと D1 のバインド変数の上限（100）に当たるため、商品と同じ条件で絞り込む
  */
 async function listVariantsWithBest(
@@ -51,6 +52,11 @@ async function listVariantsWithBest(
   const bestId = sql`(
 		SELECT r.id FROM price_records r
 		WHERE r.variant_id = ${variants.id}
+			AND NOT EXISTS (
+				SELECT 1 FROM price_records n
+				WHERE n.variant_id = r.variant_id AND n.store = r.store
+					AND (n.recorded_at > r.recorded_at OR (n.recorded_at = r.recorded_at AND n.id > r.id))
+			)
 		ORDER BY r.price * 1.0 / (COALESCE(r.amount, ${variants.amount}) * ${variants.count} * r.quantity) ASC, r.recorded_at DESC, r.id DESC
 		LIMIT 1
 	)`;

@@ -8,24 +8,24 @@ Cloudflare Workers で動く Next.js アプリをまとめたモノレポ。
 
 ## アプリ一覧
 
-| アプリ                                  | 本番                             | Worker            | 概要                                                                                |
-| --------------------------------------- | -------------------------------- | ----------------- | ----------------------------------------------------------------------------------- |
-| [price-tracker](apps/price-tracker)     | https://price-tracker.a2ito.work | `price-tracker`   | 店舗ごとの価格を容量あたりの単価で比較する最安値メモ                                |
-| [spec-compare](apps/spec-compare)       | https://spec-compare.a2ito.work  | `spec-compare`    | 同じカテゴリの商品（同スペック帯の PC など）をスペックと価格で比べる                |
-| [tabilog](apps/tabilog)                 | https://tabilog.a2ito.work       | `tabilog`         | 旅先の食事・買い物を記録して振り返る旅行メモ                                        |
-| [sakelog](apps/sakelog)                 | https://sakelog.a2ito.work       | `sakelog`         | ワインから日本酒まで、飲んだお酒を 5 軸の評価付きで残すメモ                         |
-| [kcalog](apps/kcalog)                   | https://kcalog.a2ito.work        | `kcalog`          | 食べたものとカロリーを記録して 1 日の摂取量を振り返るメモ                           |
-| [liftlog](apps/liftlog)                 | https://liftlog.a2ito.work       | `liftlog`         | 目標から今日のメニューを提案し、実際の重量と回数を残す筋トレ記録                    |
-| [lifelog](apps/lifelog)                 | https://lifelog.a2ito.work       | `lifelog`         | 日々の出来事を写真付きの日記として残すライフログ                                    |
-| [account-book](apps/account-book)       | https://account-book.a2ito.work  | `account-book`    | グループ単位で管理する家計簿                                                        |
-| [flash-english](apps/flash-english)     | https://flash-english.a2ito.work | `flash-english`   | 日本文を見て英文を瞬間的に言う、瞬間英作文の練習帳                                  |
-| [exam-lab](apps/exam-lab)               | https://exam-lab.a2ito.work      | `exam-lab`        | 資格試験の問題を管理・学習する                                                      |
-| [warikan](apps/warikan)                 | https://warikan.a2ito.work       | `warikan`         | ログイン不要の割り勘。最小回数で自動精算する                                        |
-| [wordle](apps/wordle)                   | https://wordle.a2ito.work        | `wordle`          | ブラウザで遊ぶ Wordle                                                               |
-| [number-logic](apps/number-logic)       | https://number-logic.a2ito.work  | `number-logic`    | 数独ベースのロジックパズル                                                          |
-| [dev-toolbox](apps/dev-toolbox)         | https://toolbox.a2ito.work       | `dev-toolbox`     | パスワード生成や Unix time 変換などの開発者向けユーティリティ                       |
-| [planning-porker](apps/planning-porker) | https://porker.a2ito.work        | `planning-porker` | チーム見積り用のプランニングポーカー                                                |
-| [games](apps/games)                     | https://game.a2ito.work          | `games`           | klondike / tetris / english-vocabulary-quiz / ball-bounce を 1 本にまとめたゲーム集 |
+| アプリ                                  | 本番                             | Worker            | 概要                                                                                 | 呼び名                                                                                |
+| --------------------------------------- | -------------------------------- | ----------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| [price-tracker](apps/price-tracker)     | https://price-tracker.a2ito.work | `price-tracker`   | 店舗ごとの価格を容量あたりの単価で比較する最安値メモ                                 | 最安値メモ、値段・単価の比較                                                          |
+| [spec-compare](apps/spec-compare)       | https://spec-compare.a2ito.work  | `spec-compare`    | 同じカテゴリの商品（同スペック帯の PC など）をスペックと価格で比べる                 | 商品比較、スペック比較、PC・モニター選び                                              |
+| [tabilog](apps/tabilog)                 | https://tabilog.a2ito.work       | `tabilog`         | 旅先の食事・買い物を記録して振り返る旅行メモ                                         | たびログ、旅行メモ                                                                    |
+| [sakelog](apps/sakelog)                 | https://sakelog.a2ito.work       | `sakelog`         | ワインから日本酒まで、飲んだお酒を 5 軸の評価付きで残すメモ                          | さけログ、お酒・ワイン・日本酒・ビール                                                |
+| [kcalog](apps/kcalog)                   | https://kcalog.a2ito.work        | `kcalog`          | 食べたものとカロリーを記録して 1 日の摂取量を振り返るメモ                            | カロリー、食事記録                                                                    |
+| [liftlog](apps/liftlog)                 | https://liftlog.a2ito.work       | `liftlog`         | 目標から今日のメニューを提案し、実際の重量と回数を残す筋トレ記録                     | 筋トレ、トレーニング記録                                                              |
+| [lifelog](apps/lifelog)                 | https://lifelog.a2ito.work       | `lifelog`         | 日々の出来事を写真付きの日記として残すライフログ                                     | 日記、写真日記                                                                        |
+| [account-book](apps/account-book)       | https://account-book.a2ito.work  | `account-book`    | グループ単位で管理する家計簿                                                         | 家計簿、支出、サブスク                                                                |
+| [flash-english](apps/flash-english)     | https://flash-english.a2ito.work | `flash-english`   | 日本文を見て英文を瞬間的に言う、瞬間英作文の練習帳                                   | 瞬間英作文、英語の練習                                                                |
+| [exam-lab](apps/exam-lab)               | https://exam-lab.a2ito.work      | `exam-lab`        | 資格試験の問題を管理・学習する                                                       | 資格試験、問題集                                                                      |
+| [warikan](apps/warikan)                 | https://warikan.a2ito.work       | `warikan`         | ログイン不要の割り勘。最小回数で自動精算する                                         | 割り勘、立替の精算                                                                    |
+| [wordle](apps/wordle)                   | https://wordle.a2ito.work        | `wordle`          | ブラウザで遊ぶ Wordle                                                                | Wordle、単語当て                                                                      |
+| [number-logic](apps/number-logic)       | https://number-logic.a2ito.work  | `number-logic`    | 数独ベースのロジックパズル                                                           | 数独、ナンプレ                                                                        |
+| [dev-toolbox](apps/dev-toolbox)         | https://toolbox.a2ito.work       | `dev-toolbox`     | パスワード生成や Unix time 変換などの開発者向けユーティリティ                        | toolbox、開発ツール、パスワード生成、Unix time                                        |
+| [planning-porker](apps/planning-porker) | https://porker.a2ito.work        | `planning-porker` | チーム見積り用のプランニングポーカー                                                 | プランニングポーカー、見積り、porker                                                  |
+| [games](apps/games)                     | https://game.a2ito.work          | `games`           | ブラウザゲームを 1 本にまとめたゲーム集（一覧は [apps/games](apps/games) の README） | ゲーム、ソリティア、テトリス、2048、マインスイーパー、スネーク、hexspin、英単語クイズ |
 
 ## 使い方
 

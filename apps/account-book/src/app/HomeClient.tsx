@@ -328,23 +328,32 @@ export default function DashboardPage() {
           ))}
       </section>
 
-      {/* カテゴリページ */}
-      <Link
-        href="/categories"
-        className="fixed bottom-4 left-[max(1rem,calc(50%-23rem))] bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg"
-        //className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700
-        //         text-sm hover:opacity-80"
-      >
-        カテゴリ管理
-      </Link>
-
-      {/* 追加ボタン */}
-      <Link
-        href="/add"
-        className="fixed bottom-4 left-1/2 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-full bg-blue-600 py-3 text-center font-semibold text-white shadow-lg active:scale-95"
-      >
-        ＋ 支出を追加
-      </Link>
+      {/* 下部のボタン。重ならないよう 1 本のバーに並べ、PC では中央の列（max-w-3xl）に収める。
+          幅の狭いスマホ（400px 未満）では、左右のボタンをアイコンだけにする */}
+      <nav className="pointer-events-none fixed inset-x-0 bottom-4 px-4">
+        <div className="mx-auto flex max-w-3xl items-center gap-2">
+          <Link
+            href="/categories"
+            className="pointer-events-auto shrink-0 whitespace-nowrap rounded-full bg-blue-600 px-3 py-2 text-white shadow-lg"
+          >
+            <span aria-hidden="true">🗂️</span>
+            <span className="max-[399px]:sr-only"> カテゴリ</span>
+          </Link>
+          <Link
+            href="/add"
+            className="pointer-events-auto mx-auto w-full min-w-0 max-w-md whitespace-nowrap rounded-full bg-blue-600 py-3 text-center font-semibold text-white shadow-lg active:scale-95"
+          >
+            ＋ 支出を追加
+          </Link>
+          <Link
+            href="/yearly"
+            className="pointer-events-auto shrink-0 whitespace-nowrap rounded-full bg-blue-600 px-3 py-2 text-white shadow-lg"
+          >
+            <span aria-hidden="true">📅</span>
+            <span className="max-[399px]:sr-only"> 年間</span>
+          </Link>
+        </div>
+      </nav>
 
       {editing && (
         <EditExpenseModal
@@ -354,14 +363,6 @@ export default function DashboardPage() {
           onSaved={() => fetchExpenses(month)} // 再取得関数
         />
       )}
-
-      {/* 年次ページ */}
-      <Link
-        href="/yearly"
-        className="fixed bottom-4 right-[max(1rem,calc(50%-23rem))] bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg"
-      >
-        📅 年間
-      </Link>
     </main>
   );
 }

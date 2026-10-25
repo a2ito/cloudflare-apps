@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { expenses, categories } from "@/db/schema";
-import { eq, like, sql } from "drizzle-orm";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { drizzle } from "drizzle-orm/d1";
+import { and, eq, like, sql } from "drizzle-orm";
+import { authorize } from "@/lib/apiAuth";
 
+/** 自グループの、指定した年のカテゴリ別の合計 */
 export async function GET(request: Request) {
+  const auth = await authorize(request);
+  if (!auth.ok) return auth.response;
+
+  const { db, groupId } = auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const year = searchParams.get("year");
@@ -13,9 +18,6 @@ export async function GET(request: Request) {
       return NextResponse.json([]);
     }
 
-    const { env } = getCloudflareContext();
-    const db = drizzle(env.DB);
-
     const result = await db
       .select({
         category: categories.name,
@@ -23,7 +25,9 @@ export async function GET(request: Request) {
       })
       .from(expenses)
       .innerJoin(categories, eq(expenses.categoryId, categories.id))
-      .where(like(expenses.date, `${year}%`))
+      .where(
+        and(like(expenses.date, `${year}%`), eq(expenses.groupId, groupId)),
+      )
       .groupBy(categories.name);
 
     return NextResponse.json(result ?? []);

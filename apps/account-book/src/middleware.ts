@@ -7,18 +7,12 @@ import { eq } from "drizzle-orm";
 import { getSessionUser } from "@/lib/session";
 
 export async function middleware(request: NextRequest) {
-  const session = request.cookies.get("session");
-
   if (request.nextUrl.pathname.startsWith("/login")) {
     return;
   }
 
-  // 未ログイン（セッションなし）はログイン画面へ
-  if (!session) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  const userId = getSessionUser(request);
+  // 未ログイン（セッションなし・署名が合わない・期限切れ）はログイン画面へ
+  const userId = await getSessionUser(request);
   if (!userId) {
     return NextResponse.redirect(new URL("/login", request.url));
   }

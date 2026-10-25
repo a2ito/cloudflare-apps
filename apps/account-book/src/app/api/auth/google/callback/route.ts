@@ -3,6 +3,11 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
+import {
+  SESSION_COOKIE,
+  SESSION_MAX_AGE_SECONDS,
+  createSessionToken,
+} from "@/lib/session";
 
 type GoogleTokenResponse = {
   access_token: string;
@@ -67,11 +72,12 @@ export async function GET(request: Request) {
 
   // ④ セッションCookie発行
   const res = NextResponse.redirect(new URL("/", request.url));
-  res.cookies.set("session", user.id, {
+  res.cookies.set(SESSION_COOKIE, await createSessionToken(user.id), {
     httpOnly: true,
     secure: true,
     sameSite: "lax",
     path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
   });
 
   return res;

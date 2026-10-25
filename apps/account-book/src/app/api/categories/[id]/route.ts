@@ -7,7 +7,7 @@ import { getSessionUser } from "@/lib/session";
 
 export async function DELETE(request: Request) {
   try {
-    const userId = getSessionUser(request);
+    const userId = await getSessionUser(request);
     if (!userId) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }

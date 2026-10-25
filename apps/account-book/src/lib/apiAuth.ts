@@ -26,7 +26,7 @@ export type AuthorizationResult = AuthorizedContext | AuthorizationFailure;
 export const authorize = async (
   request: Request,
 ): Promise<AuthorizationResult> => {
-  const userId = getSessionUser(request);
+  const userId = await getSessionUser(request);
 
   if (!userId) {
     return {

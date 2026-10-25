@@ -22,7 +22,7 @@ type ExpenseSchema = {
 };
 
 export async function GET(request: Request) {
-  const userId = getSessionUser(request);
+  const userId = await getSessionUser(request);
 
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -93,7 +93,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const userId = getSessionUser(request);
+  const userId = await getSessionUser(request);
 
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

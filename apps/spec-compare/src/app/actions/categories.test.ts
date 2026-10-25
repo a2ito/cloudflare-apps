@@ -87,7 +87,12 @@ describe("createCategory", () => {
     const fields = await listFields(t.db, 1);
     expect(
       Object.fromEntries(fields.map((f) => [f.name, f.scoreWeight])),
-    ).toMatchObject({ 国際ブランド: 0, 基本還元率: 3, コンシェルジュ: 1 });
+    ).toMatchObject({
+      国際ブランド: 0,
+      基本還元率: 3,
+      ケータイ料金還元率: 2,
+      コンシェルジュ: 1,
+    });
   });
 
   it("知らないひな形は無視する", async () => {

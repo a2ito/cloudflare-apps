@@ -9,6 +9,12 @@
       "enabled": false
     },
     {
+      "description": "undici は overrides で miniflare の依存を脆弱性修正版に差し替えているだけ。miniflare が 7 系（7.29.1）を前提にしているため、8 に上げると lock から消えて wrangler が起動しない（#156）。7 系の patch / minor だけを受ける。miniflare が上げたら overrides ごと外す",
+      "matchPackageNames": ["undici"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
       "description": "patch 更新だけを自動マージする。脆弱性修正の多くは patch で来るため、放置される時間を減らす。実際のマージは GitHub が 全アプリの CI の成功を待って行う",
       "matchUpdateTypes": ["patch"],
       "automerge": true,

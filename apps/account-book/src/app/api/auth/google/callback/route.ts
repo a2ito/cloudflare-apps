@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -8,6 +9,11 @@ import {
   SESSION_MAX_AGE_SECONDS,
   createSessionToken,
 } from "@/lib/session";
+import {
+  OAUTH_STATE_COOKIE,
+  getVerifiedEmail,
+  isValidOAuthState,
+} from "@/lib/oauth";
 
 type GoogleTokenResponse = {
   access_token: string;
@@ -17,12 +23,33 @@ type GoogleTokenResponse = {
   id_token: string;
 };
 
-export async function GET(request: Request) {
+// state は 1 回きり。成功でも失敗でも消す
+const clearOAuthState = (res: NextResponse): NextResponse => {
+  res.cookies.set(OAUTH_STATE_COOKIE, "", {
+    path: "/api/auth/google",
+    maxAge: 0,
+  });
+  return res;
+};
+
+const loginError = (request: Request, error: string): NextResponse =>
+  clearOAuthState(
+    NextResponse.redirect(new URL(`/login?error=${error}`, request.url)),
+  );
+
+export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
 
-  if (!code) {
-    return NextResponse.redirect("/login?error=oauth");
+  // ログインを始めたブラウザ自身からの戻りか（login CSRF 対策）
+  if (
+    !code ||
+    !isValidOAuthState(
+      request.cookies.get(OAUTH_STATE_COOKIE)?.value,
+      searchParams.get("state"),
+    )
+  ) {
+    return loginError(request, "oauth");
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -45,13 +72,20 @@ export async function GET(request: Request) {
     }),
   });
 
+  if (!tokenRes.ok) {
+    return loginError(request, "token");
+  }
   const token = (await tokenRes.json()) as GoogleTokenResponse;
-  const idToken = token.id_token;
 
-  // ② id_token を検証
-  const payload = JSON.parse(atob(idToken.split(".")[1]));
-
-  const email = payload.email;
+  // ② id_token を検証（発行者・宛先・期限・メール確認済み）
+  const email = getVerifiedEmail(
+    token.id_token,
+    clientId,
+    Math.floor(Date.now() / 1000),
+  );
+  if (!email) {
+    return loginError(request, "token");
+  }
 
   // ③ 事前登録ユーザか確認
   const { env } = getCloudflareContext();
@@ -64,10 +98,7 @@ export async function GET(request: Request) {
     .get();
 
   if (!user) {
-    //return NextResponse.redirect("/login?error=not-allowed");
-    return NextResponse.redirect(
-      new URL("/login?error=not-allowed", request.url),
-    );
+    return loginError(request, "not-allowed");
   }
 
   // ④ セッションCookie発行
@@ -80,5 +111,5 @@ export async function GET(request: Request) {
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
 
-  return res;
+  return clearOAuthState(res);
 }

@@ -26,6 +26,8 @@ export const expenses = sqliteTable(
     date: text("date").notNull(), // yyyy-mm-dd
     // サブスクから自動計上した明細だけが持つ。同じ請求日の二重計上を防ぐ
     subscriptionId: integer("subscription_id"),
+    // レシート画像の R2 キー。1 明細に 1 枚まで
+    receiptKey: text("receipt_key"),
 
     //createdAt: integer("created_at").notNull(),
     createdAt: integer("created_at")

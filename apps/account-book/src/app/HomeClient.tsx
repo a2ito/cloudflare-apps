@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, ReceiptText, Trash2 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { getCurrentMonth, addMonth } from "@/lib/month";
@@ -35,6 +35,7 @@ type Expense = {
   categoryName: string;
   categoryId: number;
   tags?: { id: number; name: string }[];
+  hasReceipt: boolean;
 };
 
 type CategoryDiff = {
@@ -307,6 +308,18 @@ export default function DashboardPage() {
                 </p>
 
                 <div className="flex items-center gap-1">
+                  {e.hasReceipt && (
+                    <a
+                      href={`/api/expenses/${e.id}/receipt`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                      aria-label="Receipt"
+                    >
+                      <ReceiptText className="w-4 h-4 text-gray-500" />
+                    </a>
+                  )}
+
                   <button
                     onClick={() => setEditing(e)}
                     className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"

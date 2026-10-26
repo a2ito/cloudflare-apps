@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import TagSelector from "@/components/TagSelector";
+import ReceiptPicker from "@/components/ReceiptPicker";
+import { uploadReceipt } from "@/lib/resizeImage";
 
 type Category = {
   id: number;
@@ -19,6 +21,7 @@ export default function AddExpensePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCategory, setNewCategory] = useState("");
   const [tagIds, setTagIds] = useState<number[]>([]);
+  const [receipt, setReceipt] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -51,7 +54,7 @@ export default function AddExpensePage() {
 
     setSaving(true);
 
-    await fetch("/api/expenses", {
+    const res = await fetch("/api/expenses", {
       method: "POST",
       body: JSON.stringify({
         amount: Number(amount),
@@ -62,6 +65,18 @@ export default function AddExpensePage() {
       }),
       headers: { "Content-Type": "application/json" },
     });
+
+    if (receipt && res.ok) {
+      const { id } = (await res.json()) as { id: number };
+      try {
+        await uploadReceipt(id, receipt);
+      } catch (err) {
+        // 支出は保存できているので、ここで止めると二重登録になる。知らせて一覧へ戻す
+        window.alert(
+          `${err instanceof Error ? err.message : String(err)}\n支出は保存しました。編集から付け直してください`,
+        );
+      }
+    }
 
     router.push("/");
   };
@@ -152,6 +167,9 @@ export default function AddExpensePage() {
 
         {/* タグ */}
         <TagSelector selectedTagIds={tagIds} onChange={setTagIds} />
+
+        {/* レシート */}
+        <ReceiptPicker file={receipt} onFileChange={setReceipt} />
       </div>
 
       {/* 保存ボタン */}

@@ -31,6 +31,14 @@ export async function middleware(request: NextRequest) {
   }
 }
 
+// ページを足したらここにも足す。漏れると未ログインでも画面が開く（データは API 側で弾く）
 export const config = {
-  matcher: ["/", "/add/:path*", "/tags/:path*"],
+  matcher: [
+    "/",
+    "/add/:path*",
+    "/categories/:path*",
+    "/subscriptions/:path*",
+    "/tags/:path*",
+    "/yearly/:path*",
+  ],
 };

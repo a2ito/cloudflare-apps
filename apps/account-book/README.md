@@ -55,7 +55,7 @@
 
 - 支出の追加・編集で、レシート画像を 1 枚付けられる（差し替え・外すのも編集から）
 - 画像はブラウザで長辺 1600px の JPEG に縮めてから送る。サーバは jpeg / png / webp を 5MB まで受け付ける
-- 画像は R2 の `account-book-receipts`（バインディング `RECEIPTS_BUCKET`）に置く
+- 画像は R2 の `account-book-receipts-apac`（バインディング `RECEIPTS_BUCKET`）に置く
   - 公開ドメインは付けない。`/api/expenses/[id]/receipt` が所属グループを確かめてから返す
   - バケットは `terraform/config_apps.tf` の `r2_buckets` が持つ（`public = false`）
 - 支出を削除すると、レシート画像も消す

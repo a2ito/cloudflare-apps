@@ -73,6 +73,10 @@ Google OAuth の設定は、ルートの CLAUDE.md の「ダッシュボード�
 - **R2 のカスタムドメインは import できない。** ダッシュボードで先に付けると Terraform で管理できなくなるので、
   必ず `r2_buckets` に足して Terraform で作る。ホスト名は Build variables の `NEXT_PUBLIC_IMAGES_BASE_URL` から取る
 
+- **R2 のバケットは、マージより先に apply して作る。** wrangler のデプロイは、無いバケットを自動で作って先に進む。
+  そのとき location は Terraform の指定どおりにならない（account-book では APAC のつもりが WNAM になった）。location は同じ名前で最初に作ったときのものが使われ、
+  消して作り直しても変わらないので、直すには名前を変えるしかない。Terraform の plan にもこの差は出ない
+
 - **Secret の値は state に平文で入る。** state のバケットは cloudflare-apps 専用にしている
 - **Secret の値は Cloudflare から読めない。** Terraform の外（`wrangler secret put` やダッシュボード）で値を
   変えても差分にならない。Secret は Terraform からだけ変える

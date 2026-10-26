@@ -121,7 +121,7 @@ resource "cloudflare_r2_bucket" "app" {
 # ホスト名は Build variables の NEXT_PUBLIC_IMAGES_BASE_URL から取る。アプリに埋め込む URL と食い違わないようにするため
 resource "cloudflare_r2_custom_domain" "app" {
   provider = cloudflare-official
-  for_each = local.r2_buckets
+  for_each = { for k, v in local.r2_buckets : k => v if v.public }
 
   account_id  = var.account_id
   bucket_name = cloudflare_r2_bucket.app[each.key].name

@@ -68,6 +68,7 @@ export async function GET(request: Request) {
         memo: expenses.memo,
         categoryName: categories.name,
         categoryId: expenses.categoryId,
+        receiptKey: expenses.receiptKey,
       })
       .from(expenses)
       .innerJoin(categories, eq(expenses.categoryId, categories.id))
@@ -79,8 +80,10 @@ export async function GET(request: Request) {
       result.map((row) => row.id),
     );
 
-    const withTags = result.map((row) => ({
+    // R2 のキーは画面に要らないので、付いているかどうかだけ返す
+    const withTags = result.map(({ receiptKey, ...row }) => ({
       ...row,
+      hasReceipt: receiptKey !== null,
       tags: tagsByExpenseId.get(row.id) ?? [],
     }));
 
@@ -130,5 +133,6 @@ export async function POST(request: Request) {
     await replaceExpenseTags(db, groupId, expenseId, normalizeTagIds(tagIds));
   }
 
-  return NextResponse.json({ ok: true });
+  // レシートは作成後に /api/expenses/[id]/receipt へ送るので ID を返す
+  return NextResponse.json({ ok: true, id: expenseId });
 }

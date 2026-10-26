@@ -135,8 +135,11 @@ locals {
   #
   # 画像をキャッシュに乗せるルールはゾーンに 1 つしか持てず、cloud-management が持っている。
   # ここにバケットを足したら、cloud-management の cloudflare/config_workers.tf にもホスト名を足す。
+  #
+  # public = false のバケットはカスタムドメインを付けず、Worker が認証してから返す（account-book のレシートなど）。
   r2_buckets = {
-    "spec-compare" = { name = "spec-compare-images", location = "APAC" }
+    "account-book" = { name = "account-book-receipts", location = "APAC", public = false }
+    "spec-compare" = { name = "spec-compare-images", location = "APAC", public = true }
   }
 
   # Google ログインのアプリ（apps/kcalog を雛形にしたもの）が持つ Secret。

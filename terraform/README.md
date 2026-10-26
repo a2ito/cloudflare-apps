@@ -63,6 +63,8 @@ D1 と R2（画像）を Terraform で持たせるときは、`config_apps.tf` �
   Build variables の `D1_DATABASE_ID` に書いてもう一度 apply する。手で作った D1 は `imports.tf` で取り込む
 - 画像のカスタムドメインは `NEXT_PUBLIC_IMAGES_BASE_URL` のホスト名で作られる。cloud-management の
   キャッシュルールにもホスト名を足す
+- 公開したくない中身（レシートなど）のバケットは `public = false` にする。カスタムドメインを付けず、
+  Worker が認証してから返す
 
 Google OAuth の設定は、ルートの CLAUDE.md の「ダッシュボードで人がやること」のとおり手で行う。
 

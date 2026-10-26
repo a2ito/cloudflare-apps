@@ -8,6 +8,7 @@ declare namespace Cloudflare {
     IMAGES: ImagesBinding;
     ASSETS: Fetcher;
     DB: D1Database;
+    RECEIPTS_BUCKET: R2Bucket;
   }
 }
 interface CloudflareEnv extends Cloudflare.Env {}

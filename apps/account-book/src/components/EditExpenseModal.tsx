@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import TagSelector from "@/components/TagSelector";
+import ReceiptPicker from "@/components/ReceiptPicker";
+import { uploadReceipt } from "@/lib/resizeImage";
 
 export type ExpenseForEdit = {
   id: number;
@@ -10,6 +12,7 @@ export type ExpenseForEdit = {
   date: string;
   memo: string | null;
   tags?: { id: number; name: string }[];
+  hasReceipt?: boolean;
 };
 
 type Category = {
@@ -40,6 +43,8 @@ export default function EditExpenseModal({
     (expense.tags ?? []).map((tag) => tag.id),
   );
   const [loading, setLoading] = useState(false);
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const [receiptRemoved, setReceiptRemoved] = useState(false);
 
   const submit = async () => {
     setLoading(true);
@@ -55,6 +60,19 @@ export default function EditExpenseModal({
         tagIds,
       }),
     });
+
+    try {
+      if (receipt) {
+        await uploadReceipt(expense.id, receipt);
+      } else if (receiptRemoved && expense.hasReceipt) {
+        const res = await fetch(`/api/expenses/${expense.id}/receipt`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("レシートを外せませんでした");
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
 
     setLoading(false);
     onSaved();
@@ -137,6 +155,17 @@ export default function EditExpenseModal({
         </div>
 
         <TagSelector selectedTagIds={tagIds} onChange={setTagIds} />
+
+        <ReceiptPicker
+          file={receipt}
+          onFileChange={setReceipt}
+          savedUrl={
+            expense.hasReceipt && !receiptRemoved
+              ? `/api/expenses/${expense.id}/receipt`
+              : undefined
+          }
+          onRemoveSaved={() => setReceiptRemoved(true)}
+        />
 
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-4 py-2 border rounded">

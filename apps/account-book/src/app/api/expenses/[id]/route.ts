@@ -75,7 +75,7 @@ export async function DELETE(
 
   // 他グループの明細を削除できないよう所有を確認する
   const target = await db
-    .select({ id: expenses.id })
+    .select({ id: expenses.id, receiptKey: expenses.receiptKey })
     .from(expenses)
     .where(and(eq(expenses.id, expenseId), eq(expenses.groupId, groupId)))
     .get();
@@ -87,6 +87,10 @@ export async function DELETE(
   // expense_tags が expenses を参照しているため紐付けを先に外す
   await db.delete(expenseTags).where(eq(expenseTags.expenseId, expenseId));
   await db.delete(expenses).where(eq(expenses.id, expenseId));
+
+  if (target.receiptKey) {
+    await env.RECEIPTS_BUCKET.delete(target.receiptKey);
+  }
 
   return NextResponse.json({ ok: true });
 }

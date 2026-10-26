@@ -63,6 +63,13 @@
       "migrations_dir": "drizzle/migrations",
     },
   ],
+  // レシート画像。公開ドメインは付けず、Worker が認証してから返す
+  "r2_buckets": [
+    {
+      "binding": "RECEIPTS_BUCKET",
+      "bucket_name": "account-book-receipts",
+    },
+  ],
   "routes": [
     {
       "pattern": "account-book.a2ito.work",

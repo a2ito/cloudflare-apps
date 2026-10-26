@@ -138,7 +138,9 @@ locals {
   #
   # public = false のバケットはカスタムドメインを付けず、Worker が認証してから返す（account-book のレシートなど）。
   r2_buckets = {
-    "account-book" = { name = "account-book-receipts", location = "APAC", public = false }
+    # 名前に -apac が付くのは、wrangler のデプロイが同名のバケットを先に WNAM で自動作成してしまったため。
+    # location は同じ名前で最初に作ったときのものが使われ、消して作り直しても変わらない
+    "account-book" = { name = "account-book-receipts-apac", location = "APAC", public = false }
     "spec-compare" = { name = "spec-compare-images", location = "APAC", public = true }
   }
 

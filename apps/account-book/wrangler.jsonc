@@ -67,7 +67,7 @@
   "r2_buckets": [
     {
       "binding": "RECEIPTS_BUCKET",
-      "bucket_name": "account-book-receipts",
+      "bucket_name": "account-book-receipts-apac",
     },
   ],
   "routes": [

@@ -50,3 +50,11 @@ next-env.d.ts
 
 
 !.dev.vars.example
+
+# Next.js が自動生成する AI エージェント向けルール
+AGENTS.md
+CLAUDE.md
+# 手で書いたエージェント向けの約束は共有する（自動生成と場所を分けている）
+!.claude/CLAUDE.md
+# 手元だけの設定は共有しない
+.claude/settings.local.json

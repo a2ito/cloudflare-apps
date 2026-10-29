@@ -27,3 +27,12 @@ export function today(now: Date = new Date()): string {
     day: "2-digit",
   }).format(now);
 }
+
+/**
+ * D1 の datetime('now')（"2026-10-12 15:30:00"、UTC）を日本時間の日付にする。
+ * UTC の日付のままだと、日本時間の朝 9 時より前に登録した商品が前日になるため。読めない値はそのまま返す
+ */
+export function jstDateOf(utc: string): string {
+  const at = new Date(`${utc.replace(" ", "T")}Z`);
+  return Number.isNaN(at.getTime()) ? utc : today(at);
+}

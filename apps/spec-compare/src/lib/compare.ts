@@ -28,10 +28,13 @@ export type CompareItem = {
   /** 候補から外して比較表に出さない商品 */
   hidden: boolean;
   favorite: boolean;
+  /** 商品を登録した日（日本時間の YYYY-MM-DD） */
+  createdAt: string;
 };
 
-/** 並べ替えの軸。f<id> はスペック項目、score は総合スコア */
-export type SortKey = "price" | "name" | "cost" | "score" | `f${number}`;
+/** 並べ替えの軸。f<id> はスペック項目、score は総合スコア、created は登録日 */
+export type SortKey =
+  "price" | "name" | "cost" | "score" | "created" | `f${number}`;
 export type SortDir = "asc" | "desc";
 
 export type RangeFilter = { fieldId: number; min?: number; max?: number };
@@ -278,7 +281,8 @@ export function parseCompareQuery(
     costField && isCostField(costField) ? costField.id : undefined;
 
   let sort: SortKey = scoreEnabled ? "score" : "price";
-  if (rawSort === "name" || rawSort === "price") sort = rawSort;
+  if (rawSort === "name" || rawSort === "price" || rawSort === "created")
+    sort = rawSort;
   else if (rawSort === "cost" && validCost !== undefined) sort = "cost";
   else if (rawSort === "score" && scoreEnabled) sort = "score";
   else if (rawSort?.startsWith("f")) {
@@ -379,6 +383,7 @@ function sortValue(
 ): number | string | null {
   if (query.sort === "price") return item.best?.price ?? null;
   if (query.sort === "name") return item.name;
+  if (query.sort === "created") return item.createdAt;
   if (query.sort === "score") return scores?.get(item.id) ?? null;
   if (query.sort === "cost") {
     return query.costFieldId === undefined

@@ -81,6 +81,7 @@ function item(
           },
     hidden: false,
     favorite: false,
+    createdAt: `2026-10-${String(id).padStart(2, "0")}`,
   };
 }
 
@@ -162,6 +163,10 @@ describe("parseCompareQuery", () => {
       maxPrice: undefined,
       costFieldId: undefined,
     });
+  });
+
+  it("登録日で並べる指定を読む", () => {
+    expect(parseCompareQuery({ sort: "created" }, FIELDS).sort).toBe("created");
   });
 
   it("項目ごとの条件を型に合わせて読む", () => {
@@ -485,6 +490,18 @@ describe("sortItems", () => {
     expect(
       sortItems(named, { ...baseQuery, sort: "name" }).map((i) => i.id),
     ).toEqual([2, 1]);
+  });
+  it("登録日で並べる", () => {
+    const dated = [
+      { ...item(1, 1), createdAt: "2026-10-20" },
+      { ...item(2, 1), createdAt: "2026-10-13" },
+      { ...item(3, 1), createdAt: "2026-10-25" },
+    ];
+    expect(
+      sortItems(dated, { ...baseQuery, sort: "created", dir: "desc" }).map(
+        (i) => i.id,
+      ),
+    ).toEqual([3, 1, 2]);
   });
 });
 

@@ -57,9 +57,9 @@ function hrefWith(base: string, params: Params, overrides: Params): string {
   return s ? `${base}?${s}` : base;
 }
 
-/** 列を初めて押したときの向き。良い順に並ぶようにする */
+/** 列を初めて押したときの向き。良い順に並ぶようにする（登録日は新しい順） */
 function defaultDir(key: SortKey, fields: readonly FieldDef[]): SortDir {
-  if (key === "score") return "desc";
+  if (key === "score" || key === "created") return "desc";
   if (!key.startsWith("f")) return "asc";
   const field = fields.find((f) => `f${f.id}` === key);
   return field?.better === "higher" ? "desc" : "asc";
@@ -653,6 +653,27 @@ export default async function ComparePage({
                         />
                       </th>
                     ))}
+                    {/* 登録日はスペック項目ではなく商品の属性なので、並び順（spec_fields.position）を持たない。← → では動かさず、いつも右端に置く */}
+                    <th data-col="created" className={headerClass}>
+                      <SortHeader
+                        label="登録日"
+                        sortKey="created"
+                        query={query}
+                        fields={fields}
+                        base={base}
+                        params={sp}
+                      />
+                      <PinButton
+                        categoryId={id}
+                        column="created"
+                        label="登録日"
+                      />
+                      <ColumnResizer
+                        categoryId={id}
+                        column="created"
+                        label="登録日"
+                      />
+                    </th>
                     <th className="px-3 py-2">
                       <span className="sr-only">操作</span>
                     </th>
@@ -784,6 +805,9 @@ export default async function ComparePage({
                             </td>
                           );
                         })}
+                        <td data-col="created" className={cellClass(false)}>
+                          {item.createdAt}
+                        </td>
                         <td className="px-3 py-2 whitespace-nowrap">
                           <RowActions item={item} />
                         </td>

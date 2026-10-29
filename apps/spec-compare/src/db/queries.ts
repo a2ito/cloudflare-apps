@@ -1,5 +1,6 @@
 import { asc, count, desc, eq, isNotNull } from "drizzle-orm";
 import { pickBest, type CompareItem, type SpecCell } from "@/lib/compare";
+import { jstDateOf } from "@/lib/date";
 import type { Db } from "./index";
 import {
   categories,
@@ -130,6 +131,7 @@ export async function listCompareItems(
       imageKey: p.imageKey,
       hidden: p.hidden,
       favorite: p.favorite,
+      createdAt: jstDateOf(p.createdAt),
       specs: specsByProduct.get(p.id) ?? {},
       best: best && {
         id: best.id,

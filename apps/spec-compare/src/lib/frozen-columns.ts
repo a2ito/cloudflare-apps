@@ -4,13 +4,18 @@ export const DEFAULT_LAST_FROZEN = "price";
 /** 商品の列は何の行か分かるよう、いつも固定する */
 const ALWAYS_FROZEN = "name";
 
+/** 固定してよいのは表の見える幅のこの割合まで。スマホで固定の列が画面を埋め、残りが読めなくなるため */
+export const FROZEN_MAX_RATIO = 0.6;
+
 /**
  * 左から順に並ぶ列のうち、固定する列とその left の位置。
- * last が見つからない（コスパ列を出していない、項目を消した）ときは既定の列まで固定する
+ * last が見つからない（コスパ列を出していない、項目を消した）ときは既定の列まで固定する。
+ * 幅の合計が maxWidth を超える列からは固定しない（商品の列だけは超えても固定する）
  */
 export function frozenOffsets(
   columns: readonly { key: string; width: number }[],
   last: string,
+  maxWidth = Infinity,
 ): Map<string, number> {
   const keys = columns.map((c) => c.key);
   let end = keys.indexOf(last);
@@ -19,6 +24,7 @@ export function frozenOffsets(
   const offsets = new Map<string, number>();
   let left = 0;
   for (const c of columns.slice(0, end + 1)) {
+    if (c.key !== ALWAYS_FROZEN && left + c.width > maxWidth) break;
     offsets.set(c.key, left);
     left += c.width;
   }

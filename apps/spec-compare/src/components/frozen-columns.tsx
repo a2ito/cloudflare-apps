@@ -3,6 +3,7 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import {
   DEFAULT_LAST_FROZEN,
+  FROZEN_MAX_RATIO,
   frozenOffsets,
   toggleFrozen,
 } from "@/lib/frozen-columns";
@@ -66,6 +67,8 @@ function applyFrozen(table: HTMLTableElement, last: string): void {
       width: th.getBoundingClientRect().width,
     })),
     last,
+    // 横スクロールする箱（表の親）の見える幅
+    (table.parentElement?.clientWidth ?? Infinity) * FROZEN_MAX_RATIO,
   );
   const lastKey = [...offsets.keys()].at(-1);
   for (const cell of table.querySelectorAll<HTMLElement>("[data-col]")) {
@@ -100,6 +103,8 @@ export function FrozenColumns({ categoryId }: { categoryId: number }) {
     apply();
     const resize = new ResizeObserver(apply);
     for (const th of headerColumns(table)) resize.observe(th);
+    // 画面の回転などで見える幅が変わると、固定できる列の数も変わる
+    if (table.parentElement) resize.observe(table.parentElement);
     // 絞り込みや並べ替えで行が作り直されたときも、新しいセルに付け直す
     const mutation = new MutationObserver(apply);
     mutation.observe(table, { childList: true, subtree: true });

@@ -672,8 +672,9 @@ export default async function ComparePage({
                           data-col="name"
                           className={`sticky left-0 z-10 bg-white px-3 py-2 dark:bg-zinc-950 ${frozenEdge}`}
                         >
-                          {/* 商品名は 1 行で省くので、セルの幅ではなく --col-w（列幅を変えたときの幅）から左右の余白を引いた幅に収める */}
-                          <span className="flex max-w-[calc(var(--col-w,17.5rem)-1.5rem)] items-center gap-1">
+                          {/* 商品名は 1 行で省くので、セルの幅ではなく --col-w（列幅を変えたときの幅）から左右の余白を引いた幅に収める。
+                              スマホでは既定を細くし、固定した商品の列が画面を埋めないようにする */}
+                          <span className="flex max-w-[calc(var(--col-w,10rem)-1.5rem)] items-center gap-1 sm:max-w-[calc(var(--col-w,17.5rem)-1.5rem)]">
                             <FavoriteButton
                               id={item.id}
                               favorite={item.favorite}
@@ -682,7 +683,8 @@ export default async function ComparePage({
                               href={`/products/${item.id}`}
                               className="flex min-w-0 items-center gap-2 hover:underline"
                             >
-                              <span className="h-10 w-10 flex-none overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
+                              {/* 狭い画面では名前の幅を優先し、画像は出さない */}
+                              <span className="hidden h-10 w-10 flex-none overflow-hidden rounded bg-zinc-100 sm:block dark:bg-zinc-800">
                                 {item.imageKey && (
                                   <img
                                     src={imageUrl(item.imageKey)}

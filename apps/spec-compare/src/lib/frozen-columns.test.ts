@@ -25,6 +25,16 @@ describe("frozenOffsets", () => {
   it("商品の列だけにもできる", () => {
     expect([...frozenOffsets(COLS, "name")]).toEqual([["name", 0]]);
   });
+  it("見える幅を超える列からは固定しない", () => {
+    expect([...frozenOffsets(COLS, "f1", 300)]).toEqual([
+      ["name", 0],
+      ["price", 200],
+    ]);
+    expect([...frozenOffsets(COLS, "f1", 299)]).toEqual([["name", 0]]);
+  });
+  it("商品の列は見える幅を超えても固定する", () => {
+    expect([...frozenOffsets(COLS, "price", 150)]).toEqual([["name", 0]]);
+  });
 });
 
 describe("toggleFrozen", () => {

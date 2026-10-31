@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { moveField } from "@/app/actions/fields";
-import { deleteProduct, setProductHidden } from "@/app/actions/products";
+import {
+  deleteProduct,
+  setProductHidden,
+  setProductSoldOut,
+} from "@/app/actions/products";
 import { FavoriteButton } from "@/components/favorite-button";
 import { ColumnResizer } from "@/components/column-resizer";
 import { FrozenColumns, PinButton } from "@/components/frozen-columns";
@@ -11,6 +15,7 @@ import { QuickFiltersPanel } from "@/components/quick-filters-panel";
 import {
   ConfirmForm,
   LinkButton,
+  SoldOutBadge,
   UsedBadge,
   inputClass,
 } from "@/components/ui";
@@ -142,10 +147,17 @@ function MoveButtons({
 const rowButton =
   "rounded px-1.5 py-0.5 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800";
 
-/** 行ごとの操作。非表示は消さずに候補から外すだけ、削除は価格の記録や画像まで消す */
+/** 行ごとの操作。非表示・売り切れは消さずに比較表から外すだけ、削除は価格の記録や画像まで消す */
 function RowActions({ item }: { item: CompareItem }) {
   return (
     <span className="flex justify-end gap-1">
+      <form action={setProductSoldOut}>
+        <input type="hidden" name="id" value={item.id} />
+        <input type="hidden" name="soldOut" value={item.soldOut ? "0" : "1"} />
+        <button type="submit" className={`${rowButton} text-zinc-500`}>
+          {item.soldOut ? "在庫あり" : "売り切れ"}
+        </button>
+      </form>
       <form action={setProductHidden}>
         <input type="hidden" name="id" value={item.id} />
         <input type="hidden" name="hidden" value={item.hidden ? "0" : "1"} />
@@ -269,6 +281,7 @@ function FilterForm({
     (query.maxPrice !== undefined ? 1 : 0) +
     (query.includeUsed ? 0 : 1) +
     (query.showHidden ? 1 : 0) +
+    (query.showSoldOut ? 1 : 0) +
     (query.favoritesOnly ? 1 : 0) +
     query.textIn.length +
     query.numIn.length +
@@ -337,6 +350,15 @@ function FilterForm({
               defaultChecked={query.showHidden}
             />
             非表示の商品も表示
+          </label>
+          <label className="flex items-center gap-2 self-end py-2 text-sm">
+            <input
+              type="checkbox"
+              name="soldOut"
+              value="1"
+              defaultChecked={query.showSoldOut}
+            />
+            売り切れの商品も表示
           </label>
           <label className="flex items-center gap-2 self-end py-2 text-sm">
             <input
@@ -687,7 +709,9 @@ export default async function ComparePage({
                     return (
                       <tr
                         key={item.id}
-                        className={item.hidden ? "opacity-50" : undefined}
+                        className={
+                          item.hidden || item.soldOut ? "opacity-50" : undefined
+                        }
                       >
                         <td
                           data-col="name"
@@ -717,6 +741,7 @@ export default async function ComparePage({
                               </span>
                               <span className="min-w-0">
                                 <span className="block truncate font-medium">
+                                  {item.soldOut && <SoldOutBadge />}
                                   {item.name}
                                 </span>
                                 {item.maker && (

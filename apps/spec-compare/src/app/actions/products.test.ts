@@ -40,6 +40,7 @@ const {
   deleteProduct,
   setProductFavorite,
   setProductHidden,
+  setProductSoldOut,
   updateProduct,
 } = await import("./products");
 
@@ -262,6 +263,34 @@ describe("setProductHidden", () => {
   it("無い商品はエラー", async () => {
     await expect(
       setProductHidden(formData({ id: 99, hidden: "1" })),
+    ).rejects.toThrow(/見つかりません/);
+  });
+});
+
+describe("setProductSoldOut", () => {
+  it("売り切れにし、戻せる。非表示とは別に持つ", async () => {
+    await expectRedirect(() =>
+      createProduct(
+        {},
+        formData({ categoryId: 1, name: "PC-A", store: "A", price: "1" }),
+      ),
+    );
+    await setProductSoldOut(formData({ id: 1, soldOut: "1" }));
+    expect((await listCompareItems(t.db, 1))[0]).toMatchObject({
+      soldOut: true,
+      hidden: false,
+      best: { price: 1 },
+    });
+    expect(revalidated).toEqual(
+      expect.arrayContaining(["/categories/1", "/products/1"]),
+    );
+    await setProductSoldOut(formData({ id: 1, soldOut: "0" }));
+    expect((await listCompareItems(t.db, 1))[0].soldOut).toBe(false);
+  });
+
+  it("無い商品はエラー", async () => {
+    await expect(
+      setProductSoldOut(formData({ id: 99, soldOut: "1" })),
     ).rejects.toThrow(/見つかりません/);
   });
 });

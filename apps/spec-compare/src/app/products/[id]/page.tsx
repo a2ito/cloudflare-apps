@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { deleteProduct, setProductHidden } from "@/app/actions/products";
+import {
+  deleteProduct,
+  setProductHidden,
+  setProductSoldOut,
+} from "@/app/actions/products";
 import { FavoriteButton } from "@/components/favorite-button";
 import { createRecord, deleteRecord } from "@/app/actions/records";
 import { RecordForm } from "@/components/record-form";
@@ -8,6 +12,7 @@ import {
   ConfirmForm,
   DangerButton,
   LinkButton,
+  SoldOutBadge,
   UsedBadge,
 } from "@/components/ui";
 import { getDb } from "@/db";
@@ -43,8 +48,8 @@ export default async function ProductPage({
     listStores(db),
   ]);
   const self = items.find((i) => i.id === id);
-  // 順位は比較表に出ている商品の中で数える。非表示にした商品は候補から外したものなので入れない
-  const ranked = items.filter((i) => !i.hidden || i.id === id);
+  // 順位は比較表に出ている商品の中で数える。非表示・売り切れの商品は比較表から外したものなので入れない
+  const ranked = items.filter((i) => (!i.hidden && !i.soldOut) || i.id === id);
   const bestId = self?.best?.id;
 
   return (
@@ -72,6 +77,7 @@ export default async function ProductPage({
           </Link>
           <h1 className="flex flex-wrap items-center gap-x-1 text-2xl font-bold">
             <FavoriteButton id={id} favorite={product.favorite} />
+            {product.soldOut && <SoldOutBadge />}
             {product.name}
             {product.hidden && (
               <span className="ml-2 rounded bg-zinc-200 px-1.5 align-middle text-xs font-normal text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
@@ -112,6 +118,20 @@ export default async function ProductPage({
                 className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
               >
                 {product.hidden ? "比較表に戻す" : "比較表から隠す"}
+              </button>
+            </form>
+            <form action={setProductSoldOut}>
+              <input type="hidden" name="id" value={id} />
+              <input
+                type="hidden"
+                name="soldOut"
+                value={product.soldOut ? "0" : "1"}
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+              >
+                {product.soldOut ? "在庫ありに戻す" : "売り切れにする"}
               </button>
             </form>
             <ConfirmForm

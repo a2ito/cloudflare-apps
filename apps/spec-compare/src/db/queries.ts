@@ -130,6 +130,7 @@ export async function listCompareItems(
       maker: p.maker,
       imageKey: p.imageKey,
       hidden: p.hidden,
+      soldOut: p.soldOut,
       favorite: p.favorite,
       createdAt: jstDateOf(p.createdAt),
       specs: specsByProduct.get(p.id) ?? {},

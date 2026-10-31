@@ -194,7 +194,8 @@ function cellClass(isBest: boolean): string {
 }
 
 /** 見出しのセル。固定したときに背景を塗り、ピンの色を変えられるよう group にする */
-const headerClass = `group/col relative px-3 py-2 text-right whitespace-nowrap data-[frozen]:bg-zinc-50 dark:data-[frozen]:bg-zinc-900 ${frozenEdge}`;
+// 表の箱の中で縦にスクロールしても見出しが残るよう、上に固定する。下の行が透けないよう背景を塗る
+const headerClass = `group/col sticky top-0 z-20 bg-zinc-50 px-3 py-2 text-right whitespace-nowrap dark:bg-zinc-900 ${frozenEdge}`;
 
 /** ワンタップで絞り込むチップ。押すと URL の条件を差し替え、押し直すと外れる。テキストと比べない数値は複数選べる */
 function QuickFilters({
@@ -554,15 +555,16 @@ export default async function ComparePage({
             </p>
           ) : (
             // relative が無いと、セルの中の sr-only（position: absolute）がこの箱の外を基準に置かれ、
-            // 箱で切り取られずにページ全体の横スクロールを生む
-            <div className="relative overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+            // 箱で切り取られずにページ全体の横スクロールを生む。
+            // 高さを画面までにして縦も箱の中でスクロールさせ、横スクロールバーがいつも画面の下に見えるようにする
+            <div className="relative max-h-[calc(100dvh-3rem)] overflow-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
               <table className="min-w-full text-sm">
                 <thead className="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
                   <tr>
                     {/* 横に長くても何の行か分かるよう、商品名の列はいつも左に固定する。どの列まで固定するかはピンで選ぶ（既定は最安値まで） */}
                     <th
                       data-col="name"
-                      className={`sticky left-0 z-10 bg-zinc-50 px-3 py-2 text-left dark:bg-zinc-900 ${frozenEdge}`}
+                      className={`sticky top-0 left-0 z-30 bg-zinc-50 px-3 py-2 text-left dark:bg-zinc-900 ${frozenEdge}`}
                     >
                       <SortHeader
                         label="商品"
@@ -696,7 +698,7 @@ export default async function ComparePage({
                         label="登録日"
                       />
                     </th>
-                    <th className="px-3 py-2">
+                    <th className="sticky top-0 z-20 bg-zinc-50 px-3 py-2 dark:bg-zinc-900">
                       <span className="sr-only">操作</span>
                     </th>
                   </tr>

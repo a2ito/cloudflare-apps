@@ -139,3 +139,11 @@ export function UsedBadge() {
     </span>
   );
 }
+
+export function SoldOutBadge() {
+  return (
+    <span className="mr-1 rounded bg-zinc-500 px-1.5 align-middle text-xs font-normal text-white">
+      売り切れ
+    </span>
+  );
+}

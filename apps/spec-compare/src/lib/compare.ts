@@ -27,6 +27,8 @@ export type CompareItem = {
   best: BestPrice | null;
   /** 候補から外して比較表に出さない商品 */
   hidden: boolean;
+  /** 売り切れて比較表に出さない商品 */
+  soldOut: boolean;
   favorite: boolean;
   /** 商品を登録した日（日本時間の YYYY-MM-DD） */
   createdAt: string;
@@ -61,6 +63,8 @@ export type CompareQuery = {
   includeUsed: boolean;
   /** 非表示にした商品も出すか */
   showHidden: boolean;
+  /** 売り切れの商品も出すか */
+  showSoldOut: boolean;
   favoritesOnly: boolean;
 };
 
@@ -333,13 +337,21 @@ export function parseCompareQuery(
     costFieldId: validCost,
     includeUsed: parseIncludeUsed(params),
     showHidden: params.hidden === "1",
+    showSoldOut: params.soldOut === "1",
     favoritesOnly: params.fav === "1",
   };
 }
 
+/** 非表示・売り切れで比較表から外れていないか */
+function isListed(item: CompareItem, query: CompareQuery): boolean {
+  return (
+    (!item.hidden || query.showHidden) && (!item.soldOut || query.showSoldOut)
+  );
+}
+
 /** 絞り込みの条件に合うか。条件のある項目が未入力なら外す */
 export function matches(item: CompareItem, query: CompareQuery): boolean {
-  if (item.hidden && !query.showHidden) return false;
+  if (!isListed(item, query)) return false;
   if (query.favoritesOnly && !item.favorite) return false;
   if (
     query.maxPrice !== undefined &&
@@ -526,7 +538,7 @@ export function quickFilterChips(
   field: FieldDef,
   query: CompareQuery,
 ): QuickChip[] {
-  const visible = items.filter((i) => !i.hidden || query.showHidden);
+  const visible = items.filter((i) => isListed(i, query));
   if (field.kind === "bool") {
     const active = query.required.includes(field.id);
     return [
@@ -616,7 +628,7 @@ export function makerChips(
   items: readonly CompareItem[],
   query: CompareQuery,
 ): QuickChip[] {
-  const visible = items.filter((i) => !i.hidden || query.showHidden);
+  const visible = items.filter((i) => isListed(i, query));
   const makers = [
     ...new Set(visible.map((i) => i.maker).filter((m): m is string => !!m)),
   ].sort((a, b) => a.localeCompare(b, "ja"));

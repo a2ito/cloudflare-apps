@@ -80,6 +80,7 @@ function item(
             url: null,
           },
     hidden: false,
+    soldOut: false,
     favorite: false,
     createdAt: `2026-10-${String(id).padStart(2, "0")}`,
   };
@@ -93,6 +94,7 @@ const baseQuery: CompareQuery = {
   contains: [],
   includeUsed: true,
   showHidden: false,
+  showSoldOut: false,
   favoritesOnly: false,
   textIn: [],
   numIn: [],
@@ -196,6 +198,7 @@ describe("parseCompareQuery", () => {
       costFieldId: 2,
       includeUsed: true,
       showHidden: false,
+      showSoldOut: false,
       favoritesOnly: false,
       textIn: [],
       numIn: [],
@@ -412,6 +415,14 @@ describe("matches", () => {
     expect(matches(hidden, baseQuery)).toBe(false);
     expect(matches(hidden, { ...baseQuery, showHidden: true })).toBe(true);
     expect(parseCompareQuery({ hidden: "1" }, FIELDS).showHidden).toBe(true);
+  });
+
+  it("売り切れの商品は showSoldOut のときだけ出す。非表示とは別に扱う", () => {
+    const soldOut = { ...pc, soldOut: true };
+    expect(matches(soldOut, baseQuery)).toBe(false);
+    expect(matches(soldOut, { ...baseQuery, showHidden: true })).toBe(false);
+    expect(matches(soldOut, { ...baseQuery, showSoldOut: true })).toBe(true);
+    expect(parseCompareQuery({ soldOut: "1" }, FIELDS).showSoldOut).toBe(true);
   });
 
   it("メーカーは複数選べ、どれかに一致すれば通す。メーカー未入力は外す", () => {

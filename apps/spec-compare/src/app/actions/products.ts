@@ -239,6 +239,28 @@ export async function setProductHidden(formData: FormData): Promise<void> {
   revalidatePath(`/products/${parsed.data.id}`);
 }
 
+/** 売り切れにする・戻す。非表示と同じく比較表から外すが、候補から外したのとは分けて持つ */
+export async function setProductSoldOut(formData: FormData): Promise<void> {
+  await requireUser();
+  const parsed = parseForm(
+    z.object({ id: idFromForm, soldOut: z.enum(["0", "1"]) }),
+    formData,
+  );
+  if (!parsed.ok) throw new Error(parsed.error);
+
+  const db = await getDb();
+  const updated = await db
+    .update(products)
+    .set({ soldOut: parsed.data.soldOut === "1" })
+    .where(eq(products.id, parsed.data.id))
+    .returning({ categoryId: products.categoryId });
+  const categoryId = updated[0]?.categoryId;
+  if (categoryId === undefined) throw new Error("商品が見つかりません");
+
+  revalidatePath(`/categories/${categoryId}`);
+  revalidatePath(`/products/${parsed.data.id}`);
+}
+
 export async function deleteProduct(formData: FormData): Promise<void> {
   await requireUser();
   const parsed = parseForm(z.object({ id: idFromForm }), formData);

@@ -50,6 +50,13 @@
       "when": 1792905128714,
       "tag": "0006_slim_spacker_dave",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793408393477,
+      "tag": "0007_misty_mindworm",
+      "breakpoints": true
     }
   ]
 }

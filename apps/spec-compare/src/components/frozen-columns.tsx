@@ -84,7 +84,8 @@ function applyFrozen(table: HTMLTableElement, last: string): void {
     cell.dataset.frozen = cell.dataset.col === lastKey ? "last" : "";
     cell.style.position = "sticky";
     cell.style.left = `${left}px`;
-    cell.style.zIndex = "10";
+    // 見出しのセルは上にも固定しているので、縦横どちらにスクロールしても行のセルより上に出す
+    cell.style.zIndex = cell.closest("thead") ? "30" : "10";
   }
 }
 

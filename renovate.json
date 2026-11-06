@@ -15,6 +15,12 @@
       "enabled": false
     },
     {
+      "description": "glob は overrides で @node-minify/core の依存を差し替えているだけ。14 に上げると lock からルートの glob（13 系）が消え、@opennextjs/cloudflare が glob を見つけられずに 全アプリの build が落ちる（#171）。10 系の patch / minor だけを受ける。OpenNext 側が上げたら overrides ごと外す（#169）",
+      "matchPackageNames": ["glob"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
       "description": "patch 更新だけを自動マージする。脆弱性修正の多くは patch で来るため、放置される時間を減らす。実際のマージは GitHub が 全アプリの CI の成功を待って行う",
       "matchUpdateTypes": ["patch"],
       "automerge": true,

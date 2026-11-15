@@ -3,7 +3,13 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // workerd の中でしか解決できないモジュール。テストでは触ると投げるスタブにする
+      "cloudflare:workers": fileURLToPath(
+        new URL("./src/test/cloudflare-workers.ts", import.meta.url),
+      ),
+    },
   },
   test: {
     environment: "node",

@@ -41,15 +41,20 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# OpenNext
-/.open-next
+# vinext / cf（ビルド出力、生成した型、ローカルの模擬 D1 などの状態）
+/dist/
+.vinext/
+.cloudflare/
 
-# wrangler files
-.wrangler
+# ローカルの secret（雛形のみ共有する）
 .dev.vars*
-
-
 !.dev.vars.example
+
+# 旧 OpenNext / wrangler の生成物（手元に残っていても拾わない）
+/.open-next
+.wrangler
+wrangler.jsonc
+cloudflare-env.d.ts
 
 # Next.js が自動生成する AI エージェント向けルール
 AGENTS.md

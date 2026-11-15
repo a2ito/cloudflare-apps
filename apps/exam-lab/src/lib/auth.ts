@@ -1,68 +1,175 @@
-import NextAuth, { type NextAuthConfig } from "next-auth";
-import Google from "next-auth/providers/google";
+import { betterAuth } from "better-auth";
+import { nextCookies } from "better-auth/next-js";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import { getDB } from "@/db";
 import { users } from "@/db/schema";
 import { isSignInAllowed, parseAllowedEmails } from "./allowlist";
 import { getEnv, readEnvString, requireEnvString } from "./cloudflare";
 
-async function buildConfig(): Promise<NextAuthConfig> {
+/**
+ * セッションの有効期間。Auth.js の既定（30 日）に揃える。
+ * 使っていても延びず、ログインから 30 日で必ずログインし直しになる（Cookie だけで持つため）。
+ */
+const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * better-auth のインスタンスを作る。
+ *
+ * better-auth 自身は DB を持たない（ステートレス）。セッションは暗号化した Cookie（JWE）に
+ * 載せ、OAuth の state も Cookie に置く。アプリの users 表の id（uid。Google の sub）は
+ * セッションの追加項目として載せ、D1 に書くのはログインのときだけにする（毎リクエストの書き込みを避ける）。
+ *
+ * uid をユーザではなくセッションの追加項目にしているのは、ユーザを作る時点（databaseHooks.user）では
+ * Google の sub が手に入らないため。sub は better-auth の account（accountId）に入り、
+ * account はユーザの後、セッションの前に作られる。
+ *
+ * env は Worker の中でしか読めないので、モジュールの読み込み時ではなく初回の呼び出しで作る。
+ */
+async function createAuth() {
   const env = await getEnv();
   const allowed = parseAllowedEmails(readEnvString(env, "ALLOWED_EMAILS"));
 
-  return {
+  return betterAuth({
+    baseURL: requireEnvString(env, "BETTER_AUTH_URL"),
     secret: requireEnvString(env, "AUTH_SECRET"),
-    trustHost: true,
-    session: { strategy: "jwt" },
-    // ログイン画面はトップページ
-    pages: { signIn: "/", error: "/" },
-    providers: [
-      Google({
+    socialProviders: {
+      google: {
         clientId: requireEnvString(env, "AUTH_GOOGLE_ID"),
         clientSecret: requireEnvString(env, "AUTH_GOOGLE_SECRET"),
-      }),
-    ],
-    callbacks: {
-      // 許可リストに載っている Google アカウントだけログインさせる
-      signIn({ profile, user }) {
-        return isSignInAllowed(
-          {
-            email: profile?.email ?? user.email,
-            emailVerified: profile?.email_verified,
-          },
-          allowed,
-        );
-      },
-      // users.id は Google の sub（以前の ID トークン方式で作った行と揃える）。
-      // ログイン時にだけ users 行を作り、以降は JWT に載せた id を使う（毎リクエストの書き込みを避ける）
-      async jwt({ token, profile }) {
-        if (profile?.sub && profile.email) {
-          await getDB()
-            .insert(users)
-            .values({
-              id: profile.sub,
-              email: profile.email,
-              name: profile.name ?? null,
-              picture:
-                typeof profile.picture === "string" ? profile.picture : null,
-              createdAt: Date.now(),
-            })
-            .onConflictDoNothing();
-          token.uid = profile.sub;
-        }
-        return token;
-      },
-      session({ session, token }) {
-        if (typeof token.uid === "string") session.user.id = token.uid;
-        return session;
       },
     },
-  };
+    session: {
+      expiresIn: SESSION_MAX_AGE_SECONDS,
+      cookieCache: {
+        enabled: true,
+        maxAge: SESSION_MAX_AGE_SECONDS,
+        strategy: "jwe",
+        refreshCache: true,
+      },
+      additionalFields: {
+        // users 表の id（Google の sub）。ログインのときに databaseHooks.session で入れる
+        uid: { type: "string", required: false, input: false },
+      },
+    },
+    // OAuth の state は Cookie に置く。Google のトークンはアプリで使わないので Cookie に載せない
+    account: { storeStateStrategy: "cookie", storeAccountCookie: false },
+    databaseHooks: {
+      user: {
+        create: {
+          // 許可リストに無い Google アカウントはここで弾く（/?error=unable_to_create_user に戻る）。
+          // DB を持たないため、better-auth のユーザは isolate のメモリにしか無い。同じ isolate に
+          // 前のログインのユーザが残っているとここは通らない（下の session でも許可リストを見る）。
+          async before(user) {
+            return isSignInAllowed(
+              { email: user.email, emailVerified: user.emailVerified },
+              allowed,
+            );
+          },
+        },
+      },
+      session: {
+        create: {
+          // ログインのたびに通る。users 行を作り（あれば何もしない）、その id をセッションに載せる。
+          // users.id は Google の sub（以前の ID トークン方式で作った行と揃える）
+          async before(session, ctx) {
+            const adapter = ctx?.context.internalAdapter;
+            if (!adapter) return false;
+            const [user, accounts] = await Promise.all([
+              adapter.findUserById(session.userId),
+              adapter.findAccounts(session.userId),
+            ]);
+            // 同じメールで別の Google アカウント（別の sub）が同じ isolate でログインすると、
+            // better-auth はメールで同じユーザに紐づける。どちらの sub か決められないので弾く
+            // （取り違えると、別のアカウントのデータを読ませてしまう）
+            const googleAccounts = accounts.filter(
+              (a) => a.providerId === "google",
+            );
+            const sub =
+              googleAccounts.length === 1
+                ? googleAccounts[0].accountId
+                : undefined;
+            if (
+              !user ||
+              !sub ||
+              !isSignInAllowed(
+                { email: user.email, emailVerified: user.emailVerified },
+                allowed,
+              )
+            ) {
+              return false;
+            }
+            await getDB()
+              .insert(users)
+              .values({
+                id: sub,
+                email: user.email,
+                name: user.name || null,
+                picture: user.image ?? null,
+                createdAt: Date.now(),
+              })
+              .onConflictDoNothing();
+            return { data: { ...session, uid: sub } };
+          },
+        },
+      },
+    },
+    // state を読む前に失敗したときの戻り先。既定の /api/auth/error ではなくログイン画面（トップ）に出す
+    onAPIError: { errorURL: "/" },
+    // Server Action から呼んだときに Set-Cookie を next/headers の cookies() へ流す
+    plugins: [nextCookies()],
+  });
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth(buildConfig);
+type Auth = Awaited<ReturnType<typeof createAuth>>;
+
+let authPromise: Promise<Auth> | undefined;
+
+function getAuth(): Promise<Auth> {
+  authPromise ??= createAuth().catch((error: unknown) => {
+    // 設定漏れなどで失敗したら、次の呼び出しで作り直せるようにする
+    authPromise = undefined;
+    throw error;
+  });
+  return authPromise;
+}
+
+/** /api/auth/* のハンドラ */
+export async function handleAuthRequest(request: Request): Promise<Response> {
+  const auth = await getAuth();
+  return auth.handler(request);
+}
 
 export type ApiUser = { id: string; email: string };
+
+/**
+ * ログイン中のユーザを返す。未ログインなら null。
+ *
+ * セッションがあっても、いまの許可リストに無ければ未ログインとして扱う。
+ * セッションは Cookie に載っていて取り消せないため、許可リストから外した人を
+ * 次のリクエストから締め出すにはここで毎回見るしかない。
+ */
+export async function getSessionUser(): Promise<ApiUser | null> {
+  const [auth, env] = await Promise.all([getAuth(), getEnv()]);
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return null;
+  const { user } = session;
+
+  const allowed = parseAllowedEmails(readEnvString(env, "ALLOWED_EMAILS"));
+  if (
+    !isSignInAllowed(
+      { email: user.email, emailVerified: user.emailVerified },
+      allowed,
+    )
+  ) {
+    return null;
+  }
+
+  const uid = session.session.uid;
+  if (typeof uid !== "string" || uid === "") return null;
+  return { id: uid, email: user.email };
+}
 
 /**
  * API route の入り口で使う。ログイン済みならユーザを、未ログインなら 401 のレスポンスを返す。
@@ -71,11 +178,32 @@ export type ApiUser = { id: string; email: string };
  * ここで止めればデータは守られる（middleware はログイン画面へ送るだけ）。
  */
 export async function requireApiUser(): Promise<ApiUser | NextResponse> {
-  const session = await auth();
-  const id = session?.user?.id;
-  const email = session?.user?.email;
-  if (!id || !email) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return { id, email };
+  return user;
+}
+
+/** Google のログイン画面へ送り、戻ったら /dashboard を開く。Server Action から呼ぶ */
+export async function signInWithGoogle(): Promise<never> {
+  const auth = await getAuth();
+  const result = await auth.api.signInSocial({
+    body: {
+      provider: "google",
+      callbackURL: "/dashboard",
+      errorCallbackURL: "/",
+    },
+    headers: await headers(),
+  });
+  if (!result.url)
+    throw new Error("Google のログイン URL を取得できませんでした");
+  redirect(result.url);
+}
+
+/** ログアウトしてトップ（ログイン画面）へ戻す。Server Action から呼ぶ */
+export async function signOutUser(): Promise<never> {
+  const auth = await getAuth();
+  await auth.api.signOut({ headers: await headers() });
+  redirect("/");
 }

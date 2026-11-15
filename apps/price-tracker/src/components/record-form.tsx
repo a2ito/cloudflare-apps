@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { PriceRecord, Unit, Variant } from "@/db/schema";
 import { initialActionState, type ActionState } from "@/lib/form";
-import { imageUrl } from "@/lib/images";
+import { imageUrl } from "@/lib/image-url";
 import { formatAmount, formatPackage, formatYen, todayIso } from "@/lib/price";
 import { RECORD_PHOTO } from "@/lib/image-shrink";
 import { ImageInput } from "./image-input";

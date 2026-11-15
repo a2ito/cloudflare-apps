@@ -5,10 +5,14 @@
 /.next/
 /out/
 
-# opennext / cloudflare
-/.open-next/
-.wrangler/
-.dev.vars
+# vinext / cf（ビルド出力、生成した型、ローカルの模擬 D1 などの状態）
+/dist/
+.vinext/
+.cloudflare/
+
+# ローカルの secret（雛形のみ共有する）
+.dev.vars*
+!.dev.vars.example
 
 # production
 /build
@@ -37,5 +41,8 @@ CLAUDE.md
 # 手元だけの設定は共有しない
 .claude/settings.local.json
 
-# 実 ID や公開ホスト名を含むため、雛形（wrangler.jsonc.example）のみ共有する
+# 旧 OpenNext / wrangler の生成物（手元に残っていても拾わない）
+/.open-next/
+.wrangler/
 wrangler.jsonc
+cloudflare-env.d.ts

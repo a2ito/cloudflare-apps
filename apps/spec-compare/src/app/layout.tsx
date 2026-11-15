@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { ServiceWorkerRegister } from "@/components/service-worker";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { auth, signOut } from "@/lib/auth";
+import { getSessionUser, signOutUser } from "@/lib/auth";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { THEME_COLOR } from "./manifest";
 import "./globals.css";
@@ -34,8 +34,7 @@ export const viewport: Viewport = {
 };
 
 async function Header() {
-  const session = await auth();
-  const user = session?.user;
+  const user = await getSessionUser();
 
   return (
     <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
@@ -49,7 +48,7 @@ async function Header() {
               <form
                 action={async () => {
                   "use server";
-                  await signOut({ redirectTo: "/login" });
+                  await signOutUser();
                 }}
                 className="flex items-center gap-2"
               >

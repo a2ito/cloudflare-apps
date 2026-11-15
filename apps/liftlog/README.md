@@ -33,9 +33,9 @@
 | 領域           | 採用技術                                                 |
 | -------------- | -------------------------------------------------------- |
 | フレームワーク | Next.js 16 (App Router)                                  |
-| 実行環境       | Cloudflare Workers (OpenNext)                            |
+| 実行環境       | Cloudflare Workers ([vinext](https://vinext.dev))        |
 | DB             | Cloudflare D1 + Drizzle ORM                              |
-| 認証           | Auth.js (next-auth v5) + Google OAuth + 許可メールリスト |
+| 認証           | better-auth + Google OAuth + 許可メールリスト            |
 | UI             | Tailwind CSS v4                                          |
 | テスト         | Vitest + Miniflare（本物の D1 を起動して検証）           |
 
@@ -57,9 +57,6 @@ cp .dev.vars.example .dev.vars
 # AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET は Google Cloud Console で発行
 # ALLOWED_EMAILS にログインを許可するメールアドレスをカンマ区切りで記入
 
-# wrangler.jsonc を生成（D1 の ID と公開ホスト名を渡す）
-D1_DATABASE_ID=<your-d1-id> APP_HOSTNAME=liftlog.example.com npm run cf:config
-
 # ローカル D1 にマイグレーションを適用
 npm run db:migrate:local
 
@@ -80,7 +77,7 @@ Google OAuth の承認済みリダイレクト URI には以下を登録する�
 | `npm run lint` / `npm run typecheck`   | 静的チェック                                |
 | `npm run db:generate`                  | スキーマ変更からマイグレーション SQL を生成 |
 | `npm run db:migrate:local` / `:remote` | マイグレーション適用                        |
-| `npm run preview`                      | Workers ランタイムでローカル確認            |
+| `npm run build` / `npm start`          | ビルドして Workers ランタイムでローカル確認 |
 | `npm run cf:deploy`                    | Cloudflare へデプロイ                       |
 
 ## デプロイ
@@ -98,9 +95,9 @@ main への push を Cloudflare の [Workers Builds](https://developers.cloudfla
 | Build watch paths | `apps/liftlog/*`、`package-lock.json` |
 | Build variables   | `D1_DATABASE_ID`, `APP_HOSTNAME`      |
 
-`wrangler.jsonc` は実 ID と公開ホスト名を含むため追跡していない。`npm run cf:config` が
-雛形 `wrangler.jsonc.example` のプレースホルダをこれらの変数で埋めて生成する。
-手元に `wrangler.jsonc` がある場合は上書きしない。
+Worker の設定は `cloudflare.config.ts`。実 ID と公開ホスト名はリポジトリに含めず、これらの変数から読む。
+読むのは本番のビルド（`vite build` とデプロイ）のときだけで、手元の開発ではシェルに入っていても使わない。
+未設定のまま `cf:build` / `cf:deploy` を流すと、最初に止まる（`../../scripts/check-cf-env.mjs`）。
 
 マイグレーションは `npm run cf:deploy` の中でデプロイより先に適用される。適用からデプロイ完了までの数分間は
 「新しいスキーマ + 古いコード」が同時に存在するため、カラムやテーブルを消す変更は
@@ -109,10 +106,12 @@ main への push を Cloudflare の [Workers Builds](https://developers.cloudfla
 ### 初回だけ手でやること
 
 ```bash
-npx wrangler d1 create liftlog-db
-
-npx wrangler secret put AUTH_SECRET
-npx wrangler secret put AUTH_GOOGLE_ID
-npx wrangler secret put AUTH_GOOGLE_SECRET
-npx wrangler secret put ALLOWED_EMAILS
+npx cf d1 create --name liftlog-db
 ```
+
+ログインのセッションは暗号化した Cookie だけで持つ（better-auth のステートレス構成。サーバ側に
+セッションの表は無い）。使っていても延びず、ログインから 30 日で必ずログインし直しになる。
+
+Secret（`AUTH_SECRET` / `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` / `ALLOWED_EMAILS`）は
+Terraform が入れる（ルートの `terraform/`）。名前は `cloudflare.config.ts` の `env` にも
+`bindings.secret()` で宣言してある。宣言していない secret / 変数はデプロイで消える。

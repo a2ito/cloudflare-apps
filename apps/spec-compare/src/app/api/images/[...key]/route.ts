@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 import { getEnv } from "@/lib/cloudflare";
 
 /**
@@ -11,8 +11,7 @@ export async function GET(
   _req: Request,
   ctx: RouteContext<"/api/images/[...key]">,
 ) {
-  const session = await auth();
-  if (!session?.user?.email)
+  if (!(await getSessionUser()))
     return new NextResponse("Unauthorized", { status: 401 });
 
   const { key } = await ctx.params;

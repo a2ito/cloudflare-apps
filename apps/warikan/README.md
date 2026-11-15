@@ -2,7 +2,7 @@
 
 ログイン不要の割り勘アプリ（walica 相当）。旅行やイベントの立替を記録して、誰が誰にいくら払えばいいかを **最小回数** で自動精算します。
 
-- **Stack**: Next.js (App Router) / OpenNext on Cloudflare Workers / Cloudflare D1 + Drizzle ORM / Tailwind CSS
+- **Stack**: Next.js (App Router) / [vinext](https://vinext.dev) on Cloudflare Workers / Cloudflare D1 + Drizzle ORM / better-auth（管理画面のみ） / Tailwind CSS
 - **本番ドメイン**: warikan.a2ito.work
 - **多通貨対応**（JPY / USD / EUR / GBP / KRW / CNY / TWD / THB / VND / MNT / AUD）。グループで複数の通貨を使え、精算通貨へ為替レートで換算して精算する。レートは自動取得
 
@@ -49,12 +49,9 @@ iOS 用のアイコン・名前を差し替えているため。Service Worker �
 npm ci
 ```
 
-以降はこのディレクトリで作業する。`wrangler.jsonc` は追跡していないので、初回は雛形から作る
-（本番の値でなくてよい。ローカル D1 は ID を見ない）。
+以降はこのディレクトリで作業する。
 
 ```bash
-D1_DATABASE_ID=local APP_HOSTNAME=localhost npm run cf:config
-
 # ローカル D1 にマイグレーション適用（初回・スキーマ変更時）
 npm run db:generate        # schema.ts からマイグレーション SQL 生成
 npm run db:migrate:local   # ローカル D1 に適用
@@ -63,17 +60,20 @@ npm run dev                # http://localhost:3000
 npm test                   # vitest（換算・レート取得のテスト）
 ```
 
-`next dev` でも `initOpenNextCloudflareForDev()` によりローカル D1 バインディングが有効になります。
+`npm run dev` は vinext（Vite）の開発サーバで、workerd の中で動くためローカル D1 バインディングがそのまま使える。
 
 管理画面（`/admin`）を手元で開くには、このディレクトリの `.dev.vars`（追跡しない）に
 `AUTH_SECRET`・`AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`・`ALLOWED_EMAILS` を書く。
 Google の OAuth クライアントに `http://localhost:3000/api/auth/callback/google` を登録していなければ、
 ログインは通らない。グループの画面はこれらが無くても動く。
 
+ログインのセッションは暗号化した Cookie だけで持つ（better-auth のステートレス構成。サーバ側に
+セッションの表は無い）。使っていても延びず、ログインから 30 日で必ずログインし直しになる。
+
 Workers ランタイムでの動作確認:
 
 ```bash
-npm run preview   # opennextjs-cloudflare build && preview
+npm run build && npm start   # vite build && vite preview
 ```
 
 ## デプロイ（Cloudflare）
@@ -83,7 +83,7 @@ main への push を Cloudflare Workers Builds が検知し、ビルドしてデ
 
 Workers Builds の設定は Cloudflare ダッシュボードの **Settings > Build** で行う。
 モノレポなので **root directory にこのアプリのディレクトリを指す**。Worker 名は
-Wrangler 設定の `name`（`warikan`）と一致していなければビルドが落ちる。
+`cloudflare.config.ts` の `name`（`warikan`）と一致していなければビルドが落ちる。
 
 | 項目              | 値                                                                                                                       |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -95,11 +95,14 @@ Wrangler 設定の `name`（`warikan`）と一致していなければビルド�
 | Build variables   | `D1_DATABASE_ID`, `APP_HOSTNAME`                                                                                         |
 | Secrets           | `ALLOWED_EMAILS`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`（管理画面のログイン用。`terraform/` で登録する） |
 
-`wrangler.jsonc` は実 ID と公開ホスト名を含むため追跡していない。`npm run cf:config` が
-雛形 `wrangler.jsonc.example` のプレースホルダを Build variables の値で埋めて生成する。
-手元に `wrangler.jsonc` がある場合は上書きしない。
+Worker の設定は `cloudflare.config.ts`。実 ID と公開ホスト名はリポジトリに含めず、Build variables から読む。
+読むのは本番のビルド（`vite build` とデプロイ）のときだけで、手元の開発ではシェルに入っていても使わない。
+未設定のまま `cf:build` / `cf:deploy` を流すと、最初に止まる（`../../scripts/check-cf-env.mjs`）。
+Secret の名前は `cloudflare.config.ts` の `env` にも `bindings.secret()` で宣言してある。宣言していない secret / 変数はデプロイで消える。
 
 マイグレーションは `npm run cf:deploy` の中でデプロイより先に適用されるので、手で流す必要はない。
+SQL は `drizzle/` に置く（共通の `../../scripts/d1-migrate.mjs` が `drizzle/` を見るため。以前は `migrations/` だった）。
+適用済みの記録（`d1_migrations`）はファイル名で持つので、置き場所を移しても当て直しにはならない。
 
 ### マージしたのにデプロイされないとき
 
@@ -116,15 +119,15 @@ main の最新は入らない。
 ### 本番 D1 を作り直すとき
 
 ```bash
-npx wrangler d1 create warikan-db
+npx cf d1 create --name warikan-db
 ```
 
 出力された `database_id` を Build variables の `D1_DATABASE_ID` に設定し直す。
 
 ### カスタムドメイン
 
-公開ホスト名は Build variables の `APP_HOSTNAME` で決まる。`wrangler.jsonc` の `routes` に
-`custom_domain: true` で入るので、デプロイ時に Cloudflare がドメインを割り当てる
+公開ホスト名は Build variables の `APP_HOSTNAME` で決まる。`cloudflare.config.ts` の `domains` に
+入るので、デプロイ時に Cloudflare がドメインを割り当てる
 （`a2ito.work` ゾーンが Cloudflare 管理下にある前提）。
 
 ## 構成
@@ -141,7 +144,7 @@ npx wrangler d1 create warikan-db
 | `src/lib/weight.ts`                | 傾斜の倍率の検証と表示（保存は 10 倍した整数）                                                            |
 | `src/lib/settlement.ts`            | 重み付きの割り勘 + 最小送金の精算アルゴリズム（純粋関数）                                                 |
 | `src/lib/group-data.ts`            | グループ 1 件の読み込みと精算の計算（公開ページと管理画面で共通）                                         |
-| `src/lib/auth.ts` / `allowlist.ts` | 管理画面の Google ログイン（Auth.js）と許可リスト                                                         |
+| `src/lib/auth.ts` / `allowlist.ts` | 管理画面の Google ログイン（better-auth）と許可リスト                                                     |
 | `src/lib/admin-summary.ts`         | 管理画面のグループ一覧の集計（純粋関数）                                                                  |
 | `src/app/page.tsx`                 | トップ（グループ作成）                                                                                    |
 | `src/app/g/[id]/`                  | グループ詳細ページ・Server Actions・クライアント UI                                                       |

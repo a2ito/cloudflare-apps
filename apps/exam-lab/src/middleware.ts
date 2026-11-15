@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Auth.js のセッション Cookie。HTTPS では __Secure- が付く
+// better-auth のセッション Cookie。HTTPS（baseURL が https://）では __Secure- が付く
 const SESSION_COOKIES = [
-  "__Secure-authjs.session-token",
-  "authjs.session-token",
+  "__Secure-better-auth.session_token",
+  "better-auth.session_token",
 ];
 
 /**

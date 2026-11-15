@@ -20,10 +20,12 @@ export async function createTestEnv() {
   );
 
   const d1 = await mf.getD1Database("DB");
-  const bucket = await mf.getR2Bucket("PHOTOS_BUCKET");
+  // miniflare の型は @cloudflare/workers-types を前提にしている。入れていないので、
+  // cloudflare.config.ts から生成した型（.cloudflare/types）の R2Bucket として扱う
+  const bucket = (await mf.getR2Bucket("PHOTOS_BUCKET")) as unknown as R2Bucket;
   await applyMigrations(d1);
 
-  const env = { DB: d1, PHOTOS_BUCKET: bucket } as unknown as CloudflareEnv;
+  const env = { DB: d1, PHOTOS_BUCKET: bucket } as unknown as Env;
   const db = drizzle(d1, { schema });
 
   return {

@@ -1,11 +1,11 @@
 "use server";
 
-import { signIn, signOut } from "@/lib/auth";
+import { signInWithGoogle as startGoogleSignIn, signOutUser } from "@/lib/auth";
 
 export async function signInWithGoogle() {
-  await signIn("google", { redirectTo: "/dashboard" });
+  await startGoogleSignIn();
 }
 
 export async function signOutToTop() {
-  await signOut({ redirectTo: "/" });
+  await signOutUser();
 }

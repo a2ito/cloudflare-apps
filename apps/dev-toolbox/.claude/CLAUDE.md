@@ -50,5 +50,5 @@ npm run lint && npm run build
 
 ## デプロイ設定
 
-- `wrangler.jsonc` はコミットしてある。設定を変えるときはここを直す
-- バインディングを足したら `npm run cf-typegen` で `cloudflare-env.d.ts` を作り直してコミットする
+- Worker の設定は `cloudflare.config.ts`（vinext でビルド・デプロイする）。公開ホスト名もここに書いてある
+- バインディングの型（`Env`）は `npm run cf-typegen` が `.cloudflare/types` に作る（コミットしない）

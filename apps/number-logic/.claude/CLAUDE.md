@@ -46,7 +46,7 @@ npm run lint && npm run format && npm run build
   外すと Next.js のビルドが落ちる
 - ダークモードは `<html>` の `dark` クラスで切り替える（`src/hooks/useTheme.ts`、
   キーは `number-logic:theme`）。`dark:` の定義は `globals.css` の `@custom-variant` にある
-- README の「`@cloudflare/next-on-pages` でデプロイ」は古い。実際は OpenNext
-  （`cf:build` / `cf:deploy`）で、`wrangler.jsonc` はコミットされている
+- README の「`@cloudflare/next-on-pages` でデプロイ」は古い。実際は vinext
+  （`cf:build` / `cf:deploy`）で、Worker の設定は `cloudflare.config.ts`
 
 - コメントには「なぜそうなっているか」を書く。コードを読めば分かることは書かない

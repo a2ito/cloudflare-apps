@@ -51,4 +51,4 @@ npm run lint && npm run build
 
 ## デプロイ設定
 
-- `wrangler.jsonc` は公開ホスト名ごと追跡している。設定を変えるときはこれを直す
+- Worker の設定は `cloudflare.config.ts`（vinext でビルド・デプロイする）。公開ホスト名もここに書いてある

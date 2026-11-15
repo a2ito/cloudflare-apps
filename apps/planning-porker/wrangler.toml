@@ -1,8 +1,0 @@
-name = "planning-porker"
-compatibility_date = "2024-01-01"
-compatibility_flags = ["nodejs_compat"]
-
-[[d1_databases]]
-binding = "DB"
-database_name = "planning-porker-db"
-database_id = "your-database-id-here"

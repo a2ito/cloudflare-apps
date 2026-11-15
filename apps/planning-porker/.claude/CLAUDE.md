@@ -51,8 +51,8 @@ npm run lint && npm run build
 
 ## デプロイ設定
 
-- `wrangler.jsonc` は実 ID と公開ホスト名ごと追跡している。設定を変えるときはこれを直す
-- `wrangler.toml` の `database_id` は仮の値。こちらを手本にしない
+- Worker の設定は `cloudflare.config.ts`（vinext でビルド・デプロイする）。本番 D1 の ID と公開ホスト名もここに書いてある
+- マイグレーションは `drizzle/migrations`。`npm run db:migrate:local` / `db:migrate:remote` で当てる
 
 ## スキーマ変更
 

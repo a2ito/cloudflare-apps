@@ -1,10 +1,10 @@
-# OpenNext Starter
+# planning-porker
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 
-Read the documentation at https://opennext.js.org/cloudflare.
+Cloudflare Workers で動かす（[vinext](https://vinext.dev) でビルド・デプロイ）。Worker の設定は `cloudflare.config.ts`。
 
 ## Develop
 

@@ -17,7 +17,9 @@ concurrency:
 # wrangler.jsonc と cloudflare-env.d.ts は実 ID を含む、あるいは生成物なので
 # 追跡していない。検証が目的なので雛形に仮の値を入れて組み立てる。
 env:
-  D1_DATABASE_ID: placeholder-database-id
+  # vinext のアプリは本番ビルドでこの ID を使う。起動確認（smoke-test.sh）のローカルのマイグレーションが
+  # 当たる ID（scripts/d1.mjs の LOCAL_D1_DATABASE_ID）と揃える。cf は UUID v4 の形しか受け付けない
+  D1_DATABASE_ID: 00000000-0000-4000-8000-000000000000
   APP_HOSTNAME: placeholder.example.com
   # price-tracker の画像は R2 のカスタムドメインから配る。基底 URL は next build
   # 時に埋め込まれるため、検証用の値を渡しておかないとビルドが落ちる。
@@ -101,7 +103,8 @@ jobs:
       # Cloudflare Workers Builds も npm ci を使うため、ここでも ci で検証する
       - run: npm ci --no-audit --no-fund
       # typecheck は Cloudflare のバインディング型を要求するアプリがある。
-      # 型は wrangler.jsonc から作られるので、設定の生成が先に来る。
+      # 型は wrangler.jsonc から作られるので、設定の生成が先に来る（OpenNext のアプリだけ。
+      # vinext のアプリは cf:config が無く、cf-typegen が cloudflare.config.ts から型を作る）。
       - run: npm run cf:config --if-present -w apps/${{ matrix.app }}
       - run: npm run cf-typegen --if-present -w apps/${{ matrix.app }}
       - run: npm run lint --if-present -w apps/${{ matrix.app }}

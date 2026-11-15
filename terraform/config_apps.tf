@@ -2,7 +2,7 @@ locals {
   # Terraform で管理するアプリ。キーは Worker 名（= apps/<name> のディレクトリ名、Wrangler 設定の name）。
   #
   # - secrets: Worker の Secret の名前。値は var.secrets
-  # - build_variables: Build variables の名前。値は var.build_variables（cf:config が wrangler.jsonc を組み立てるのに使う）
+  # - build_variables: Build variables の名前。値は var.build_variables（OpenNext のアプリは cf:config が wrangler.jsonc を組み立てるのに、vinext のアプリは cloudflare.config.ts が使う）
   # - build_token_uuid: ビルドがデプロイに使うトークン。ダッシュボードで作られたものが 2 種類ある
   # - build_caching_enabled: アプリごとにばらついている。揃えるのは別の変更で行う
   # - trigger_uuid: 取り込んだ既存のトリガー（imports.tf が使う）
@@ -122,7 +122,7 @@ locals {
     }
   }
 
-  # アプリの D1。キーはアプリ名、値はデータベース名（wrangler.jsonc.example の database_name）。
+  # アプリの D1。キーはアプリ名、値はデータベース名（wrangler.jsonc.example または cloudflare.config.ts の D1 の name）。
   # 載せていないアプリの D1 は手で作ったもので、一部は cloud-management の cloudflare/ が持っている。
   # ここに載せる D1 の ID は Build variables の D1_DATABASE_ID と同じものを指す（imports.tf）。
   d1_databases = {
@@ -145,7 +145,7 @@ locals {
   }
 
   # Google ログインのアプリ（apps/kcalog を雛形にしたもの）が持つ Secret。
-  # 中身は各アプリの wrangler.jsonc.example の末尾のコメントを参照。
+  # 中身は各アプリの wrangler.jsonc.example の末尾のコメント、または cloudflare.config.ts の env を参照。
   google_login_secrets = ["ALLOWED_EMAILS", "AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET", "AUTH_SECRET"]
 
   # Workers Builds のビルドトークン（ダッシュボードの Settings > Builds > API token）。

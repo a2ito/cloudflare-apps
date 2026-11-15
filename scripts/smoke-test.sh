@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# ビルド済みのアプリを wrangler dev（workerd）で起動し、/ を開いて 5xx にならないことを確かめる。
+# ビルド済みのアプリを workerd で起動し、/ を開いて 5xx にならないことを確かめる。
+# vinext のアプリ（vite.config.ts があるもの）は vite preview、OpenNext のアプリは wrangler dev で起動する。
 # CI の build job が cf:build の後に、アプリのディレクトリで実行する。
 #
 # ビルドは通るのに Worker が起動時に落ちる（全リクエストが Error 1101）壊れ方は、lint・型・
@@ -28,32 +29,47 @@ cleanup() {
   [ -n "${pid:-}" ] && kill "$pid" 2>/dev/null || true
   # npx を止めても workerd が残ることがあるので、ポートで探して止める
   pkill -f "workerd.*${PORT}" 2>/dev/null || true
+  pkill -f "vite preview --port ${PORT}" 2>/dev/null || true
   if [ "$created_dev_vars" = true ]; then rm -f .dev.vars; fi
   rm -f "$LOG"
 }
 trap cleanup EXIT
 
 # D1 を使うアプリは、テーブルが無いとページの描画で落ちる。ローカルの D1 にスキーマを入れる
-if npm pkg get scripts.db:migrate:local | grep -q wrangler; then
+if npm pkg get scripts.db:migrate:local | grep -qE "wrangler|d1-migrate"; then
   npm run db:migrate:local >/dev/null
 fi
 
-npx wrangler dev --port "$PORT" >"$LOG" 2>&1 &
+if [ -f vite.config.ts ]; then
+  npx vite preview --port "$PORT" --strictPort >"$LOG" 2>&1 &
+else
+  npx wrangler dev --port "$PORT" >"$LOG" 2>&1 &
+fi
 pid=$!
+
+# 起動したか。wrangler dev は「Ready on」を出すのでそれで見る。
+# vite preview の出力は色付けの制御文字で文字列が分断されるため、ポートに繋がるかで見る
+ready() {
+  if [ -f vite.config.ts ]; then
+    curl -s -o /dev/null --max-time 2 "http://localhost:${PORT}/"
+  else
+    grep -q "Ready on" "$LOG"
+  fi
+}
 # 最後に止めたときの「Terminated」をログに出さない
 disown "$pid"
 
 for _ in $(seq 1 60); do
-  grep -q "Ready on" "$LOG" && break
+  ready && break
   if ! kill -0 "$pid" 2>/dev/null; then
-    echo "wrangler dev が起動前に終了しました"
+    echo "サーバが起動前に終了しました"
     cat "$LOG"
     exit 1
   fi
   sleep 1
 done
-if ! grep -q "Ready on" "$LOG"; then
-  echo "wrangler dev が 60 秒以内に起動しませんでした"
+if ! ready; then
+  echo "サーバが 60 秒以内に起動しませんでした"
   cat "$LOG"
   exit 1
 fi

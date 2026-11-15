@@ -1,10 +1,6 @@
-# Load .env.development* files when running `wrangler dev`
-NEXTJS_ENV=development
-
-# Auth.js
+# 認証（better-auth）。cloudflare.config.ts で宣言した secret にだけ渡る
 # 生成: openssl rand -base64 32
 AUTH_SECRET=
-AUTH_TRUST_HOST=true
 # Google Cloud Console > APIs & Services > Credentials > OAuth 2.0 Client ID
 # 承認済みリダイレクト URI: http://localhost:3000/api/auth/callback/google
 AUTH_GOOGLE_ID=

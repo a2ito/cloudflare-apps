@@ -3,16 +3,16 @@
 各アプリの Worker の定義を Terraform で管理する。コードのデプロイは今までどおり
 Workers Builds（main への push → `npm run cf:deploy`）が行い、Terraform は触らない。
 
-| 対象                                                                                                                     | 管理する場所                                                                 |
-| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| Worker の Secret（`AUTH_SECRET` など）                                                                                   | **Terraform**（`cloudflare_workers_script`）                                 |
-| Workers Builds の設定（Build command・Deploy command・Root directory・watch paths・Build variables）                     | **Terraform**（`cloudflare_workers_build_trigger`）                          |
-| workers.dev のサブドメインとプレビュー URL（無効にする）                                                                 | **Terraform**（`cloudflare_workers_script_subdomain`、公式 provider）        |
-| D1 データベース・R2 バケット・画像のカスタムドメイン（`config_apps.tf` の `d1_databases` / `r2_buckets` に載せたアプリ） | **Terraform**（公式 provider）                                               |
-| コード・D1 の中身（マイグレーション）・assets・平文の変数（`vars`）・互換性設定・Worker のカスタムドメイン               | `apps/<name>/wrangler.jsonc.example`（デプロイのたびに wrangler が反映する） |
-| 上に載せていないアプリの D1 / R2                                                                                         | 手作業か cloud-management の `cloudflare/`                                   |
-| 画像をキャッシュに乗せるルール（ゾーンに 1 つ）                                                                          | cloud-management の `cloudflare/`（`r2_buckets` に足したらホスト名を足す）   |
-| Google OAuth の設定、GitHub との接続、ビルドトークン                                                                     | ダッシュボード（手作業）                                                     |
+| 対象                                                                                                                     | 管理する場所                                                               |
+| ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Worker の Secret（`AUTH_SECRET` など）                                                                                   | **Terraform**（`cloudflare_workers_script`）                               |
+| Workers Builds の設定（Build command・Deploy command・Root directory・watch paths・Build variables）                     | **Terraform**（`cloudflare_workers_build_trigger`）                        |
+| workers.dev のサブドメインとプレビュー URL（無効にする）                                                                 | **Terraform**（`cloudflare_workers_script_subdomain`、公式 provider）      |
+| D1 データベース・R2 バケット・画像のカスタムドメイン（`config_apps.tf` の `d1_databases` / `r2_buckets` に載せたアプリ） | **Terraform**（公式 provider）                                             |
+| コード・D1 の中身（マイグレーション）・assets・平文の変数（`vars`）・互換性設定・Worker のカスタムドメイン               | `apps/<name>/cloudflare.config.ts`（デプロイのたびに反映される）           |
+| 上に載せていないアプリの D1 / R2                                                                                         | 手作業か cloud-management の `cloudflare/`                                 |
+| 画像をキャッシュに乗せるルール（ゾーンに 1 つ）                                                                          | cloud-management の `cloudflare/`（`r2_buckets` に足したらホスト名を足す） |
+| Google OAuth の設定、GitHub との接続、ビルドトークン                                                                     | ダッシュボード（手作業）                                                   |
 
 provider は公式の `cloudflare/cloudflare` ではなく
 [`a2ito/cloudflare`](https://registry.terraform.io/providers/a2ito/cloudflare)。
@@ -73,7 +73,7 @@ Google OAuth の設定は、ルートの CLAUDE.md の「ダッシュボード�
 - **R2 のカスタムドメインは import できない。** ダッシュボードで先に付けると Terraform で管理できなくなるので、
   必ず `r2_buckets` に足して Terraform で作る。ホスト名は Build variables の `NEXT_PUBLIC_IMAGES_BASE_URL` から取る
 
-- **R2 のバケットは、マージより先に apply して作る。** wrangler のデプロイは、無いバケットを自動で作って先に進む。
+- **R2 のバケットは、マージより先に apply して作る。** デプロイは、無いバケットを自動で作って先に進む（wrangler の頃に起きた）。
   そのとき location は Terraform の指定どおりにならない（account-book では APAC のつもりが WNAM になった）。location は同じ名前で最初に作ったときのものが使われ、
   消して作り直しても変わらないので、直すには名前を変えるしかない。Terraform の plan にもこの差は出ない
 
@@ -85,7 +85,7 @@ Google OAuth の設定は、ルートの CLAUDE.md の「ダッシュボード�
 - Secret を更新すると、Cloudflare は今のコードのまま新しいバージョンをデプロイする
 - Worker とトリガーには `prevent_destroy` を付けている。destroy すると本番の Worker が消え、
   トリガーを消すと main への push でデプロイされなくなる
-- **workers.dev は wrangler も書き込む。** デプロイのたびに wrangler が設定を反映する（`routes` があれば無効）。
-  Terraform は wrangler と同じ `false` にしている。`true` にすると、デプロイのたびに無効へ戻り plan に差分が出続ける
-- `wrangler.jsonc` に `vars` を足す・`compatibility_date` を変えるといった変更は、これまでどおりアプリの
-  `wrangler.jsonc.example` で行う。Terraform には書けない（書くと plan で止まる）
+- **workers.dev はデプロイも書き込む。** デプロイのたびに `cloudflare.config.ts` の `workersDev` / `previewUrls` が反映される。
+  Terraform は `cloudflare.config.ts` と同じ `false` にしている。`true` にすると、デプロイのたびに無効へ戻り plan に差分が出続ける
+- 平文の変数を足す・`compatibilityDate` を変えるといった変更は、これまでどおりアプリの
+  `cloudflare.config.ts` で行う。Terraform には書けない（書くと plan で止まる）

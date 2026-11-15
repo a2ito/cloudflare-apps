@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
-// Cron の入口（worker.ts）からも wrangler でバンドルされるため相対パスで読む
+// Cron の入口（worker/index.ts）からも読まれるため相対パスで読む
 import { expenses, subscriptions } from "../db/schema";
 
 export type SubscriptionCycle = "monthly" | "yearly";

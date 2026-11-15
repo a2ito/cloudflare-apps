@@ -31,10 +31,10 @@ Cloudflare Workers で動く Next.js アプリ群のモノレポ。アプリは 
 - アプリに置くもの
   - `.claude/CLAUDE.md` と `README.md`。README にはデプロイ設定の表を載せる
     （直下の `CLAUDE.md` は Next.js が生成するため `.gitignore` で無視している）
-  - `wrangler.jsonc.example` と `scripts/gen-wrangler-config.mjs`。実 ID と公開ホスト名を
-    含む `wrangler.jsonc` はコミットせず、`cf:config` で Build variables から生成する
-  - `dependencies` に `esbuild`（理由はルート README の「esbuild をアプリの依存に置いている理由」）
-  - scripts の `cf:build` / `cf:deploy`。**D1 を使うなら `cf:deploy` に `db:migrate:remote` を含める**
+  - `vite.config.ts` と `cloudflare.config.ts`。実 ID と公開ホスト名はコミットせず、本番ビルドで
+    Build variables から読む（ルート README の「cloudflare.config.ts」）
+  - scripts の `cf:build` / `cf:deploy`。環境変数を読むなら `cf:check-env` も置き、両方の先頭で流す。
+    **D1 を使うなら `cf:deploy` に `db:migrate:remote` を含める**
 - ルート README のアプリ一覧に行を足す
 
 ### Terraform に足すもの
@@ -54,8 +54,8 @@ Worker の Secret と Workers Builds の設定は `terraform/` で管理する�
 
 リポジトリに残らないので、コマンドや値を提示して手でやってもらう。
 
-- `wrangler d1 create`、Google OAuth の承認済みリダイレクト URI の登録
-- Worker 名は Wrangler 設定の `name` と一致させる
+- `npx wrangler d1 create`、Google OAuth の承認済みリダイレクト URI の登録
+- Worker 名は `cloudflare.config.ts` の `name` と一致させる
 
 ### 最初のデプロイの後
 

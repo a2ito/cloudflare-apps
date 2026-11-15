@@ -9,14 +9,8 @@
       "enabled": false
     },
     {
-      "description": "undici は overrides で miniflare の依存を脆弱性修正版に差し替えているだけ。miniflare が 7 系（7.29.1）を前提にしているため、8 に上げると lock から消えて wrangler が起動しない（#156）。7 系の patch / minor だけを受ける。miniflare が上げたら overrides ごと外す",
+      "description": "undici は overrides で miniflare の依存を脆弱性修正版に差し替えているだけ。miniflare が 7 系（7.29.1）を前提にしているため、8 に上げると lock から消えて miniflare（vite preview・cf）が起動しない（#156）。7 系の patch / minor だけを受ける。miniflare が上げたら overrides ごと外す",
       "matchPackageNames": ["undici"],
-      "matchUpdateTypes": ["major"],
-      "enabled": false
-    },
-    {
-      "description": "glob は overrides で @node-minify/core の依存を差し替えているだけ。14 に上げると lock からルートの glob（13 系）が消え、@opennextjs/cloudflare が glob を見つけられずに 全アプリの build が落ちる（#171）。10 系の patch / minor だけを受ける。OpenNext 側が上げたら overrides ごと外す（#169）",
-      "matchPackageNames": ["glob"],
       "matchUpdateTypes": ["major"],
       "enabled": false
     },
@@ -27,23 +21,27 @@
       "automergeStrategy": "squash"
     },
     {
-      "description": "Next.js と、それを Workers で動かす OpenNext・wrangler は 1 本の PR にまとめる。next 16.4.0 に OpenNext が追いつかず、全アプリが起動時に落ちた（2026-10-12）。組み合わせの相性を 1 本の PR の CI（起動確認）で確かめる",
+      "description": "Next.js と、それを Workers で動かす vinext・@cloudflare/vite-plugin・cf は 1 本の PR にまとめる。vinext は next の API を自前で実装しているため、next だけが先に上がると追いつかずに壊れることがある（OpenNext の頃、next 16.4.0 で全アプリが起動時に落ちた。2026-10-12）。組み合わせの相性を 1 本の PR の CI（起動確認）で確かめる",
       "matchPackageNames": [
         "next",
         "eslint-config-next",
-        "@opennextjs/cloudflare",
-        "wrangler"
+        "vinext",
+        "@vinext/cloudflare",
+        "@cloudflare/vite-plugin",
+        "cf"
       ],
-      "groupName": "Next.js と OpenNext",
-      "groupSlug": "next-opennext"
+      "groupName": "Next.js と vinext",
+      "groupSlug": "next-vinext"
     },
     {
-      "description": "上のグループの minor は自動マージしない（共通設定の minor 自動マージを打ち消す）。OpenNext の issue で対応状況を見てから手でマージする。patch は脆弱性修正が多いので、他と同じく CI 通過後に自動マージする",
+      "description": "上のグループの minor は自動マージしない（共通設定の minor 自動マージを打ち消す）。vinext の対応状況を見てから手でマージする。patch は脆弱性修正が多いので、他と同じく CI 通過後に自動マージする",
       "matchPackageNames": [
         "next",
         "eslint-config-next",
-        "@opennextjs/cloudflare",
-        "wrangler"
+        "vinext",
+        "@vinext/cloudflare",
+        "@cloudflare/vite-plugin",
+        "cf"
       ],
       "matchUpdateTypes": ["minor"],
       "automerge": false

@@ -14,10 +14,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# wrangler.jsonc と cloudflare-env.d.ts は実 ID を含む、あるいは生成物なので
-# 追跡していない。検証が目的なので雛形に仮の値を入れて組み立てる。
+# 本番の D1 の ID と公開ホスト名はリポジトリに含めず、cloudflare.config.ts が本番ビルドで環境変数から読む。
+# 検証が目的なので仮の値を渡す。
 env:
-  # vinext のアプリは本番ビルドでこの ID を使う。起動確認（smoke-test.sh）のローカルのマイグレーションが
+  # 本番ビルドでこの ID を使う。起動確認（smoke-test.sh）のローカルのマイグレーションが
   # 当たる ID（scripts/d1.mjs の LOCAL_D1_DATABASE_ID）と揃える。cf は UUID v4 の形しか受け付けない
   D1_DATABASE_ID: 00000000-0000-4000-8000-000000000000
   APP_HOSTNAME: placeholder.example.com
@@ -103,9 +103,7 @@ jobs:
       # Cloudflare Workers Builds も npm ci を使うため、ここでも ci で検証する
       - run: npm ci --no-audit --no-fund
       # typecheck は Cloudflare のバインディング型を要求するアプリがある。
-      # 型は wrangler.jsonc から作られるので、設定の生成が先に来る（OpenNext のアプリだけ。
-      # vinext のアプリは cf:config が無く、cf-typegen が cloudflare.config.ts から型を作る）。
-      - run: npm run cf:config --if-present -w apps/${{ matrix.app }}
+      # cf-typegen が cloudflare.config.ts から型を作る。
       - run: npm run cf-typegen --if-present -w apps/${{ matrix.app }}
       - run: npm run lint --if-present -w apps/${{ matrix.app }}
       - run: npm run typecheck --if-present -w apps/${{ matrix.app }}
@@ -128,19 +126,7 @@ jobs:
           cache: npm
       # Cloudflare Workers Builds も npm ci を使うため、ここでも ci で検証する
       - run: npm ci --no-audit --no-fund
-      # next build はアプリ全体を毎回コンパイルし直す。games のように 1 アプリへ
-      # 複数の画面を載せていると、1 画面を直しただけで残り全部が再コンパイルになる。
-      # .next/cache を持ち越すと、変わっていない部分はコンパイル結果を使い回せる。
-      # key に sha を含めて毎回書き戻し、読み出しは restore-keys で直近のものに落とす。
-      - name: Next.js のビルドキャッシュ
-        uses: actions/cache@v6
-        with:
-          path: apps/${{ matrix.app }}/.next/cache
-          key: next-${{ matrix.app }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
-          restore-keys: |
-            next-${{ matrix.app }}-${{ hashFiles('package-lock.json') }}-
-            next-${{ matrix.app }}-
-      # cf:build が wrangler.jsonc と型定義の生成まで面倒を見る
+      # cf:build は vite build を流す（環境変数を読むアプリは、先に揃っているかを確かめる）
       - run: npm run cf:build -w apps/${{ matrix.app }}
       # ビルドは通っても Worker が起動時に落ちる（本番で全リクエストが Error 1101）ことがある。
       # workerd で起動して / を開き、5xx にならないことを確かめる。Renovate の PR もここで止まる

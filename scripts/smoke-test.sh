@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ビルド済みのアプリを workerd で起動し、/ を開いて 5xx にならないことを確かめる。
-# vinext のアプリ（vite.config.ts があるもの）は vite preview、OpenNext のアプリは wrangler dev で起動する。
+# vite preview（@cloudflare/vite-plugin が workerd で Worker を動かす）で起動する。
 # CI の build job が cf:build の後に、アプリのディレクトリで実行する。
 #
 # ビルドは通るのに Worker が起動時に落ちる（全リクエストが Error 1101）壊れ方は、lint・型・
@@ -17,7 +17,6 @@ created_dev_vars=false
 if [ ! -f .dev.vars ]; then
   cat >.dev.vars <<'EOF'
 AUTH_SECRET=smoke-test-secret-0123456789abcdef
-AUTH_TRUST_HOST=true
 AUTH_GOOGLE_ID=smoke-test
 AUTH_GOOGLE_SECRET=smoke-test
 ALLOWED_EMAILS=smoke-test@example.com
@@ -29,7 +28,7 @@ fi
 
 cleanup() {
   [ -n "${pid:-}" ] && kill "$pid" 2>/dev/null || true
-  # npx を止めても workerd が残ることがあるので、ポートで探して止める
+  # npx を止めても vite preview や workerd が残ることがあるので、ポートで探して止める
   pkill -f "workerd.*${PORT}" 2>/dev/null || true
   pkill -f "vite preview --port ${PORT}" 2>/dev/null || true
   if [ "$created_dev_vars" = true ]; then rm -f .dev.vars; fi
@@ -38,25 +37,16 @@ cleanup() {
 trap cleanup EXIT
 
 # D1 を使うアプリは、テーブルが無いとページの描画で落ちる。ローカルの D1 にスキーマを入れる
-if npm pkg get scripts.db:migrate:local | grep -qE "wrangler|d1-migrate"; then
+if npm pkg get scripts.db:migrate:local | grep -q "d1-migrate"; then
   npm run db:migrate:local >/dev/null
 fi
 
-if [ -f vite.config.ts ]; then
-  npx vite preview --port "$PORT" --strictPort >"$LOG" 2>&1 &
-else
-  npx wrangler dev --port "$PORT" >"$LOG" 2>&1 &
-fi
+npx vite preview --port "$PORT" --strictPort >"$LOG" 2>&1 &
 pid=$!
 
-# 起動したか。wrangler dev は「Ready on」を出すのでそれで見る。
-# vite preview の出力は色付けの制御文字で文字列が分断されるため、ポートに繋がるかで見る
+# 起動したか。vite preview の出力は色付けの制御文字で文字列が分断されるため、ポートに繋がるかで見る
 ready() {
-  if [ -f vite.config.ts ]; then
-    curl -s -o /dev/null --max-time 2 "http://localhost:${PORT}/"
-  else
-    grep -q "Ready on" "$LOG"
-  fi
+  curl -s -o /dev/null --max-time 2 "http://localhost:${PORT}/"
 }
 # 最後に止めたときの「Terminated」をログに出さない
 disown "$pid"

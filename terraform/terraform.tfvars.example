@@ -80,6 +80,12 @@ secrets = {
     AUTH_GOOGLE_SECRET = "FILL_ME"
     AUTH_SECRET        = "FILL_ME"
   }
+  "wifi-monitor" = {
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
+  }
 }
 
 build_variables = {
@@ -133,6 +139,12 @@ build_variables = {
   }
   "warikan" = {
     APP_HOSTNAME   = "FILL_ME"
+    D1_DATABASE_ID = "FILL_ME"
+  }
+  "wifi-monitor" = {
+    APP_HOSTNAME = "FILL_ME"
+    # Terraform が D1 を作るまで ID は無い。初回の apply は仮の値で通し、
+    # terraform state show 'cloudflare_d1_database.app["wifi-monitor"]' の id に書き換えてもう一度 apply する
     D1_DATABASE_ID = "FILL_ME"
   }
   "wordle" = {

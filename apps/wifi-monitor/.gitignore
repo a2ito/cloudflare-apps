@@ -1,0 +1,55 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+!.env.example
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# vinext / cf（ビルド出力、生成した型、ローカルの模擬 D1 などの状態）
+/dist/
+.vinext/
+.cloudflare/
+
+# ローカルの secret（雛形のみ共有する）
+.dev.vars*
+!.dev.vars.example
+
+# 旧 OpenNext / wrangler の生成物（手元に残っていても拾わない）
+/.open-next
+.wrangler
+wrangler.jsonc
+cloudflare-env.d.ts
+
+# Next.js が自動生成する AI エージェント向けルール
+AGENTS.md
+CLAUDE.md
+# 手で書いたエージェント向けの約束は共有する（自動生成と場所を分けている）
+!.claude/CLAUDE.md
+# 手元だけの設定は共有しない
+.claude/settings.local.json

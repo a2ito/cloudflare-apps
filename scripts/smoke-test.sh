@@ -41,17 +41,26 @@ if npm pkg get scripts.db:migrate:local | grep -qE "wrangler|d1-migrate"; then
 fi
 
 if [ -f vite.config.ts ]; then
-  # 起動の合図は wrangler dev に揃えて「Ready on」で待つ（vite preview は「Local:」を出す）
-  npx vite preview --port "$PORT" --strictPort 2>&1 | sed -u 's/Local:/Ready on/' >"$LOG" &
+  npx vite preview --port "$PORT" --strictPort >"$LOG" 2>&1 &
 else
   npx wrangler dev --port "$PORT" >"$LOG" 2>&1 &
 fi
 pid=$!
+
+# 起動したか。wrangler dev は「Ready on」を出すのでそれで見る。
+# vite preview の出力は色付けの制御文字で文字列が分断されるため、ポートに繋がるかで見る
+ready() {
+  if [ -f vite.config.ts ]; then
+    curl -s -o /dev/null --max-time 2 "http://localhost:${PORT}/"
+  else
+    grep -q "Ready on" "$LOG"
+  fi
+}
 # 最後に止めたときの「Terminated」をログに出さない
 disown "$pid"
 
 for _ in $(seq 1 60); do
-  grep -q "Ready on" "$LOG" && break
+  ready && break
   if ! kill -0 "$pid" 2>/dev/null; then
     echo "サーバが起動前に終了しました"
     cat "$LOG"
@@ -59,7 +68,7 @@ for _ in $(seq 1 60); do
   fi
   sleep 1
 done
-if ! grep -q "Ready on" "$LOG"; then
+if ! ready; then
   echo "サーバが 60 秒以内に起動しませんでした"
   cat "$LOG"
   exit 1

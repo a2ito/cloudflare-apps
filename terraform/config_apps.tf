@@ -113,6 +113,12 @@ locals {
       build_caching_enabled = false
       trigger_uuid          = "a185469d-85f8-472a-ad89-f5c5dccda63d"
     }
+    "wifi-monitor" = {
+      secrets               = local.google_login_secrets
+      build_variables       = ["APP_HOSTNAME", "D1_DATABASE_ID"]
+      build_token_uuid      = local.build_tokens.cloudflare_apps
+      build_caching_enabled = true
+    }
     "wordle" = {
       secrets               = []
       build_variables       = ["APP_HOSTNAME"]
@@ -127,6 +133,7 @@ locals {
   # ここに載せる D1 の ID は Build variables の D1_DATABASE_ID と同じものを指す（imports.tf）。
   d1_databases = {
     "spec-compare" = "spec-compare-db"
+    "wifi-monitor" = "wifi-monitor-db"
   }
 
   # アプリの R2。キーはアプリ名。location は作成後に変えられず、変えると作り直しになるので実態を書く。

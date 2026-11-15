@@ -25,6 +25,7 @@ Cloudflare Workers で動く Next.js アプリをまとめたモノレポ。
 | [number-logic](apps/number-logic)       | https://number-logic.a2ito.work  | `number-logic`    | 数独ベースのロジックパズル                                                           | 数独、ナンプレ                                                                        |
 | [dev-toolbox](apps/dev-toolbox)         | https://toolbox.a2ito.work       | `dev-toolbox`     | パスワード生成や Unix time 変換などの開発者向けユーティリティ                        | toolbox、開発ツール、パスワード生成、Unix time                                        |
 | [planning-porker](apps/planning-porker) | https://porker.a2ito.work        | `planning-porker` | チーム見積り用のプランニングポーカー                                                 | プランニングポーカー、見積り、porker                                                  |
+| [wifi-monitor](apps/wifi-monitor)       | https://wifi-monitor.a2ito.work  | `wifi-monitor`    | 端末のエージェントが測った Wi-Fi の通信状況を記録してグラフで見る                    | Wi-Fi 監視、通信状況、回線の調子、遅延・ping                                          |
 | [games](apps/games)                     | https://game.a2ito.work          | `games`           | ブラウザゲームを 1 本にまとめたゲーム集（一覧は [apps/games](apps/games) の README） | ゲーム、ソリティア、テトリス、2048、マインスイーパー、スネーク、hexspin、英単語クイズ |
 
 ## 使い方

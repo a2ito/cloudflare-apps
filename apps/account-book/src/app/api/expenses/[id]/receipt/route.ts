@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { env } from "cloudflare:workers";
 import { expenses } from "@/db/schema";
 import { authorize, type AuthorizedContext } from "@/lib/apiAuth";
 import { receiptKey, validateReceipt } from "@/lib/receipt";
@@ -37,8 +37,6 @@ export async function GET(
 
   const expense = await findExpense(auth, id);
   if (!expense?.receiptKey) return notFound();
-
-  const { env } = getCloudflareContext();
   const object = await env.RECEIPTS_BUCKET.get(expense.receiptKey, {
     onlyIf: request.headers,
   });
@@ -80,8 +78,6 @@ export async function PUT(
   if (!validation.ok) {
     return NextResponse.json({ error: validation.error }, { status: 400 });
   }
-
-  const { env } = getCloudflareContext();
   const key = receiptKey(auth.groupId, id, validation.contentType);
   await env.RECEIPTS_BUCKET.put(key, await file.arrayBuffer(), {
     httpMetadata: { contentType: validation.contentType },
@@ -124,8 +120,6 @@ export async function DELETE(
     .update(expenses)
     .set({ receiptKey: null })
     .where(and(eq(expenses.id, id), eq(expenses.groupId, auth.groupId)));
-
-  const { env } = getCloudflareContext();
   await env.RECEIPTS_BUCKET.delete(expense.receiptKey);
 
   return NextResponse.json({ ok: true });

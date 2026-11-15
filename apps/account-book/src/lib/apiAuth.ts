@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { drizzle } from "drizzle-orm/d1";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { getSessionUser } from "@/lib/session";
+import { env } from "cloudflare:workers";
+import { getSessionUser } from "@/lib/auth";
 import { getUserGroupId } from "@/lib/getUserGroupId";
 
 export type AuthorizedContext = {
@@ -34,8 +34,6 @@ export const authorize = async (
       response: NextResponse.json({ error: "unauthorized" }, { status: 401 }),
     };
   }
-
-  const { env } = getCloudflareContext();
   const db = drizzle(env.DB);
 
   try {

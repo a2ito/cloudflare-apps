@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
 import { userGroups } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { getSessionUser } from "@/lib/session";
+import { getSessionUser } from "@/lib/auth";
 
 export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/login")) {
@@ -16,8 +16,6 @@ export async function middleware(request: NextRequest) {
   if (!userId) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
-
-  const { env } = getCloudflareContext();
   const db = drizzle(env.DB);
   const group = await db
     .select()

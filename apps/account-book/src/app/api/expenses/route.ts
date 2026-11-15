@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 //import { getDB } from '@/lib/db'
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
 import { expenses, categories } from "@/db/schema";
 import { eq, like, desc, and, inArray } from "drizzle-orm";
 import { expenseTags } from "@/db/schema";
-import { getSessionUser } from "@/lib/session";
+import { getSessionUser } from "@/lib/auth";
 import { getUserGroupId } from "@/lib/getUserGroupId";
 import {
   normalizeTagIds,
@@ -27,8 +27,6 @@ export async function GET(request: Request) {
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-
-  const { env } = getCloudflareContext();
   const db = drizzle(env.DB);
 
   const groupId = await getUserGroupId(db, userId);
@@ -101,8 +99,6 @@ export async function POST(request: Request) {
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-
-  const { env } = getCloudflareContext();
   const db = drizzle(env.DB);
   const groupId = await getUserGroupId(db, userId);
 

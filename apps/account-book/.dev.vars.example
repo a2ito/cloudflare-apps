@@ -1,0 +1,6 @@
+# 認証（better-auth + Google OAuth）。cloudflare.config.ts で宣言した secret にだけ渡る
+# Google Cloud Console > APIs & Services > Credentials > OAuth 2.0 Client ID
+# 承認済みリダイレクト URI: http://localhost:3000/api/auth/google/callback
+# セッションの署名鍵も GOOGLE_CLIENT_SECRET から作る
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=

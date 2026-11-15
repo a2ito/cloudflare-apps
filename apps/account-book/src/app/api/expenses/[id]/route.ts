@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { expenses, expenseTags } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getSessionUser } from "@/lib/session";
+import { getSessionUser } from "@/lib/auth";
 import { getUserGroupId } from "@/lib/getUserGroupId";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
 import { normalizeTagIds, replaceExpenseTags } from "@/lib/expenseTags";
 
@@ -24,8 +24,6 @@ export async function PUT(
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-
-  const { env } = getCloudflareContext();
   const db = drizzle(env.DB);
 
   const groupId = await getUserGroupId(db, userId);
@@ -66,8 +64,6 @@ export async function DELETE(
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-
-  const { env } = getCloudflareContext();
   const db = drizzle(env.DB);
 
   const groupId = await getUserGroupId(db, userId);

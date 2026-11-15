@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { categories, expenses } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { getSessionUser } from "@/lib/session";
+import { env } from "cloudflare:workers";
+import { getSessionUser } from "@/lib/auth";
 
 export async function DELETE(request: Request) {
   try {
@@ -18,8 +18,6 @@ export async function DELETE(request: Request) {
     if (!id) {
       return NextResponse.json({ error: "invalid-id" }, { status: 400 });
     }
-
-    const { env } = getCloudflareContext();
     const db = drizzle(env.DB);
 
     // 使用件数チェック

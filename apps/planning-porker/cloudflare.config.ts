@@ -3,7 +3,7 @@ import { LOCAL_D1_DATABASE_ID } from "../../scripts/d1.mjs";
 
 /**
  * Worker の設定。公開ホスト名は以前から wrangler.jsonc に書いていたもの。
- * カスタムドメインは本番のビルド（mode が production。`vite build` と deploy）のときだけ付ける。 *
+ * カスタムドメインは本番のビルド（mode が production。`vite build` と deploy）のときだけ付ける。
  * D1 の ID は以前から wrangler.jsonc でリポジトリに入れていた値。本番のビルドでだけ使い、
  * 手元の開発・型の生成・ローカルのマイグレーションではローカルの模擬 D1（LOCAL_D1_DATABASE_ID）を使う。
  * CI の起動確認は環境変数 D1_DATABASE_ID でローカルの ID を渡すので、それがあれば優先する。

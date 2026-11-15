@@ -60,7 +60,7 @@ npm install
 npm run dev
 ```
 
-Cloudflare Workers へデプロイする場合は、`@cloudflare/next-on-pages` を利用してください。
+Cloudflare Workers へは [vinext](https://vinext.dev) でデプロイする（main への push で Workers Builds が `npm run cf:build` / `npm run cf:deploy` を流す）。
 
 ### 今後の拡張アイデア
 
@@ -124,7 +124,7 @@ npm install
 npm run dev
 ```
 
-To deploy on Cloudflare Workers, use `@cloudflare/next-on-pages`.
+It is deployed to Cloudflare Workers with [vinext](https://vinext.dev) (Workers Builds runs `npm run cf:build` / `npm run cf:deploy` on push to main).
 
 ### Puzzle Generation Logic
 

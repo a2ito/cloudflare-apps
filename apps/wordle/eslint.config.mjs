@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     // Cloudflare 側の生成物。lint の対象ではない。
     ".cloudflare/**",
     ".vinext/**",
+    "dist/**",
   ]),
 ]);
 

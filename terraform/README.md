@@ -55,7 +55,43 @@ make apply   # plan で保存したものだけを適用する
 1. `config_apps.tf` の `apps` に足す（`trigger_uuid` は要らない）
 2. `terraform.tfvars` に Secret と Build variables の値を足す
 3. `make plan` → `make apply`。Worker が無ければ仮のスクリプトで作られ、トリガーが付く
-4. `main` に push すると Workers Builds が本物のコードをデプロイする
+4. アプリの PR を `main` にマージすると Workers Builds が走る。**Terraform が作った Worker では、この最初のデプロイは失敗する**
+5. 最新の `main` を手元に取り、手元から一度だけ上書きする（下の「最初のデプロイ」）。以降は `main` への push で普通にデプロイされる
+
+### 最初のデプロイ
+
+Terraform が作った Worker には仮のスクリプトが入っている。cf はこれを「script API で更新された Worker」とみなし、
+CI（Workers Builds）では上書きせずに止まる（`Aborting the upload operation because of conflicts`）。
+この確認は CI でだけ働くので、手元からなら上書きできる（`--force` は念のため）。
+`vinext-cloudflare deploy` には `--force` を渡す口が無いため、Workers Builds の設定では避けられない。
+
+1. 失敗した最初のビルドのログで、マイグレーションが当たったことを確かめる（`cf:deploy` に `db:migrate:remote` を
+   含むアプリだけ。マイグレーションはデプロイより前に流れるので、デプロイが失敗しても当たっている）
+2. 最新の `main` で、ビルドして上書きする。ビルドには `config_apps.tf` の `build_variables` に載せた変数を
+   **すべて**渡す（`NEXT_PUBLIC_*` はビルド時に埋め込まれ、`cf:check-env` を持たないアプリもあるため、渡し忘れると
+   仮の値のまま本番に出る）。`--prebuilt` はビルド結果を読むだけなので、deploy には変数は要らない
+
+   ```sh
+   cd apps/<アプリ>
+   D1_DATABASE_ID=<ID> APP_HOSTNAME=<ホスト名> npm run cf:build   # build_variables をすべて
+   CLOUDFLARE_API_TOKEN="$(. ~/.secrets; printf '%s' "$CLOUDFLARE_APPS_TERRAFORM_TOKEN")" npx cf deploy --prebuilt --force
+   ```
+
+   トークンは Terraform のアカウントトークン（Workers Scripts Write・Zone の DNS Write）で足りる。
+   wifi-monitor ではこれで Custom Domain の付与まで通った。`npx cf auth login`（OAuth）でもよい
+
+3. 手動ビルドで Workers Builds が通ることを確かめる（ルートの CLAUDE.md の「最初のデプロイの後」のビルドログの確認は、
+   この成功したビルドで行う）。ダッシュボードの Settings > Builds のほか、API でも走らせられる
+
+   ```sh
+   # terraform/ で。state を読むので GCS の ADC 認証（gcloud auth application-default login）が要る
+   terraform state show 'cloudflare_workers_build_trigger.app["<アプリ>"]'   # id がトリガーの UUID
+
+   # <account_id> は terraform.tfvars の account_id。ビルド用のユーザートークンが要る
+   curl -X POST "https://api.cloudflare.com/client/v4/accounts/<account_id>/builds/triggers/<trigger_uuid>/builds" \
+     -H "Authorization: Bearer $(. ~/.secrets; printf '%s' "$CLOUDFLARE_APPS_TERRAFORM_BUILDS_TOKEN")" \
+     -H "Content-Type: application/json" --data '{"branch":"main"}'
+   ```
 
 D1 と R2（画像）を Terraform で持たせるときは、`config_apps.tf` の `d1_databases` / `r2_buckets` にも足す。
 

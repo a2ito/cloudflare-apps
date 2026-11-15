@@ -114,7 +114,7 @@ export default function Board() {
   useEffect(() => {
     async function init() {
       const res = await fetch("/api/daily-word");
-      const data = await res.json();
+      const data = (await res.json()) as { word: string };
       setAnswer(data.word);
 
       const today = new Date().toISOString().slice(0, 10);

@@ -8,12 +8,12 @@ import nextTs from "eslint-config-next/typescript";
 export default defineConfig([
   globalIgnores([
     ".next/**",
-    ".open-next/**",
-    ".wrangler/**",
+    ".cloudflare/**",
+    ".vinext/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
-    "cloudflare-env.d.ts",
+    "dist/**",
   ]),
   ...nextVitals,
   ...nextTs,

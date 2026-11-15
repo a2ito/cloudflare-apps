@@ -1,10 +1,10 @@
-# OpenNext Starter
+# planning-porker
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 
-Read the documentation at https://opennext.js.org/cloudflare.
+Cloudflare Workers で動かす（[vinext](https://vinext.dev) でビルド・デプロイ）。Worker の設定は `cloudflare.config.ts`。
 
 ## Develop
 
@@ -24,18 +24,15 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 Preview the application locally on the Cloudflare runtime:
 
 ```bash
-npm run preview
-# or similar package manager command
+npm run build && npm start
 ```
+
+`npm run build` は本番のビルドなので、D1 は本番の ID を指す。手元の D1（`npm run db:migrate:local` を当てたもの）で
+見るときは `D1_DATABASE_ID=00000000-0000-4000-8000-000000000000 npm run build` にする。
 
 ## Deploy
 
-Deploy the application to Cloudflare:
-
-```bash
-npm run deploy
-# or similar package manager command
-```
+main への push で Workers Builds が `npm run cf:build` / `npm run cf:deploy` を流す。
 
 ## DB マイグレーション
 

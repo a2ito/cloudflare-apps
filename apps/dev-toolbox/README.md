@@ -114,12 +114,8 @@ npm run dev
 
 ## ☁️ Deployment (Cloudflare Workers)
 
-```bash
-npm run build
-npx wrangler deploy
-```
-
-Make sure your `wrangler.toml` (or `wrangler.jsonc`) is configured correctly for Next.js on Workers.
+main への push で Workers Builds が `npm run cf:build` / `npm run cf:deploy` を流す（[vinext](https://vinext.dev)）。
+Worker の設定は `cloudflare.config.ts`。
 
 ---
 

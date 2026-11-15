@@ -26,8 +26,8 @@ Next.js が自動生成するため `.gitignore` で無視しているから。
 # 依存はリポジトリ直下で入れる（lockfile はルートに 1 つ）
 npm ci
 
-# 以降はこのディレクトリで。typecheck と test のスクリプトは無い
-npm run lint && npm run build
+# 以降はこのディレクトリで。vite build は型を見ないので typecheck を別に流す。test のスクリプトは無い
+npm run lint && npm run typecheck && npm run build
 ```
 
 ## コードの約束
@@ -51,4 +51,4 @@ npm run lint && npm run build
 
 ## デプロイ設定
 
-- `wrangler.jsonc` は公開ホスト名ごと追跡している。設定を変えるときはこれを直す
+- Worker の設定は `cloudflare.config.ts`（vinext でビルド・デプロイする）。公開ホスト名もここに書いてある

@@ -26,11 +26,11 @@ Next.js が自動生成するため `.gitignore` で無視しているから。
 # 依存はリポジトリ直下で入れる（lockfile はルートに 1 つ）
 npm ci
 
-# 以降はこのディレクトリで
-npm run lint && npm run format && npm run build
+# 以降はこのディレクトリで。vite build は型を見ないので typecheck を別に流す
+npm run lint && npm run format && npm run typecheck && npm run build
 ```
 
-テストと typecheck の script は無い。型の誤りは `npm run build` で落ちる。
+テストの script は無い。`npm run build`（vite build）は型を見ないので、型の誤りは `npm run typecheck` で見る。
 
 ## コードの約束
 
@@ -46,7 +46,6 @@ npm run lint && npm run format && npm run build
   外すと Next.js のビルドが落ちる
 - ダークモードは `<html>` の `dark` クラスで切り替える（`src/hooks/useTheme.ts`、
   キーは `number-logic:theme`）。`dark:` の定義は `globals.css` の `@custom-variant` にある
-- README の「`@cloudflare/next-on-pages` でデプロイ」は古い。実際は OpenNext
-  （`cf:build` / `cf:deploy`）で、`wrangler.jsonc` はコミットされている
+- デプロイは vinext（`cf:build` / `cf:deploy`）。Worker の設定は `cloudflare.config.ts`
 
 - コメントには「なぜそうなっているか」を書く。コードを読めば分かることは書かない

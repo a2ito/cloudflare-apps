@@ -21,7 +21,7 @@ export async function createTestEnv() {
   const d1 = await mf.getD1Database("DB");
   await applyMigrations(d1);
 
-  const env = { DB: d1 } as unknown as CloudflareEnv;
+  const env = { DB: d1 } as unknown as Env;
   const db = drizzle(d1, { schema });
 
   return {

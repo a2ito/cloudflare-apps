@@ -26,8 +26,8 @@ Next.js が自動生成するため `.gitignore` で無視しているから。
 # 依存はリポジトリ直下で入れる（lockfile はルートに 1 つ）
 npm ci
 
-# 以降はこのディレクトリで。typecheck の script は無いので tsc を直接呼ぶ
-npm run lint && npx tsc --noEmit && npm test
+# 以降はこのディレクトリで。typecheck は cloudflare.config.ts から Env の型を作ってから tsc を走らせる
+npm run lint && npm run typecheck && npm test
 ```
 
 ## コードの約束
@@ -40,7 +40,7 @@ npm run lint && npx tsc --noEmit && npm test
 - **ログインは better-auth**（`src/lib/auth.ts`）。セッションは暗号化した Cookie に載せ、
   中身を読むときは必ず `getSessionUser(request)` を通す（返すのは `users.id`）
   - ログインできるのは、メール確認済みで、事前登録済みの `users` にいるアカウントだけ
-    （`databaseHooks.user.create.before` で弾く）
+    （`databaseHooks.user.create.before` で弾く。判定は `src/lib/signIn.ts` の `resolveSignInUid`）
   - 署名の鍵は `GOOGLE_CLIENT_SECRET` から作る。作り直すと全員ログアウトになる
   - Google のリダイレクト URI は `/api/auth/google/callback`。better-auth の callback に中継している
 - 画面の保護は `src/middleware.ts`。新しいページを足したら `matcher` に入れる。

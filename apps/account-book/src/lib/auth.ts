@@ -1,8 +1,9 @@
 import { betterAuth } from "better-auth";
 import { env } from "cloudflare:workers";
-import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { users } from "@/db/schema";
+import { resolveSignInUid } from "./signIn";
 
 /** セッションの有効期間（30 日）。以前の自前のセッション Cookie と同じ */
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -76,14 +77,17 @@ function createAuth() {
           // DB を持たないため、better-auth のユーザは isolate のメモリにしか無い。同じ isolate に
           // 前のログインのユーザが残っているとここは通らないが、uid はそのユーザに載ったまま残る。
           async before(user) {
-            if (!user.emailVerified) return false;
-            const row = await db
-              .select({ id: users.id })
-              .from(users)
-              .where(eq(users.email, user.email))
-              .get();
-            if (!row) return false;
-            return { data: { ...user, uid: row.id } };
+            const uid = await resolveSignInUid(user, async (email) => {
+              // users.email に大文字が混ざっていても照合できるよう、小文字にそろえて比べる
+              const row = await db
+                .select({ id: users.id })
+                .from(users)
+                .where(sql`lower(${users.email}) = ${email}`)
+                .get();
+              return row?.id ?? null;
+            });
+            if (!uid) return false;
+            return { data: { ...user, uid } };
           },
         },
       },

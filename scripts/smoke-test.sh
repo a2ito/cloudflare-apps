@@ -21,6 +21,8 @@ AUTH_TRUST_HOST=true
 AUTH_GOOGLE_ID=smoke-test
 AUTH_GOOGLE_SECRET=smoke-test
 ALLOWED_EMAILS=smoke-test@example.com
+GOOGLE_CLIENT_ID=smoke-test
+GOOGLE_CLIENT_SECRET=smoke-test
 EOF
   created_dev_vars=true
 fi

@@ -6,9 +6,9 @@ const eslintConfig = [
   {
     ignores: [
       ".next/**",
-      ".open-next/**",
-      ".wrangler/**",
-      "cloudflare-env.d.ts",
+      ".cloudflare/**",
+      ".vinext/**",
+      "dist/**",
     ],
   },
   ...nextCoreWebVitals,

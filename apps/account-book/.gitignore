@@ -41,7 +41,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# OpenNext
+# vinext / cf（ビルド出力、生成した型、ローカルの模擬 D1 などの状態）
+/dist/
+.vinext/
+.cloudflare/
+
+# 旧 OpenNext / wrangler の生成物
 /.open-next
 
 # wrangler files

@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 家計簿アプリ「account-book」。Next.js 16 (App Router) を Cloudflare Workers で動かし、
-DB は D1 + Drizzle ORM、認証は Google OAuth の自前実装（Auth.js は使っていない）。
+DB は D1 + Drizzle ORM、認証は better-auth + Google OAuth。ビルドとデプロイは vinext（Worker の設定は `cloudflare.config.ts`）。
 技術構成・セットアップ手順は `README.md` を読む。
 
 このファイルには、毎回思い出してほしい約束だけを書く。
@@ -37,11 +37,12 @@ npm run lint && npx tsc --noEmit && npm test
 - **API の入口は `src/lib/apiAuth.ts` の `authorize(request)`**。ログイン中のユーザと
   所属グループを解決し、失敗時は 401 / 403 の `response` を返す。認証なしの API を足さない
   （以前、集計 API が認証なしで全グループの合計を返していた）
-- **セッション cookie は署名付き**（`src/lib/session.ts`）。中身を読むときは必ず
-  `getSessionUser` を通す。cookie の値をそのまま ID として使わない
-  - 署名の鍵は `GOOGLE_CLIENT_SECRET` から導出している。作り直すと全員ログアウトになる
-- **Google ログインは `src/lib/oauth.ts` で検証する**。`state` の一致と、id_token の
-  発行者・宛先・期限・`email_verified` を確かめてから、事前登録済みの `users` と突き合わせる
+- **ログインは better-auth**（`src/lib/auth.ts`）。セッションは暗号化した Cookie に載せ、
+  中身を読むときは必ず `getSessionUser(request)` を通す（返すのは `users.id`）
+  - ログインできるのは、メール確認済みで、事前登録済みの `users` にいるアカウントだけ
+    （`databaseHooks.user.create.before` で弾く）
+  - 署名の鍵は `GOOGLE_CLIENT_SECRET` から作る。作り直すと全員ログアウトになる
+  - Google のリダイレクト URI は `/api/auth/google/callback`。better-auth の callback に中継している
 - 画面の保護は `src/middleware.ts`。新しいページを足したら `matcher` に入れる。
   入れ忘れると未ログインでも開ける
 - **金額は円の整数**（`amount` は integer）。浮動小数で計算しない

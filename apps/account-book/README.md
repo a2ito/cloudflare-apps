@@ -46,10 +46,10 @@
 
 - 月額・年額のサブスクを登録 / 編集 / 停止 / 削除（`/subscriptions`）
 - 請求日を迎えたものを Cron Trigger で毎日 0:05 JST に支出として自動計上する
-  - Cron の入口は `worker.ts`（OpenNext の Worker をラップして `scheduled` を足している）
+  - Cron の入口は `worker/index.ts`（vinext の Worker のハンドラに `scheduled` を足している）
   - 同じサブスク・同じ請求日は一意制約で二重計上しない
   - Cron が止まっても前月（年額は前年）分までは次の実行で取り戻す
-  - 手元では `npx wrangler dev --test-scheduled` で起動し、`/__scheduled` を叩くと試せる
+  - 計上の処理そのものは `src/lib/subscriptions.ts`（`postDueSubscriptionExpenses`）にあり、テストで確かめている
 
 ### レシート
 
@@ -120,11 +120,8 @@ npm ci
 npm run dev
 ```
 
-Cloudflare Workers + D1 を使うため、以下も利用します。
-
-```bash
-npx wrangler dev
-```
+`npm run dev`（vite dev）は workerd の中で動き、D1 や R2 はローカルの模擬を使います。
+初回は `npm run db:migrate:local` でスキーマを入れてください。
 
 ---
 
@@ -139,8 +136,8 @@ npx drizzle-kit migrate
 
 ## セキュリティ設計
 
-- OAuth client secret は `.env.local` で管理
-- Workers 環境変数は `wrangler secret` を使用
+- 手元の OAuth client の値は `.dev.vars` で管理（`.dev.vars.example` を参照）
+- 本番の Secret は Terraform（ルートの `terraform/`）が入れる
 - Cookie は `httpOnly / sameSite=lax`
 
 ---
@@ -221,11 +218,7 @@ npm install
 npm run dev
 ```
 
-For Workers & D1:
-
-```bash
-npx wrangler dev
-```
+`npm run dev` runs inside workerd with local D1 / R2 simulations. Run `npm run db:migrate:local` first.
 
 ---
 

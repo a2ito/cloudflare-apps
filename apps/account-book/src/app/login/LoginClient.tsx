@@ -8,14 +8,21 @@ export default function LoginClient() {
 
   const errorMessage = (() => {
     switch (error) {
-      case "not-allowed":
+      // better-auth が errorCallbackURL に付けて返すエラーコード
+      // 事前登録されていない・メール未確認（databaseHooks.user.create.before が弾いた）
+      case "unable_to_create_user":
         return "このGoogleアカウントは利用できません。";
-      case "oauth":
-        return "Google認証に失敗しました。";
-      case "token":
-        return "認証トークンの取得に失敗しました。";
-      default:
+      // Google の同意画面でキャンセルした
+      case "access_denied":
+        return "ログインがキャンセルされました。";
+      // state Cookie が無い・一致しない（期限切れ、別タブでやり直したなど）
+      case "state_mismatch":
+      case "state_not_found":
+        return "ログインの有効期限が切れました。もう一度お試しください。";
+      case null:
         return null;
+      default:
+        return "Google認証に失敗しました。";
     }
   })();
 

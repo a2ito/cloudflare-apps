@@ -1,35 +1,23 @@
-import { NextResponse } from "next/server";
-import {
-  OAUTH_STATE_COOKIE,
-  OAUTH_STATE_MAX_AGE_SECONDS,
-  createOAuthState,
-} from "@/lib/oauth";
+import { getAuth } from "@/lib/auth";
 
-export async function GET() {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+/**
+ * Google のログイン画面へ送る。ログイン画面のリンク（<a href="/api/auth/google">）から開く。
+ * better-auth が state の Cookie を発行するので、その Set-Cookie をリダイレクトに載せる。
+ */
+export async function GET(request: Request): Promise<Response> {
+  const res = await getAuth().api.signInSocial({
+    body: { provider: "google", callbackURL: "/", errorCallbackURL: "/login" },
+    headers: request.headers,
+    asResponse: true,
+  });
+  if (!res.ok) return res;
 
-  if (!clientId) {
-    return new Response("OAuth env not set", { status: 500 });
+  const { url } = (await res.json()) as { url?: string };
+  if (!url) {
+    return new Response("Google のログイン URL を取得できませんでした", { status: 500 });
   }
 
-  const state = createOAuthState();
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: `${process.env.ORIGIN}/api/auth/google/callback`,
-    response_type: "code",
-    scope: "openid email profile",
-    state,
-  });
-
-  const res = NextResponse.redirect(
-    `https://accounts.google.com/o/oauth2/v2/auth?${params}`,
-  );
-  res.cookies.set(OAUTH_STATE_COOKIE, state, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    path: "/api/auth/google",
-    maxAge: OAUTH_STATE_MAX_AGE_SECONDS,
-  });
-  return res;
+  const headers = new Headers({ Location: url });
+  for (const cookie of res.headers.getSetCookie()) headers.append("Set-Cookie", cookie);
+  return new Response(null, { status: 302, headers });
 }

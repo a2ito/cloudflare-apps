@@ -67,7 +67,7 @@ export async function deletePhotos(keys: readonly string[]): Promise<void> {
  * 写真の配信 URL。R2 のカスタムドメインを直に指すので Worker を経由しない。
  *
  * Route Handler (/api/photos) 経由だと写真 1 枚につき Worker が 1 回起動し、その
- * すべてで Auth.js のセッション復号が走る。CDN から直に返せば Worker は起動しない。
+ * すべてで better-auth のセッション復号が走る。CDN から直に返せば Worker は起動しない。
  *
  * 引き換えに、写真は URL を知っていれば認証なしで取得できる。キーが UUID v4 で
  * 推測できないことに依存している。バケットの一覧は公開されないため列挙もできない。

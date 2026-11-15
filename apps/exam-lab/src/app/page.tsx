@@ -1,10 +1,23 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 import { signInWithGoogle } from "./actions";
 
+/** better-auth が errorCallbackURL に付けて返すエラーコード */
 const ERROR_MESSAGES: Record<string, string> = {
-  AccessDenied: "このアカウントにはアクセス権がありません",
-  Configuration: "認証の設定に問題があります。管理者に連絡してください",
+  // 許可リストに無い（databaseHooks.user.create.before / session.create.before が弾いた）
+  unable_to_create_user: "このアカウントにはアクセス権がありません",
+  unable_to_create_session: "このアカウントにはアクセス権がありません",
+  // Google の同意画面でキャンセルした
+  access_denied: "ログインがキャンセルされました",
+  // Google のアカウントがメール確認済みでない
+  email_not_verified:
+    "メールアドレスが確認されていない Google アカウントではログインできません",
+  // state Cookie が無い・一致しない（期限切れ、別タブでやり直したなど）
+  state_mismatch: "ログインの有効期限が切れました。もう一度お試しください",
+  state_not_found: "ログインの有効期限が切れました。もう一度お試しください",
+  // Google からの戻りの形が不正（URL を手で開いたなど）
+  invalid_callback_request:
+    "ログインの手順が正しくありません。もう一度お試しください",
   Default: "ログインに失敗しました。もう一度お試しください",
 };
 
@@ -13,8 +26,7 @@ export default async function Home({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const session = await auth();
-  if (session?.user?.email) redirect("/dashboard");
+  if (await getSessionUser()) redirect("/dashboard");
 
   const { error } = await searchParams;
   const errorKey = typeof error === "string" ? error : undefined;

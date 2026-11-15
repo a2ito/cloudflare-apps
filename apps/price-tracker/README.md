@@ -2,9 +2,9 @@
 
 商品ごとに店舗別の価格を記録し、容量あたりの単価で最安値を比較する個人用 Web アプリ。
 
-- Next.js 16 (App Router) + [@opennextjs/cloudflare](https://opennext.js.org/cloudflare) → Cloudflare Workers
+- Next.js 16 (App Router) + [vinext](https://vinext.dev) → Cloudflare Workers
 - D1 (Drizzle ORM) / R2（商品画像）
-- Auth.js v5 + Google ログイン。`ALLOWED_EMAILS` に載せたアカウントだけ利用可
+- better-auth + Google ログイン。`ALLOWED_EMAILS` に載せたアカウントだけ利用可
 
 ## 機能
 
@@ -69,7 +69,7 @@ Worker が起動し、その全てで Auth.js のセッション復号が走っ�
 あり、今まで通り認証の内側にある。
 
 配信の基底 URL は `NEXT_PUBLIC_IMAGES_BASE_URL` で渡す。`imageUrl()` はクライアント
-コンポーネントからも呼ぶため `NEXT_PUBLIC_` 付きで、`next build` 時に値が埋め込まれる。
+コンポーネントからも呼ぶため `NEXT_PUBLIC_` 付きで、`vite build` 時に値が埋め込まれる。
 実行時の環境変数では差し替わらないので、変えたら再ビルドが要る。
 
 基底 URL が無いときは `/api/images` へ落ちる。`src/app/api/images/[...key]/route.ts` が
@@ -98,7 +98,7 @@ main への push を Cloudflare が検知し、ビルドしてデプロイする
 
 Workers Builds の設定は Cloudflare ダッシュボードの **Settings > Build** で行う。
 モノレポなので **root directory にこのアプリのディレクトリを指す**。Worker 名は
-そこに置かれた Wrangler 設定の `name` と一致していなければビルドが落ちる。
+`cloudflare.config.ts` の `name` と一致していなければビルドが落ちる。
 
 | 項目              | 値                                                              |
 | ----------------- | --------------------------------------------------------------- |
@@ -109,8 +109,10 @@ Workers Builds の設定は Cloudflare ダッシュボードの **Settings > Bui
 | Build watch paths | `apps/price-tracker/*`、`package-lock.json`                     |
 | Build variables   | `D1_DATABASE_ID`, `APP_HOSTNAME`, `NEXT_PUBLIC_IMAGES_BASE_URL` |
 
-`wrangler.jsonc` は追跡していないため、`npm run cf:config` が雛形のプレースホルダを
-これらの変数で埋めて生成する。手元に `wrangler.jsonc` がある場合は上書きしない。
+Worker の設定は `cloudflare.config.ts`。実 ID と公開ホスト名はリポジトリに含めず、これらの変数から読む。
+読むのは本番のビルド（`vite build` とデプロイ）のときだけで、手元の開発ではシェルに入っていても使わない。
+未設定のまま `cf:build` / `cf:deploy` を流すと、最初に止まる（`../../scripts/check-cf-env.mjs`）。
+`NEXT_PUBLIC_IMAGES_BASE_URL` も同じく検出する（渡し忘れても画像は出るが、Worker 経由に戻って CPU 削減が効かなくなるため）。
 
 `@emnapi/core` と `@emnapi/runtime` は直接使わないが、Tailwind の wasm パッケージが
 要求する版が lock に記録されず `npm ci` が同期エラーになるため、明示的に依存へ加えている。
@@ -133,7 +135,6 @@ Workers Builds の設定は Cloudflare ダッシュボードの **Settings > Bui
 ### 2. ローカル環境変数
 
 ```sh
-cp wrangler.jsonc.example wrangler.jsonc   # __D1_DATABASE_ID__ と __APP_HOSTNAME__ を書き換える
 cp .dev.vars.example .dev.vars
 openssl rand -base64 32   # AUTH_SECRET に貼る
 ```
@@ -149,8 +150,8 @@ npm run db:migrate:local
 ### 4. 開発サーバ
 
 ```sh
-npm run dev        # next dev（bindings は miniflare 経由で利用可）
-npm run preview    # Workers ランタイムで実行して確認
+npm run dev        # vite dev（bindings は miniflare 経由で利用可）
+npm run build && npm start   # ビルドして Workers ランタイムで確認
 ```
 
 ## テスト
@@ -158,7 +159,7 @@ npm run preview    # Workers ランタイムで実行して確認
 ```sh
 npm test             # Vitest 一括実行
 npm run test:watch
-npm run typecheck    # next typegen + tsc
+npm run typecheck    # cf workers types + vinext typegen + tsc
 npm run lint
 ```
 
@@ -168,15 +169,16 @@ DB / R2 を使うテストは Miniflare（workerd）上の本物の D1 / R2 を�
 ## デプロイ
 
 ```sh
-# 初回のみ: Secrets を登録（値はリポジトリに含めない）
-npx wrangler secret put AUTH_SECRET          # openssl rand -base64 32 で生成
-npx wrangler secret put AUTH_GOOGLE_ID
-npx wrangler secret put AUTH_GOOGLE_SECRET
-npx wrangler secret put ALLOWED_EMAILS       # 許可するメールをカンマ区切りで
-
 npm run cf:build
 npm run cf:deploy   # マイグレーション適用も含む
 ```
+
+ログインのセッションは暗号化した Cookie だけで持つ（better-auth のステートレス構成。サーバ側に
+セッションの表は無い）。使っていても延びず、ログインから 30 日で必ずログインし直しになる。
+
+Secret（`AUTH_SECRET` / `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` / `ALLOWED_EMAILS`）は
+Terraform が入れる（ルートの `terraform/`）。名前は `cloudflare.config.ts` の `env` にも
+`bindings.secret()` で宣言してある。宣言していない secret / 変数はデプロイで消える。
 
 ## スキーマ変更
 
@@ -198,10 +200,6 @@ npm run db:migrate:local
 | R2     | `price-tracker-images`（カスタムドメインを生やして公開配信） |
 | ビルド | Cloudflare Workers Builds                                    |
 
-ログインを許可するアカウントを増やすときは、`ALLOWED_EMAILS` の Secret を
-カンマ区切りで登録し直してから再デプロイする。
-
-```sh
-npx wrangler secret put ALLOWED_EMAILS
-npm run deploy
-```
+ログインを許可するアカウントを増やすときは、`terraform.tfvars` の `ALLOWED_EMAILS` を
+カンマ区切りで書き直して Terraform で入れる（`wrangler secret put` は使わない。Terraform の外で
+変えた Secret は次の apply で戻る）。

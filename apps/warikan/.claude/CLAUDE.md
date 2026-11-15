@@ -1,7 +1,8 @@
 # CLAUDE.md
 
 ログイン不要の割り勘アプリ「warikan」。Next.js 16 (App Router) を Cloudflare Workers で動かし、
-DB は D1 + Drizzle ORM。技術構成・セットアップ手順は `README.md` を読む。
+DB は D1 + Drizzle ORM、管理画面（/admin）のログインは better-auth + Google OAuth。
+ビルドとデプロイは vinext。技術構成・セットアップ手順は `README.md` を読む。
 
 このファイルには、毎回思い出してほしい約束だけを書く。
 
@@ -25,8 +26,8 @@ Next.js が自動生成するため `.gitignore` で無視しているから。
 # 依存はリポジトリ直下で入れる（lockfile はルートに 1 つ）
 npm ci
 
-# 以降はこのディレクトリで
-npm run lint && npm test && npm run build
+# 以降はこのディレクトリで。typecheck は cloudflare.config.ts から Env の型（.cloudflare/types）を作ってから走る
+npm run typecheck && npm run lint && npm test && npm run build
 ```
 
 ## コードの約束
@@ -51,14 +52,14 @@ npm run lint && npm test && npm run build
 
 ## デプロイ設定
 
-- **`wrangler.jsonc` はコミットしない**。設定を変えるときは `wrangler.jsonc.example` を直す。
-  実 ID と公開ホスト名は Workers Builds の Build variables から `cf:config` が埋める
-- 手元で `dev`・`db:migrate:local`・`preview` を使うには `wrangler.jsonc` が要る。
-  無ければ `D1_DATABASE_ID=local APP_HOSTNAME=localhost npm run cf:config` で作る
-- 新しいプレースホルダを足したら、`scripts/gen-wrangler-config.mjs`・README の表・
-  ダッシュボードの Build variables をそろえる。どれかが欠けるとデプロイが落ちる
+- Worker の設定は `cloudflare.config.ts`。実 ID と公開ホスト名はリポジトリに含めず、
+  本番のビルド（mode が production）のときだけ Build variables（`D1_DATABASE_ID`・`APP_HOSTNAME`）から読む
+- 読む環境変数を足したら、`cf:check-env` の引数・README の表・`terraform/config_apps.tf` の
+  `build_variables` をそろえる。どれかが欠けるとデプロイが落ちるか、仮の値のまま出ていく
+- Secret を足したら `cloudflare.config.ts` の `env` にも `bindings.secret()` で宣言する。
+  宣言していない secret / 変数はデプロイで消える
 
 ## スキーマ変更
 
-- `npm run db:generate` で生成する。`migrations/` の SQL とスナップショットは手で書かない
+- `npm run db:generate` で生成する。`drizzle/` の SQL とスナップショットは手で書かない
 - `cf:deploy` が本番 D1 へのマイグレーションを先に流す。**消す変更は 2 回に分ける**（expand / contract）

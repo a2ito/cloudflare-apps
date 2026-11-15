@@ -77,10 +77,10 @@
 | 領域           | 採用技術                                                                            |
 | -------------- | ----------------------------------------------------------------------------------- |
 | フレームワーク | Next.js 16 (App Router)                                                             |
-| 実行環境       | Cloudflare Workers (OpenNext)                                                       |
+| 実行環境       | Cloudflare Workers ([vinext](https://vinext.dev))                                   |
 | DB             | Cloudflare D1 + Drizzle ORM                                                         |
 | 画像           | Cloudflare R2（カスタムドメインで公開配信。バケットとドメインは terraform/ が持つ） |
-| 認証           | Auth.js (next-auth v5) + Google OAuth + 許可メールリスト                            |
+| 認証           | better-auth + Google OAuth + 許可メールリスト                                       |
 | UI             | Tailwind CSS v4                                                                     |
 | テスト         | Vitest + Miniflare（本物の D1 / R2 を起動して検証）                                 |
 
@@ -101,9 +101,6 @@ cp .dev.vars.example .dev.vars
 # AUTH_SECRET は openssl rand -base64 32 で生成
 # AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET は Google Cloud Console で発行
 # ALLOWED_EMAILS にログインを許可するメールアドレスをカンマ区切りで記入
-
-# wrangler.jsonc を生成（D1 の ID と公開ホスト名を渡す）
-D1_DATABASE_ID=<your-d1-id> APP_HOSTNAME=spec-compare.example.com npm run cf:config
 
 # ローカル D1 にマイグレーションを適用
 npm run db:migrate:local
@@ -128,7 +125,7 @@ Google OAuth の承認済みリダイレクト URI には以下を登録する�
 | `npm run lint` / `npm run typecheck`   | 静的チェック                                |
 | `npm run db:generate`                  | スキーマ変更からマイグレーション SQL を生成 |
 | `npm run db:migrate:local` / `:remote` | マイグレーション適用                        |
-| `npm run preview`                      | Workers ランタイムでローカル確認            |
+| `npm run build` / `npm start`          | ビルドして Workers ランタイムでローカル確認 |
 | `npm run cf:deploy`                    | Cloudflare へデプロイ                       |
 
 ## デプロイ
@@ -146,11 +143,19 @@ main への push を Cloudflare の [Workers Builds](https://developers.cloudfla
 | Build watch paths | `apps/spec-compare/*`、`package-lock.json`                      |
 | Build variables   | `D1_DATABASE_ID`, `APP_HOSTNAME`, `NEXT_PUBLIC_IMAGES_BASE_URL` |
 
-`wrangler.jsonc` は実 ID と公開ホスト名を含むため追跡していない。`npm run cf:config` が
-雛形 `wrangler.jsonc.example` のプレースホルダをこれらの変数で埋めて生成する。
-手元に `wrangler.jsonc` がある場合は上書きしない。
+Worker の設定は `cloudflare.config.ts`。実 ID と公開ホスト名はリポジトリに含めず、`D1_DATABASE_ID` と
+`APP_HOSTNAME` から読む。読むのは本番のビルド（`vite build` とデプロイ）のときだけで、手元の開発では
+シェルに入っていても使わない。未設定のまま `cf:build` / `cf:deploy` を流すと、最初に止まる
+（`../../scripts/check-cf-env.mjs`。`NEXT_PUBLIC_IMAGES_BASE_URL` も見る）。
 
-`NEXT_PUBLIC_IMAGES_BASE_URL` は `next build` 時に埋め込まれる。変えたら再ビルドが要る。
+`NEXT_PUBLIC_IMAGES_BASE_URL` は `vite build` 時に埋め込まれる。変えたら再ビルドが要る。
+
+ログインのセッションは暗号化した Cookie だけで持つ（better-auth のステートレス構成。サーバ側に
+セッションの表は無い）。使っていても延びず、ログインから 30 日で必ずログインし直しになる。
+
+Secret（`AUTH_SECRET` / `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` / `ALLOWED_EMAILS`）は
+Terraform が入れる。名前は `cloudflare.config.ts` の `env` にも `bindings.secret()` で
+宣言してある。宣言していない secret / 変数はデプロイで消える。
 
 マイグレーションは `npm run cf:deploy` の中でデプロイより先に適用される。適用からデプロイ完了までの数分間は
 「新しいスキーマ + 古いコード」が同時に存在するため、カラムやテーブルを消す変更は

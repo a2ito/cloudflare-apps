@@ -35,15 +35,15 @@ Service Worker は静的アセットとオフライン案内ページだけを�
 
 ## 技術構成
 
-| 領域           | 採用技術                                                 |
-| -------------- | -------------------------------------------------------- |
-| フレームワーク | Next.js 16 (App Router / Server Actions)                 |
-| 実行環境       | Cloudflare Workers (OpenNext)                            |
-| DB             | Cloudflare D1 + Drizzle ORM                              |
-| 写真           | Cloudflare R2                                            |
-| 認証           | Auth.js (next-auth v5) + Google OAuth + 許可メールリスト |
-| UI             | Tailwind CSS v4                                          |
-| テスト         | Vitest + Miniflare（本物の D1 / R2 を起動して検証）      |
+| 領域           | 採用技術                                            |
+| -------------- | --------------------------------------------------- |
+| フレームワーク | Next.js 16 (App Router / Server Actions)            |
+| 実行環境       | Cloudflare Workers ([vinext](https://vinext.dev))   |
+| DB             | Cloudflare D1 + Drizzle ORM                         |
+| 写真           | Cloudflare R2                                       |
+| 認証           | better-auth + Google OAuth + 許可メールリスト       |
+| UI             | Tailwind CSS v4                                     |
+| テスト         | Vitest + Miniflare（本物の D1 / R2 を起動して検証） |
 
 ## 設計メモ
 
@@ -74,8 +74,8 @@ Service Worker は静的アセットとオフライン案内ページだけを�
   飛び先が食い違う `user:pass@` 付きの URL も弾く。
 - **写真の実体は R2**、DB にはキーのみ。外部キーの cascade では R2 は消えないので、
   削除時はアクション側でキーを集めてから消す。
-- **`wrangler.jsonc` は追跡していない**（実 ID と公開ホスト名を含むため）。
-  雛形 `wrangler.jsonc.example` から `npm run cf:config` で生成する。
+- **Worker の設定は `cloudflare.config.ts`**。実 ID と公開ホスト名はリポジトリに含めず、
+  本番のビルドのときだけ Build variables から読む（「デプロイ」を参照）。
 
 ## セットアップ
 
@@ -94,9 +94,6 @@ cp .dev.vars.example .dev.vars
 # AUTH_SECRET は openssl rand -base64 32 で生成
 # AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET は Google Cloud Console で発行
 # ALLOWED_EMAILS にログインを許可するメールアドレスをカンマ区切りで記入
-
-# wrangler.jsonc を生成（D1 の ID と公開ホスト名を渡す）
-D1_DATABASE_ID=<your-d1-id> APP_HOSTNAME=sakelog.example.com npm run cf:config
 
 # ローカル D1 にマイグレーションを適用
 npm run db:migrate:local
@@ -118,7 +115,7 @@ Google OAuth の承認済みリダイレクト URI には以下を登録しま�
 | `npm run lint` / `npm run typecheck`   | 静的チェック                                |
 | `npm run db:generate`                  | スキーマ変更からマイグレーション SQL を生成 |
 | `npm run db:migrate:local` / `:remote` | マイグレーション適用                        |
-| `npm run preview`                      | Workers ランタイムでローカル確認            |
+| `npm run build` / `npm start`          | ビルドして Workers ランタイムでローカル確認 |
 | `npm run cf:deploy`                    | Cloudflare へデプロイ                       |
 
 ## CI / CD
@@ -143,8 +140,10 @@ main への push を Cloudflare の [Workers Builds](https://developers.cloudfla
 | Git branch      | `main`                                                          |
 | Build variables | `D1_DATABASE_ID`, `APP_HOSTNAME`, `NEXT_PUBLIC_PHOTOS_BASE_URL` |
 
-`wrangler.jsonc` は追跡していないため、`npm run cf:config` が雛形のプレースホルダを
-これらの変数で埋めて生成する。手元に `wrangler.jsonc` がある場合は上書きしない。
+Worker の設定は `cloudflare.config.ts`。実 ID と公開ホスト名はリポジトリに含めず、`D1_DATABASE_ID` と
+`APP_HOSTNAME` から読む。読むのは本番のビルド（`vite build` とデプロイ）のときだけで、手元の開発では
+シェルに入っていても使わない。`NEXT_PUBLIC_PHOTOS_BASE_URL` は `vite build` のときにコードへ埋め込まれる（「写真の配信」）。
+未設定のまま `cf:build` / `cf:deploy` を流すと、最初に止まる（`../../scripts/check-cf-env.mjs`）。
 
 ### スキーマ変更の進め方
 
@@ -159,30 +158,32 @@ main への push を Cloudflare の [Workers Builds](https://developers.cloudfla
 
 ```bash
 # 初回のみ: リソース作成
-npx wrangler d1 create sakelog-db
-npx wrangler r2 bucket create sakelog-photos
+npx cf d1 create --name sakelog-db
+npx cf r2 buckets create --name sakelog-photos
 
-# 初回のみ: シークレット登録
-npx wrangler secret put AUTH_SECRET
-npx wrangler secret put AUTH_GOOGLE_ID
-npx wrangler secret put AUTH_GOOGLE_SECRET
-npx wrangler secret put ALLOWED_EMAILS
-
+npm run cf:build
 npm run cf:deploy   # マイグレーション適用も含む
 ```
+
+ログインのセッションは暗号化した Cookie だけで持つ（better-auth のステートレス構成。サーバ側に
+セッションの表は無い）。使っていても延びず、ログインから 30 日で必ずログインし直しになる。
+
+Secret（`AUTH_SECRET` / `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` / `ALLOWED_EMAILS`）は
+Terraform が入れる（ルートの `terraform/`）。名前は `cloudflare.config.ts` の `env` にも
+`bindings.secret()` で宣言してある。宣言していない secret / 変数はデプロイで消える。
 
 ## 写真の配信
 
 写真は R2 のカスタムドメインから CDN が直に返す。Worker を経由しない。
 
 Route Handler (`/api/photos`) 経由だと写真 1 枚につき Worker が 1 回起動し、その
-すべてで Auth.js のセッション復号が走る。CDN から直に返せば Worker は起動しない。
+すべてで better-auth のセッション復号が走る。CDN から直に返せば Worker は起動しない。
 
 **引き換えに、写真は URL を知っていれば認証なしで取得できる。** キーが UUID v4 で
 推測できないことに依存している。バケットの一覧は公開されないため列挙もできない。
 記録の中身は D1 にあり、今まで通り認証の内側にある。
 
-配信の基底 URL は `NEXT_PUBLIC_PHOTOS_BASE_URL` で渡す。`photoUrl()` は `next build`
+配信の基底 URL は `NEXT_PUBLIC_PHOTOS_BASE_URL` で渡す。`photoUrl()` は `vite build`
 時に値が埋め込まれるため、変えたら再ビルドが要る。渡さないときは `/api/photos` へ
 落ちる。手元では写真が Miniflare のローカル R2 に入りカスタムドメインから取れない
 ため、この経路が必ず要る。

@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import type { Category, Product } from "@/db/schema";
 import { UNITS } from "@/db/schema";
 import { initialActionState, type ActionState } from "@/lib/form";
-import { imageUrl } from "@/lib/images";
+import { imageUrl } from "@/lib/image-url";
 import { PRODUCT_IMAGE } from "@/lib/image-shrink";
 import { ImageInput } from "./image-input";
 import { VariantFields } from "./variant-form";

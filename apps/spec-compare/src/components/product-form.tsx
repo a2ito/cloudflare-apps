@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import type { Product, SpecField } from "@/db/schema";
 import type { SpecCell } from "@/lib/compare";
 import { initialActionState, type ActionState } from "@/lib/form";
-import { imageUrl } from "@/lib/images";
+import { imageUrl } from "@/lib/image-url";
 import { PRODUCT_IMAGE } from "@/lib/image-shrink";
 import {
   BOOL_NO,

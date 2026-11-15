@@ -4,14 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { requireAdmin, signIn, signOut } from "@/lib/auth";
+import { requireAdmin, signInWithGoogle, signOutUser } from "@/lib/auth";
 
 export async function signInAdmin() {
-  await signIn("google", { redirectTo: "/admin" });
+  await signInWithGoogle();
 }
 
 export async function signOutAdmin() {
-  await signOut({ redirectTo: "/admin/login" });
+  await signOutUser();
 }
 
 // Server Action は URL さえ分かれば外から直接呼べるので、ページとは別にここでも管理者か確かめる

@@ -2,7 +2,7 @@
 
 商品ごとに店舗別の価格を記録し、単価で最安値を比べるアプリ「price-tracker（最安値メモ）」。
 Next.js 16 (App Router) を Cloudflare Workers で動かし、DB は D1 + Drizzle ORM、画像は R2、
-認証は Auth.js v5 + Google OAuth（`ALLOWED_EMAILS` の許可リスト）。
+認証は better-auth + Google OAuth（`ALLOWED_EMAILS` の許可リスト）。ビルドとデプロイは vinext。
 技術構成・セットアップ手順は `README.md` を読む。
 
 このファイルには、毎回思い出してほしい約束だけを書く。
@@ -26,10 +26,7 @@ Next.js が自動生成するため `.gitignore` で無視しているから。
 ```bash
 npm ci
 
-# 初回のみ。wrangler.jsonc は追跡していないので、CI と同じ仮の値で作る
-D1_DATABASE_ID=placeholder-database-id APP_HOSTNAME=placeholder.example.com \
-  npm run cf:config && npm run cf-typegen
-
+# typecheck は cloudflare.config.ts から Env の型（.cloudflare/types）を作ってから走る
 npm run lint && npm run typecheck && npm test
 ```
 
@@ -46,8 +43,10 @@ npm run lint && npm run typecheck && npm test
   指していることがあり、参照が残っているうちは消さない
 - **画像は URL を知っていれば認証なしで取れる**。キーが UUID v4 で推測できないことに頼っている。
   キーの作り方を変えない
-- **`imageUrl()` は例外を投げない**。`NEXT_PUBLIC_IMAGES_BASE_URL` は `next build` 時に埋め込まれ、
+- **`imageUrl()` は例外を投げない**。`NEXT_PUBLIC_IMAGES_BASE_URL` は `vite build` 時に埋め込まれ、
   無ければ `/api/images` へ落とす。投げると本番のトップページが 500 になった
+- **クライアントコンポーネントは `imageUrl()` を `@/lib/image-url` から読む**。`@/lib/images` は
+  env（`cloudflare:workers`）に触れるため、クライアントから読むとビルドが落ちる
 - **D1 は 1 文のバインド変数が 100 まで**。商品 ID を `IN` で渡さず、商品と同じ条件で絞って引く
 - 順序が要る複数の更新は `db.batch` で 1 つのトランザクションにする（`mergeProduct` を参照）
 - 外部リンクは http / https だけを通す（`isSafeExternalUrl`）。`javascript:` などを弾くため
@@ -69,10 +68,11 @@ npm run lint && npm run typecheck && npm test
 
 ## デプロイ設定
 
-- **`wrangler.jsonc` はコミットしない**。設定を変えるときは `wrangler.jsonc.example` を直す。
-  実 ID と公開ホスト名は Workers Builds の Build variables から `cf:config` が埋める
-- 新しいプレースホルダを足したら、`scripts/gen-wrangler-config.mjs`・README の表・
-  Build variables・`.github/workflows/ci.yml` の `env` をそろえる。どれかが欠けるとビルドが落ちる
+- **Worker の設定は `cloudflare.config.ts`**。実 ID と公開ホスト名はリポジトリに含めず、
+  本番のビルドのときだけ Workers Builds の Build variables から読む
+- 本番のビルドで読む環境変数を足したら、`cf:check-env` の引数・README の表・
+  Build variables（`terraform/config_apps.tf`）・`.github/workflows/ci.yml` の `env` をそろえる。
+  どれかが欠けるとビルドが落ちる
 
 ## スキーマ変更
 

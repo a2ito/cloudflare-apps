@@ -1,7 +1,8 @@
 # CLAUDE.md
 
 写真付きの日記から始めるライフログアプリ「lifelog」。Next.js 16 (App Router) を Cloudflare Workers で動かす。
-DB は D1、写真は R2、認証は Auth.js + Google OAuth を使う。技術構成・セットアップ手順・設計の背景は `README.md` を読む。
+DB は D1、写真は R2、認証は better-auth + Google OAuth を使う。ビルドとデプロイは vinext。
+技術構成・セットアップ手順・設計の背景は `README.md` を読む。
 
 このファイルには、毎回思い出してほしい約束だけを書く。
 
@@ -24,10 +25,7 @@ Next.js が自動生成するため `.gitignore` で無視しているから。
 ```bash
 npm ci
 
-# 初回のみ。wrangler.jsonc と cloudflare-env.d.ts が無いと typecheck が落ちる
-D1_DATABASE_ID=placeholder-database-id APP_HOSTNAME=placeholder.example.com \
-  npm run cf:config && npm run cf-typegen
-
+# typecheck は cloudflare.config.ts から Env の型（.cloudflare/types）を作ってから走る
 npm run lint && npm run typecheck && npm test
 ```
 

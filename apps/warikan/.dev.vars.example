@@ -1,0 +1,11 @@
+# 管理画面（/admin）の認証（better-auth）。cloudflare.config.ts で宣言した secret にだけ渡る。
+# グループの画面はこれらが無くても動く
+# 生成: openssl rand -base64 32
+AUTH_SECRET=
+# Google Cloud Console > APIs & Services > Credentials > OAuth 2.0 Client ID
+# 承認済みリダイレクト URI: http://localhost:3000/api/auth/callback/google
+AUTH_GOOGLE_ID=
+AUTH_GOOGLE_SECRET=
+
+# 管理画面（/admin）にログインできる Google アカウント（カンマ区切り）
+ALLOWED_EMAILS=you@example.com

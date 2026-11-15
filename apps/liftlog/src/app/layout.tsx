@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { auth, signOut } from "@/lib/auth";
+import { getSessionUser, signOutUser } from "@/lib/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,8 +17,7 @@ const NAV = [
 ] as const;
 
 async function Header() {
-  const session = await auth();
-  const user = session?.user;
+  const user = await getSessionUser();
 
   return (
     <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
@@ -42,7 +41,7 @@ async function Header() {
             <form
               action={async () => {
                 "use server";
-                await signOut({ redirectTo: "/login" });
+                await signOutUser();
               }}
             >
               <button

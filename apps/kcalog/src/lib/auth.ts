@@ -7,7 +7,10 @@ import { upsertUser } from "@/db/queries";
 import { isSignInAllowed, parseAllowedEmails } from "./allowlist";
 import { getEnv, readEnvString, requireEnvString } from "./cloudflare";
 
-/** セッションの有効期間。Auth.js の既定（30 日）に揃える */
+/**
+ * セッションの有効期間。Auth.js の既定（30 日）に揃える。
+ * 使っていても延びず、ログインから 30 日で必ずログインし直しになる（Cookie だけで持つため）。
+ */
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 /**
@@ -47,13 +50,16 @@ async function createAuth() {
         refreshCache: true,
       },
     },
-    account: { storeStateStrategy: "cookie", storeAccountCookie: true },
+    // OAuth の state は Cookie に置く。Google のトークンはアプリで使わないので Cookie に載せない
+    account: { storeStateStrategy: "cookie", storeAccountCookie: false },
     databaseHooks: {
       user: {
         create: {
           // 許可リストに無い Google アカウントはここで弾く（/login?error=unable_to_create_user に戻る）。
-          // DB を持たないため、ユーザは isolate ごとに作り直され、ログインのたびにほぼ必ずここを通る。
           // 通したら users 行を作り（あれば更新し）、その id をセッションに載せる。
+          // DB を持たないため、better-auth のユーザは isolate のメモリにしか無い。同じ isolate に
+          // 前のログインのユーザが残っているとここは通らず、users の name / image も更新されない
+          // （許可リストは getSessionUser が毎回見直すので、締め出しには影響しない）。
           async before(user) {
             if (
               !isSignInAllowed(

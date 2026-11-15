@@ -101,6 +101,9 @@ Worker の設定は `cloudflare.config.ts`。実 ID と公開ホスト名はリ�
 npx cf d1 create --name kcalog-db
 ```
 
+ログインのセッションは暗号化した Cookie だけで持つ（better-auth のステートレス構成。サーバ側に
+セッションの表は無い）。使っていても延びず、ログインから 30 日で必ずログインし直しになる。
+
 Secret（`AUTH_SECRET` / `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` / `ALLOWED_EMAILS`）は
 Terraform が入れる（ルートの `terraform/`）。名前は `cloudflare.config.ts` の `env` にも
 `bindings.secret()` で宣言してある。宣言していない secret / 変数はデプロイで消える。

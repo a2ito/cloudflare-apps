@@ -80,9 +80,16 @@ async function createAuth() {
               adapter.findUserById(session.userId),
               adapter.findAccounts(session.userId),
             ]);
-            const sub = accounts.find(
+            // 同じメールで別の Google アカウント（別の sub）が同じ isolate でログインすると、
+            // better-auth はメールで同じユーザに紐づける。どちらの sub か決められないので弾く
+            // （取り違えると、別のアカウントのデータを読ませてしまう）
+            const googleAccounts = accounts.filter(
               (a) => a.providerId === "google",
-            )?.accountId;
+            );
+            const sub =
+              googleAccounts.length === 1
+                ? googleAccounts[0].accountId
+                : undefined;
             if (
               !user ||
               !sub ||

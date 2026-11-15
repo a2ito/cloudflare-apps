@@ -19,6 +19,10 @@
     "glob": "^14.0.4",
     "@typescript-eslint/typescript-estree": {
       "minimatch": "^11.0.5"
+    },
+    "fflate": "0.7.5",
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.25.12"
     }
   }
 }

@@ -1,4 +1,5 @@
 import type { Db } from "@/db";
+import type { Device } from "@/db/schema";
 import {
   findDeviceByTokenHash,
   insertSamples,
@@ -12,7 +13,7 @@ import { hashToken, parseBearerToken } from "./token";
 
 export type IngestResult =
   | { ok: true; accepted: number; skipped: number }
-  | { ok: false; status: 400 | 401; error: string };
+  | { ok: false; status: 400; error: string };
 
 export function retentionCutoff(now: Date): string {
   return new Date(
@@ -46,25 +47,38 @@ function toRow(
   };
 }
 
+export type AuthResult =
+  { ok: true; device: Device } | { ok: false; status: 401; error: string };
+
 /**
- * エージェントからの計測値を受け取って保存する。
+ * Authorization ヘッダから端末を引く。本文を読む前に呼ぶ
+ * （トークンを持たない相手に本文を読ませないため）。
+ */
+export async function authenticateDevice(
+  db: Db,
+  authorization: string | null,
+): Promise<AuthResult> {
+  const token = parseBearerToken(authorization);
+  if (!token) return { ok: false, status: 401, error: "トークンがありません" };
+  const device = await findDeviceByTokenHash(db, await hashToken(token));
+  if (!device) {
+    return { ok: false, status: 401, error: "トークンが正しくありません" };
+  }
+  return { ok: true, device };
+}
+
+/**
+ * 認証済みの端末から届いた計測値を保存する。
  *
- * - トークンが無い・合わない → 401
  * - 本文の形が違う → 400（1 件でも壊れていれば全体を弾く。エージェントのバグに気づけるように）
  * - 古すぎる・未来すぎる計測は黙って飛ばし、skipped に数える（再送しても入らないので、エラーにすると延々と再送される）
  * - 既に入っている計測（再送）も skipped に数える
  */
 export async function ingestSamples(
   db: Db,
-  input: { authorization: string | null; body: unknown; now: Date },
+  input: { device: Device; body: unknown; now: Date },
 ): Promise<IngestResult> {
-  const token = parseBearerToken(input.authorization);
-  if (!token) return { ok: false, status: 401, error: "トークンがありません" };
-  const device = await findDeviceByTokenHash(db, await hashToken(token));
-  if (!device) {
-    return { ok: false, status: 401, error: "トークンが正しくありません" };
-  }
-
+  const { device } = input;
   const parsed = samplesPayloadSchema.safeParse(input.body);
   if (!parsed.success) {
     return {
@@ -83,8 +97,10 @@ export async function ingestSamples(
     .filter((r): r is SampleRow => r !== null);
 
   const accepted = await insertSamples(db, device.id, rows);
+  // 全件が飛ばされても更新する。エージェントは動いているので「オンライン」で正しい
   await touchDevice(db, device.id, input.now.toISOString());
-  // 古い計測は受信のついでに消す。Cron を持たずに済み、端末の索引で引くので軽い
+  // 古い計測は受信のついでに消す。Cron を持たずに済み、端末の索引で引くので軽い。
+  // 送信が止まった端末の計測は残るが、端末を消せば消える
   await pruneSamples(db, device.id, cutoff);
 
   return {

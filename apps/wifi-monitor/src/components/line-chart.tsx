@@ -44,7 +44,9 @@ export function LineChart({
   const domain = valueDomain(values, { includeZero });
   const latest = [...points].reverse().find((p) => p.v !== null)?.v ?? null;
 
-  const x = (t: number) => PAD.left + ((t - from) / (to - from)) * PLOT_W;
+  // 最初の区間は from より前から始まる（区間は UTC の区切りでまとめるため）。左端からはみ出さないよう寄せる
+  const x = (t: number) =>
+    PAD.left + ((Math.max(t, from) - from) / (to - from)) * PLOT_W;
   const y = (v: number, [lo, hi]: [number, number]) =>
     PAD.top + (1 - (v - lo) / (hi - lo)) * PLOT_H;
 

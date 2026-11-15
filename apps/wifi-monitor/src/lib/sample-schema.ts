@@ -6,8 +6,13 @@ import { z } from "zod";
  * 範囲は「機器が返しうる値」より少し広く取り、明らかな壊れた値（単位違いなど）だけを弾く。
  */
 
-/** 1 回の送信で受け付ける計測の最大件数。オフラインの間に溜めた分は分けて送ってもらう */
-export const MAX_SAMPLES_PER_REQUEST = 500;
+/**
+ * 1 回の送信で受け付ける計測の最大件数。オフラインの間に溜めた分は分けて送ってもらう。
+ *
+ * 挿入は 10 行ずつの文に分かれる（D1 のバインド変数の上限）。Workers の Free プランは
+ * 1 回の起動で D1 へのクエリが 50 までなので、300 件（30 文）と前後の数クエリで収める。
+ */
+export const MAX_SAMPLES_PER_REQUEST = 300;
 
 const optionalNumber = (min: number, max: number) =>
   z.number().finite().min(min).max(max).nullish();

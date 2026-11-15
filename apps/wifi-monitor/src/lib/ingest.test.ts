@@ -7,7 +7,8 @@ import {
   upsertUser,
 } from "@/db/queries";
 import { createTestEnv, type TestEnv } from "@/test/d1";
-import { ingestSamples } from "./ingest";
+import { authenticateDevice, ingestSamples } from "./ingest";
+import { MAX_SAMPLES_PER_REQUEST } from "./sample-schema";
 import { hashToken } from "./token";
 
 let t: TestEnv;
@@ -50,10 +51,15 @@ const sample = (measuredAt: string, extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-const ingest = (
+/** route と同じ順に、認証してから保存する */
+const ingest = async (
   body: unknown,
   authorization: string | null = `Bearer ${TOKEN}`,
-) => ingestSamples(t.db, { authorization, body, now });
+) => {
+  const auth = await authenticateDevice(t.db, authorization);
+  if (!auth.ok) return auth;
+  return ingestSamples(t.db, { device: auth.device, body, now });
+};
 
 describe("ingestSamples", () => {
   it("計測値を保存し、端末の最終受信時刻を更新する", async () => {
@@ -158,9 +164,10 @@ describe("ingestSamples", () => {
     },
   );
 
-  it("501 件以上は 400", async () => {
-    const samples = Array.from({ length: 501 }, (_, i) =>
-      sample(new Date(now.getTime() - i * 1000).toISOString()),
+  it(`${MAX_SAMPLES_PER_REQUEST + 1} 件以上は 400`, async () => {
+    const samples = Array.from(
+      { length: MAX_SAMPLES_PER_REQUEST + 1 },
+      (_, i) => sample(new Date(now.getTime() - i * 1000).toISOString()),
     );
     expect(await ingest({ samples })).toMatchObject({ ok: false, status: 400 });
   });

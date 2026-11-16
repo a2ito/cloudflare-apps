@@ -1,0 +1,15 @@
+# wifi-monitor エージェントの systemd のユーザーユニット（Linux）。
+# ~/.config/systemd/user/ に置く（手順は agent/README.md）。
+# %h はホームディレクトリ。node が /usr/bin に無いときは ExecStart の node を絶対パスに書き換える。
+[Unit]
+Description=wifi-monitor agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/env node --env-file=%h/.config/wifi-monitor/agent.env %h/.local/lib/wifi-monitor/wifi-monitor-agent.mjs
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  wifi-monitor エージェントの launchd の設定（macOS）。
+  __NODE__ と __HOME__ を書き換えて ~/Library/LaunchAgents/ に置く（手順は agent/README.md）。
+  __NODE__ は Node 24 以上の絶対パス（launchd はシェルの PATH を読まないため、which node の結果をそのまま書く）。
+-->
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>work.a2ito.wifi-monitor-agent</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>__NODE__</string>
+      <string>--env-file=__HOME__/.config/wifi-monitor/agent.env</string>
+      <string>__HOME__/.local/lib/wifi-monitor/wifi-monitor-agent.mjs</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- 落ちたら起こし直す。設定の誤りで起動に失敗し続けるときは、10 秒おきに再試行される -->
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/wifi-monitor-agent.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/wifi-monitor-agent.log</string>
+  </dict>
+</plist>

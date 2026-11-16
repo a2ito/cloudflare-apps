@@ -57,6 +57,12 @@ Worker の Secret と Workers Builds の設定は `terraform/` で管理する�
 - `npx wrangler d1 create`、Google OAuth の承認済みリダイレクト URI の登録
 - Worker 名は `cloudflare.config.ts` の `name` と一致させる
 
+### 最初のデプロイ
+
+- Terraform が作った Worker は、最初の Workers Builds のデプロイが止まる（仮のスクリプトとの衝突）。
+  最新の `main` で一度だけ手元から `npx cf deploy --prebuilt --force` で上書きし、手動ビルドで Workers Builds が
+  通ることを確かめる（`terraform/README.md` の「最初のデプロイ」）。本番へのデプロイなので、人の了承を取ってから行う
+
 ### 最初のデプロイの後
 
 - ビルドログで、Deploy command が `npm run cf:deploy` になっていること、

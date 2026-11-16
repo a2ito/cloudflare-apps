@@ -25,6 +25,12 @@ export type FlushResult = {
 };
 
 /**
+ * 1 回の flush で送るまとまりの数の上限。5 万件を送り切るまで毎分の計測が止まらないよう、
+ * 1 回に送るのは 20 まとまり（6000 件）までにして、残りは次の回に回す。
+ */
+export const MAX_BATCHES_PER_FLUSH = 20;
+
+/**
  * 貯まった計測を古い順に MAX_SAMPLES_PER_REQUEST 件ずつ送る。
  *
  * - 送れた → キューから外す
@@ -35,12 +41,13 @@ export type FlushResult = {
 export async function flushQueue(
   queue: readonly SampleInput[],
   send: Send,
+  maxBatches: number = MAX_BATCHES_PER_FLUSH,
 ): Promise<FlushResult> {
   let remaining = [...queue];
   let sent = 0;
   let dropped = 0;
   const logs: string[] = [];
-  while (remaining.length > 0) {
+  for (let i = 0; i < maxBatches && remaining.length > 0; i++) {
     const batch = remaining.slice(0, MAX_SAMPLES_PER_REQUEST);
     const outcome = await send(batch);
     switch (outcome.kind) {

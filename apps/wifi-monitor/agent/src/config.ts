@@ -4,14 +4,27 @@ import { z } from "zod";
  * エージェントの設定。環境変数（launchd / systemd が設定ファイルから渡す）から読む。
  */
 const configSchema = z.object({
-  /** wifi-monitor の URL（例: https://wifi-monitor.a2ito.work） */
-  WIFI_MONITOR_URL: z.url({ protocol: /^https?$/ }),
+  /**
+   * wifi-monitor の URL（例: https://wifi-monitor.a2ito.work）。
+   * トークンを平文で流さないよう、http は手元の開発用の localhost だけ許す
+   */
+  WIFI_MONITOR_URL: z.url({ protocol: /^https?$/ }).refine((raw) => {
+    const url = new URL(raw);
+    return (
+      url.protocol === "https:" ||
+      ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+    );
+  }, "https の URL を指定してください（http は localhost だけ）"),
   /** 端末を登録したときに表示されたトークン */
   WIFI_MONITOR_TOKEN: z.string().startsWith("wfm_"),
   /** 計測の間隔（秒） */
   WIFI_MONITOR_INTERVAL_SECONDS: z.coerce.number().int().min(10).default(60),
-  /** 遅延・損失を計る ping の宛先 */
-  WIFI_MONITOR_PING_HOST: z.string().min(1).default("1.1.1.1"),
+  /** 遅延・損失を計る ping の宛先。- で始まるとオプションとして読まれるので弾く */
+  WIFI_MONITOR_PING_HOST: z
+    .string()
+    .regex(/^[A-Za-z0-9.:[\]-]+$/)
+    .refine((v) => !v.startsWith("-"), "ping の宛先が正しくありません")
+    .default("1.1.1.1"),
   /** 1 回の計測で送る ping の数 */
   WIFI_MONITOR_PING_COUNT: z.coerce.number().int().min(1).max(20).default(5),
   /** ダウンロード速度を計る間隔（分）。0 なら計らない */

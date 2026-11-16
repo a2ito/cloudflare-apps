@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  unescapeIwSsid,
   parseIpconfigSsid,
   parseIwDev,
   parseIwLink,
@@ -133,6 +134,30 @@ describe("parseIwDev / parseIwLink（Linux）", () => {
   it("つながっていなければ null", () => {
     expect(parseIwLink("Not connected.\n")).toBeNull();
   });
+
+  it("iw がエスケープした日本語の SSID を UTF-8 に戻す（macOS の端末と同じネットワークになるように）", () => {
+    // 「おうちのWiFi」を iw が出す形にしたもの
+    const escaped = [...new TextEncoder().encode("おうちのWiFi")]
+      .map((b) =>
+        b < 0x80
+          ? String.fromCharCode(b)
+          : `\\x${b.toString(16).padStart(2, "0")}`,
+      )
+      .join("");
+    expect(
+      parseIwLink(
+        [
+          "Connected to 02:00:00:00:00:01 (on wlan0)",
+          `\tSSID: ${escaped}`,
+          "\tsignal: -60 dBm",
+        ].join("\n"),
+      )?.ssid,
+    ).toBe("おうちのWiFi");
+  });
+
+  it("エスケープされた空白とバックスラッシュも戻す", () => {
+    expect(unescapeIwSsid("\\x20cafe\\x5cwifi\\x20")).toBe(" cafe\\wifi ");
+  });
 });
 
 describe("parsePing", () => {
@@ -160,6 +185,28 @@ describe("parsePing", () => {
         ].join("\n"),
       ),
     ).toEqual({ latencyMs: 12.456, packetLossPct: 0 });
+  });
+
+  it("iputils の +N errors 付きの要約も読む", () => {
+    expect(
+      parsePing(
+        [
+          "5 packets transmitted, 3 received, +2 errors, 40% packet loss, time 4005ms",
+          "rtt min/avg/max/mdev = 10.0/20.5/30.0/5.0 ms",
+        ].join("\n"),
+      ),
+    ).toEqual({ latencyMs: 20.5, packetLossPct: 40 });
+  });
+
+  it("busybox の要約（stddev が無い）も読む", () => {
+    expect(
+      parsePing(
+        [
+          "5 packets transmitted, 5 packets received, 0% packet loss",
+          "round-trip min/avg/max = 9.876/11.234/13.579 ms",
+        ].join("\n"),
+      ),
+    ).toEqual({ latencyMs: 11.234, packetLossPct: 0 });
   });
 
   it("全部失われたら遅延は null・損失は 100", () => {

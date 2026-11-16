@@ -1,17 +1,26 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { SampleInput } from "../../src/lib/sample-schema";
-import { initialState, runOnce, type AgentDeps } from "./agent";
+import { createState, runOnce, type AgentDeps } from "./agent";
+import { interpretPing, measureDownload } from "./collect";
 import { parseConfig } from "./config";
-import { capQueue, loadQueue, saveQueue } from "./queue";
+import {
+  acquireLock,
+  appendToQueue,
+  capQueue,
+  loadQueue,
+  saveQueue,
+} from "./queue";
 import { createSender, flushQueue, type SendOutcome } from "./sender";
 
 const sample = (i: number): SampleInput => ({
   measuredAt: new Date(Date.UTC(2026, 10, 15, 0, i)).toISOString(),
   latencyMs: 10,
 });
+
+const tmp = () => mkdtemp(join(tmpdir(), "wifi-monitor-agent-"));
 
 describe("flushQueue", () => {
   it("300 件ずつ、古い順に送る", async () => {
@@ -25,6 +34,13 @@ describe("flushQueue", () => {
     );
     expect(batches).toEqual([300, 300, 50]);
     expect(result).toMatchObject({ remaining: [], sent: 650, dropped: 0 });
+  });
+
+  it("1 回に送るまとまりの数には上限があり、残りは次の回に回す", async () => {
+    const queue = Array.from({ length: 1000 }, (_, i) => sample(i % 1440));
+    const result = await flushQueue(queue, async () => ({ kind: "ok" }), 2);
+    expect(result.sent).toBe(600);
+    expect(result.remaining).toHaveLength(400);
   });
 
   it("回線断・5xx なら、そこで止めて残りを貯めておく", async () => {
@@ -75,14 +91,15 @@ describe("createSender", () => {
     [400, "rejected"],
     [413, "rejected"],
     [401, "unauthorized"],
+    [403, "retry"],
+    [404, "retry"],
+    [429, "retry"],
     [500, "retry"],
     [503, "retry"],
   ])("応答 %i は %s", async (status, kind) => {
     expect(
       await send(async () => new Response("{}", { status })),
-    ).toMatchObject({
-      kind,
-    });
+    ).toMatchObject({ kind });
   });
 
   it("通信そのものが失敗したら retry", async () => {
@@ -113,10 +130,10 @@ describe("createSender", () => {
 });
 
 describe("queue", () => {
-  it("保存したものを読み戻せる。壊れた行は飛ばす", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "wifi-monitor-queue-"));
-    const file = join(dir, "nested", "queue.jsonl");
-    await saveQueue(file, [sample(0), sample(1)]);
+  it("書き直し・追記したものを読み戻せる。壊れた行は飛ばす", async () => {
+    const file = join(await tmp(), "nested", "queue.jsonl");
+    await saveQueue(file, [sample(0)]);
+    await appendToQueue(file, sample(1));
     await writeFile(
       file,
       (await readFile(file, "utf8")) + "{broken\n" + '{"measuredAt":"x"}\n',
@@ -124,37 +141,131 @@ describe("queue", () => {
     expect(await loadQueue(file)).toEqual([sample(0), sample(1)]);
   });
 
+  it("ファイルは本人だけが読める権限で作る（SSID と時刻は居場所の手がかりになる）", async () => {
+    const dir = join(await tmp(), "state");
+    const appended = join(dir, "a.jsonl");
+    const saved = join(dir, "s.jsonl");
+    await appendToQueue(appended, sample(0));
+    await saveQueue(saved, [sample(0)]);
+    expect((await stat(appended)).mode & 0o777).toBe(0o600);
+    expect((await stat(saved)).mode & 0o777).toBe(0o600);
+    expect((await stat(dir)).mode & 0o777).toBe(0o700);
+  });
+
   it("ファイルが無ければ空", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "wifi-monitor-queue-"));
-    expect(await loadQueue(join(dir, "none.jsonl"))).toEqual([]);
+    expect(await loadQueue(join(await tmp(), "none.jsonl"))).toEqual([]);
   });
 
   it("上限を超えたら古い方から捨てる", () => {
     expect(capQueue([1, 2, 3, 4], 2)).toEqual([3, 4]);
     expect(capQueue([1, 2], 5)).toEqual([1, 2]);
   });
+
+  it("同じキューのロックは 1 つしか取れず、外せばまた取れる", async () => {
+    const file = join(await tmp(), "queue.jsonl");
+    const release = await acquireLock(file);
+    await expect(acquireLock(file)).rejects.toThrow(/別のエージェント/);
+    await release();
+    const again = await acquireLock(file);
+    await again();
+  });
+
+  it("落ちたプロセスのロックが残っていても取り直せる", async () => {
+    const file = join(await tmp(), "queue.jsonl");
+    // 使われていない大きな pid を書いておく
+    await writeFile(`${file}.lock`, "99999999");
+    const release = await acquireLock(file);
+    await release();
+  });
+});
+
+describe("interpretPing", () => {
+  it("要約が無く 0 以外で終わった（Network is unreachable など）なら損失 100", () => {
+    expect(
+      interpretPing("connect: Network is unreachable\n", "failed"),
+    ).toEqual({ latencyMs: null, packetLossPct: 100 });
+  });
+
+  it("要約があればそれを使う", () => {
+    expect(
+      interpretPing(
+        "3 packets transmitted, 0 packets received, 100.0% packet loss\n",
+        "failed",
+      ),
+    ).toEqual({ latencyMs: null, packetLossPct: 100 });
+  });
+
+  it("時間切れで要約も無いときは分からないので null", () => {
+    expect(interpretPing("", "timeout")).toEqual({
+      latencyMs: null,
+      packetLossPct: null,
+    });
+  });
+});
+
+describe("measureDownload", () => {
+  it("最初のデータを受け取ってからの時間で Mbps を出す（接続にかかった時間は入れない）", async () => {
+    // 1MB ずつ 11 回届く。1 回目を受け取った時点から数え、残りの 10MB を 2 秒で受け取った
+    const times = [1000, 3000];
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (let i = 0; i < 11; i++) {
+          controller.enqueue(new Uint8Array(1_000_000));
+        }
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn(async () => new Response(body, { status: 200 }));
+    expect(
+      await measureDownload(
+        11_000_000,
+        fetchMock as unknown as typeof fetch,
+        () => times.shift()!,
+      ),
+    ).toBe(40);
+    expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toBe(
+      "https://speed.cloudflare.com/__down?bytes=11000000",
+    );
+  });
+
+  it("失敗したら null", async () => {
+    const failing = vi.fn(async () => {
+      throw new TypeError("fetch failed");
+    }) as unknown as typeof fetch;
+    expect(await measureDownload(1_000_000, failing)).toBeNull();
+    const notOk = vi.fn(
+      async () => new Response("", { status: 500 }),
+    ) as unknown as typeof fetch;
+    expect(await measureDownload(1_000_000, notOk)).toBeNull();
+  });
 });
 
 describe("runOnce", () => {
   function setup(overrides: Partial<AgentDeps> = {}) {
-    let stored: SampleInput[] = [];
+    const appended: SampleInput[] = [];
+    const saves: SampleInput[][] = [];
     const sent: SampleInput[][] = [];
     const logs: string[] = [];
+    const order: string[] = [];
     let clock = Date.UTC(2026, 10, 15, 3, 0);
+    let mono = 0;
     const deps: AgentDeps = {
       now: () => new Date(clock),
+      monotonic: () => mono,
       collectWifi: async () => ({
-        ssid: "home-5G",
-        rssi: -55,
-        noise: -92,
-        txRateMbps: 866,
+        value: { ssid: "home-5G", rssi: -55, noise: -92, txRateMbps: 866 },
+        issues: [],
       }),
-      measurePing: async () => ({ latencyMs: 12.3, packetLossPct: 0 }),
-      measureDownload: vi.fn(async () => 321.5),
-      loadQueue: async () => [...stored],
-      saveQueue: async (s) => {
-        stored = [...s];
+      measurePing: async () => {
+        order.push("ping");
+        return { value: { latencyMs: 12.3, packetLossPct: 0 }, issues: [] };
       },
+      measureDownload: vi.fn(async () => {
+        order.push("download");
+        return 321.5;
+      }),
+      appendToQueue: async (s) => void appended.push(s),
+      saveQueue: async (s) => void saves.push([...s]),
       send: async (batch) => {
         sent.push([...batch]);
         return { kind: "ok" };
@@ -164,38 +275,51 @@ describe("runOnce", () => {
     };
     return {
       deps,
+      appended,
+      saves,
       sent,
       logs,
-      stored: () => stored,
+      order,
       advance: (ms: number) => {
+        clock += ms;
+        mono += ms;
+      },
+      jumpWallClock: (ms: number) => {
         clock += ms;
       },
     };
   }
 
-  it("計測を 1 件作って送り、送れたらキューを空にする", async () => {
+  it("計測を 1 件作って追記してから送り、送れたらキューを空にする", async () => {
     const t = setup();
-    await runOnce(initialState, t.deps, { speedIntervalMs: 3_600_000 });
-    expect(t.sent).toEqual([
-      [
-        {
-          measuredAt: "2026-11-15T03:00:00.000Z",
-          ssid: "home-5G",
-          rssi: -55,
-          noise: -92,
-          txRateMbps: 866,
-          latencyMs: 12.3,
-          packetLossPct: 0,
-          downloadMbps: 321.5,
-        },
-      ],
-    ]);
-    expect(t.stored()).toEqual([]);
+    const state = await runOnce(createState([]), t.deps, {
+      speedIntervalMs: 3_600_000,
+    });
+    const expected = {
+      measuredAt: "2026-11-15T03:00:00.000Z",
+      ssid: "home-5G",
+      rssi: -55,
+      noise: -92,
+      txRateMbps: 866,
+      latencyMs: 12.3,
+      packetLossPct: 0,
+      downloadMbps: 321.5,
+    };
+    expect(t.appended).toEqual([expected]);
+    expect(t.sent).toEqual([[expected]]);
+    expect(t.saves).toEqual([[]]);
+    expect(state.queue).toEqual([]);
+  });
+
+  it("ダウンロードは ping が終わってから計る（並べると遅延が水増しされる）", async () => {
+    const t = setup();
+    await runOnce(createState([]), t.deps, { speedIntervalMs: 3_600_000 });
+    expect(t.order).toEqual(["ping", "download"]);
   });
 
   it("ダウンロード速度は間隔ごとにしか計らない。0 なら計らない", async () => {
     const t = setup();
-    let state = await runOnce(initialState, t.deps, {
+    let state = await runOnce(createState([]), t.deps, {
       speedIntervalMs: 3_600_000,
     });
     t.advance(60_000);
@@ -206,11 +330,22 @@ describe("runOnce", () => {
     expect(t.sent.map((b) => b[0]!.downloadMbps)).toEqual([321.5, null, 321.5]);
 
     const off = setup();
-    await runOnce(initialState, off.deps, { speedIntervalMs: 0 });
+    await runOnce(createState([]), off.deps, { speedIntervalMs: 0 });
     expect(off.deps.measureDownload).not.toHaveBeenCalled();
   });
 
-  it("送れなかったら貯めておき、次の回にまとめて送る", async () => {
+  it("壁時計が戻っても、速度計測の間隔は単調な時計で判定する", async () => {
+    const t = setup();
+    const state = await runOnce(createState([]), t.deps, {
+      speedIntervalMs: 3_600_000,
+    });
+    t.jumpWallClock(-3_600_000); // NTP で 1 時間戻った
+    t.advance(3_600_000);
+    await runOnce(state, t.deps, { speedIntervalMs: 3_600_000 });
+    expect(t.deps.measureDownload).toHaveBeenCalledTimes(2);
+  });
+
+  it("送れなかったら貯めておき（書き直しはしない）、次の回にまとめて送る", async () => {
     let online = false;
     const t = setup({
       send: async (batch) => {
@@ -219,17 +354,20 @@ describe("runOnce", () => {
         return { kind: "ok" };
       },
     });
-    let state = await runOnce(initialState, t.deps, { speedIntervalMs: 0 });
+    let state = await runOnce(createState([]), t.deps, { speedIntervalMs: 0 });
     t.advance(60_000);
     state = await runOnce(state, t.deps, { speedIntervalMs: 0 });
-    expect(t.stored()).toHaveLength(2);
+    expect(state.queue).toHaveLength(2);
+    expect(t.appended).toHaveLength(2);
+    expect(t.saves).toEqual([]);
 
     online = true;
     t.advance(60_000);
-    await runOnce(state, t.deps, { speedIntervalMs: 0 });
+    state = await runOnce(state, t.deps, { speedIntervalMs: 0 });
     expect(t.sent).toHaveLength(1);
     expect(t.sent[0]).toHaveLength(3);
-    expect(t.stored()).toEqual([]);
+    expect(state.queue).toEqual([]);
+    expect(t.saves).toEqual([[]]);
   });
 
   it("401 のあとは送らずに貯め続ける", async () => {
@@ -238,24 +376,40 @@ describe("runOnce", () => {
       message: "",
     }));
     const t = setup({ send });
-    let state = await runOnce(initialState, t.deps, { speedIntervalMs: 0 });
+    let state = await runOnce(createState([]), t.deps, { speedIntervalMs: 0 });
     expect(state.unauthorized).toBe(true);
     t.advance(60_000);
     state = await runOnce(state, t.deps, { speedIntervalMs: 0 });
     expect(send).toHaveBeenCalledTimes(1);
-    expect(t.stored()).toHaveLength(2);
+    expect(state.queue).toHaveLength(2);
+  });
+
+  it("計測の問題（コマンドが無いなど）は、変わったときだけログに出す", async () => {
+    let issues = ["iw が見つかりません（PATH を確かめてください）"];
+    const t = setup({
+      collectWifi: async () => ({
+        value: { ssid: null, rssi: null, noise: null, txRateMbps: null },
+        issues,
+      }),
+    });
+    let state = await runOnce(createState([]), t.deps, { speedIntervalMs: 0 });
+    state = await runOnce(state, t.deps, { speedIntervalMs: 0 });
+    issues = [];
+    await runOnce(state, t.deps, { speedIntervalMs: 0 });
+    expect(t.logs).toEqual([
+      "一部の値を計測できませんでした: iw が見つかりません（PATH を確かめてください）",
+      "計測の問題が解消しました",
+    ]);
   });
 
   it("範囲外の値（受信強度 +10 dBm など）の計測はその 1 件だけ捨てる", async () => {
     const t = setup({
       collectWifi: async () => ({
-        ssid: "home-5G",
-        rssi: 10,
-        noise: null,
-        txRateMbps: null,
+        value: { ssid: "home-5G", rssi: 10, noise: null, txRateMbps: null },
+        issues: [],
       }),
     });
-    await runOnce(initialState, t.deps, { speedIntervalMs: 0 });
+    await runOnce(createState([]), t.deps, { speedIntervalMs: 0 });
     expect(t.sent).toEqual([]);
     expect(t.logs[0]).toContain("捨てました");
   });
@@ -294,42 +448,29 @@ describe("parseConfig", () => {
     ).toMatchObject({ interfaceName: undefined, speedIntervalMs: 0 });
   });
 
+  it("http は localhost だけ許す（トークンを平文で流さない）", () => {
+    expect(
+      parseConfig({ ...base, WIFI_MONITOR_URL: "http://localhost:3100" }, "/q")
+        .url,
+    ).toBe("http://localhost:3100");
+    expect(() =>
+      parseConfig(
+        { ...base, WIFI_MONITOR_URL: "http://wifi-monitor.example.test" },
+        "/q",
+      ),
+    ).toThrow(/https/);
+  });
+
+  it("ping の宛先が - で始まる（オプションとして読まれる）なら弾く", () => {
+    expect(() =>
+      parseConfig({ ...base, WIFI_MONITOR_PING_HOST: "-f" }, "/q"),
+    ).toThrow(/WIFI_MONITOR_PING_HOST/);
+  });
+
   it("URL やトークンが無い・形が違えば、どこが悪いかを書いて投げる", () => {
     expect(() => parseConfig({}, "/q")).toThrow(/WIFI_MONITOR_URL/);
     expect(() =>
       parseConfig({ ...base, WIFI_MONITOR_TOKEN: "abc" }, "/q"),
     ).toThrow(/WIFI_MONITOR_TOKEN/);
-  });
-});
-
-describe("measureDownload", () => {
-  it("落とした量とかかった時間から Mbps を出す", async () => {
-    const { measureDownload } = await import("./collect");
-    const times = [0, 2000]; // 2 秒
-    const fetchMock = vi.fn(
-      async () => new Response(new Uint8Array(10_000_000), { status: 200 }),
-    );
-    expect(
-      await measureDownload(
-        10_000_000,
-        fetchMock as unknown as typeof fetch,
-        () => times.shift()!,
-      ),
-    ).toBe(40);
-    expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toBe(
-      "https://speed.cloudflare.com/__down?bytes=10000000",
-    );
-  });
-
-  it("失敗したら null", async () => {
-    const { measureDownload } = await import("./collect");
-    const failing = vi.fn(async () => {
-      throw new TypeError("fetch failed");
-    }) as unknown as typeof fetch;
-    expect(await measureDownload(1_000_000, failing)).toBeNull();
-    const notOk = vi.fn(
-      async () => new Response("", { status: 500 }),
-    ) as unknown as typeof fetch;
-    expect(await measureDownload(1_000_000, notOk)).toBeNull();
   });
 });

@@ -95,6 +95,25 @@ export function parseIpconfigSsid(text: string): string | null {
 
 /* ── Linux ─────────────────────────────────────────────────── */
 
+/**
+ * iw のエスケープを戻す。iw は SSID の非 ASCII のバイト・バックスラッシュ・先頭と末尾の空白を `\xNN` で出すので、
+ * バイト列に戻してから UTF-8 として読む（日本語の SSID が macOS の端末と同じ文字列になるように）。
+ */
+export function unescapeIwSsid(raw: string): string {
+  const bytes: number[] = [];
+  for (let i = 0; i < raw.length;) {
+    const m = /^\\x([0-9a-fA-F]{2})/.exec(raw.slice(i));
+    if (m) {
+      bytes.push(Number.parseInt(m[1]!, 16));
+      i += 4;
+    } else {
+      bytes.push(...new TextEncoder().encode(raw[i]!));
+      i += 1;
+    }
+  }
+  return new TextDecoder().decode(new Uint8Array(bytes));
+}
+
 /** `iw dev` から無線のインタフェース名を拾う */
 export function parseIwDev(text: string): string[] {
   return [...text.matchAll(/^\s*Interface\s+(\S+)/gm)].map((m) => m[1]!);
@@ -107,7 +126,7 @@ export function parseIwDev(text: string): string[] {
 export function parseIwLink(text: string): WifiInfo | null {
   if (!/^Connected to/m.test(text)) return null;
   return {
-    ssid: cleanSsid(/^\s*SSID:\s*(.+)$/m.exec(text)?.[1]),
+    ssid: cleanSsid(unescapeIwSsid(/^\s*SSID: (.*)$/m.exec(text)?.[1] ?? "")),
     rssi: toInt(/^\s*signal:\s*(-?\d+)\s*dBm/m.exec(text)?.[1]),
     noise: null,
     txRateMbps: toFloat(
@@ -124,18 +143,19 @@ export type PingResult = {
 };
 
 /**
- * `ping -c N -q <宛先>` の要約を読む。macOS と Linux（iputils）の両方の形に対応する。
+ * `ping -c N -q <宛先>` の要約を読む。macOS・Linux（iputils）・busybox の形に対応する。
  *
  * - macOS: "5 packets transmitted, 5 packets received, 0.0% packet loss" / "round-trip min/avg/max/stddev = ..."
- * - Linux: "5 packets transmitted, 5 received, 0% packet loss, time 4005ms" / "rtt min/avg/max/mdev = ..."
+ * - iputils: "5 packets transmitted, 5 received, +2 errors, 0% packet loss, time 4005ms" / "rtt min/avg/max/mdev = ..."
+ * - busybox: "round-trip min/avg/max = ..."（stddev が無い）
  *
  * 全部失われたときは往復時間の行が無いので、遅延は null・損失は 100 になる。
- * 要約が読めない（名前解決の失敗など）ときは両方 null。
+ * 要約が無いときは両方 null（回線断かどうかの判断は呼び出し側で、終了のしかたを見て行う）。
  */
 export function parsePing(text: string): PingResult {
   const loss = toFloat(/([\d.]+)% packet loss/.exec(text)?.[1]);
   const avg = toFloat(
-    /(?:round-trip|rtt) min\/avg\/max\/(?:stddev|mdev) = [\d.]+\/([\d.]+)\//.exec(
+    /(?:round-trip|rtt) min\/avg\/max(?:\/(?:stddev|mdev))? = [\d.]+\/([\d.]+)\//.exec(
       text,
     )?.[1],
   );

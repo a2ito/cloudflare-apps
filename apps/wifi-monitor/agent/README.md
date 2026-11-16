@@ -23,11 +23,16 @@ macOS と Linux で動く。
   - 回線断・サーバの 5xx … キューに残して次の回に送り直す
   - 400 / 413（形が違う）… そのまとまりを捨ててログに出す。同じまとまりで止まり続けないため
   - 401（トークンが違う）… 送るのをやめてログに出す。計測は貯め続けるので、トークンを直して再起動すれば送られる
+- 1 回に送るのは 20 まとまり（6000 件）まで。長いオフラインのあとでも、送り切るまで毎分の計測が止まらないように、残りは次の回に回す
+- コマンドが無い・時間切れで値が取れないときは、そのことをログに出す（状態が変わったときだけ）
+- 回線が切れていて ping が送れないときは、損失 100% として送る（macOS と Linux で揃える）
 - 送る前に、受信 API と同じスキーマ（`../src/lib/sample-schema.ts`）で形を確かめる
+- キューのファイルは本人だけが読める権限（0600）で作る。SSID と時刻の履歴は居場所の手がかりになるため
+- ダウンロード速度は ping の後に計り（並べると遅延が水増しされる）、時間は最初のデータを受け取ってから数える
 
 ## 入れ方
 
-前提は Node.js 24 以上（設定ファイルを `node --env-file` で読むため）。
+前提は Node.js 24 以上（ビルドの対象を Node 24 にしている）。設定ファイルは `node --env-file` で読む。
 
 ### 1. ビルドして置く
 
@@ -66,7 +71,12 @@ sed -e "s#__NODE__#$(which node)#" -e "s#__HOME__#$HOME#g" \
 launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/work.a2ito.wifi-monitor-agent.plist
 ```
 
-ログは `~/Library/Logs/wifi-monitor-agent.log`。止めるときは `launchctl bootout "gui/$(id -u)/work.a2ito.wifi-monitor-agent"`。
+- 手で動かしたものは先に止めておく（同じキューを使うエージェントは 1 つしか動けず、2 つ目は「別のエージェントが同じキューを使っています」で止まる）
+- `$(which node)` が nvm などのバージョン付きのパスだと、node を更新したときに動かなくなる。Homebrew の `/opt/homebrew/bin/node` のような変わらないパスがあればそちらを書く
+- plist を作り直したときは、先に `launchctl bootout "gui/$(id -u)/work.a2ito.wifi-monitor-agent"` で外してから bootstrap し直す（入れたまま bootstrap するとエラーになる）
+
+ログは `~/Library/Logs/wifi-monitor-agent.log`（launchd が作るので、ほかのユーザーに読ませたくなければ `chmod 600` する）。
+止めるときは `launchctl bootout "gui/$(id -u)/work.a2ito.wifi-monitor-agent"`。
 
 **SSID が届かないとき**（画面で SSID が空、ネットワークが増えない）: macOS 14.4 以降は、位置情報の権限が無いプログラムには
 SSID が伏せ字で返る。一度だけ次を流すと、`ipconfig getsummary` に SSID が出るようになり、エージェントはそこから読む。
@@ -89,6 +99,10 @@ sudo loginctl enable-linger "$USER"
 ```
 
 ログは `journalctl --user -u wifi-monitor-agent -f`。`iw` が無ければ入れる（Debian 系なら `sudo apt install iw`）。
+
+- node は user manager の PATH で探す。nvm や volta の node、24 未満の node しか無いときは、ユニットの `ExecStart` を node の絶対パスに書き換える
+- 手で動かすとき、Debian 系では一般ユーザーの PATH に `/usr/sbin`（`iw` の場所）が無いことがある。
+  `iw が見つかりません` とログに出たら `PATH=$PATH:/usr/sbin` を付けて動かす（常駐させると systemd の PATH に入っているので要らない）
 
 ## 更新
 

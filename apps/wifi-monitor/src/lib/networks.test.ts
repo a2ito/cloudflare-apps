@@ -92,7 +92,10 @@ describe("受信時のネットワークの自動登録", () => {
 
     const networks = await listNetworksWithStats(t.db, me);
     expect(networks).toHaveLength(1);
-    expect(networks[0]).toMatchObject({ ssid: "home", deviceCount: 2 });
+    expect(networks[0]).toMatchObject({ ssid: "home" });
+    expect(new Set(await networkIdsOfSamples())).toEqual(
+      new Set([networks[0]!.id]),
+    );
   });
 
   it("別の人の同じ SSID は別のネットワークにし、互いに見えない", async () => {
@@ -108,7 +111,6 @@ describe("受信時のネットワークの自動登録", () => {
     expect(mine).toHaveLength(1);
     expect(theirs).toHaveLength(1);
     expect(mine[0]!.id).not.toBe(theirs[0]!.id);
-    expect(mine[0]!.deviceCount).toBe(1);
     expect(await getNetwork(t.db, me, theirs[0]!.id)).toBeNull();
   });
 
@@ -129,7 +131,32 @@ describe("受信時のネットワークの自動登録", () => {
   });
 });
 
+describe("SSID が多い受信", () => {
+  it("1 回の受信の SSID が 40 種類あっても受け付ける（D1 のバインドの上限に当たらない）", async () => {
+    const samples = Array.from({ length: 40 }, (_, i) => ({
+      measuredAt: new Date(now.getTime() - (i + 1) * 60_000).toISOString(),
+      ssid: `hotel-${i}`,
+    }));
+    expect(await send("wfm_mac", samples)).toEqual({
+      ok: true,
+      accepted: 40,
+      skipped: 0,
+    });
+    expect(await listNetworksWithStats(t.db, me)).toHaveLength(40);
+    expect((await networkIdsOfSamples()).every((id) => id !== null)).toBe(true);
+  });
+});
+
 describe("ensureNetworks", () => {
+  it("空白だけの SSID はネットワークを作らず、計測はネットワーク無しで入る", async () => {
+    await send("wfm_mac", [{ measuredAt: "2026-11-15T02:00:00Z", ssid: null }]);
+    expect(await listNetworksWithStats(t.db, me)).toHaveLength(0);
+    // 空文字・空白だけは受信の形の検査で弾く（エージェントは null を送る）
+    await expect(
+      send("wfm_mac", [{ measuredAt: "2026-11-15T02:01:00Z", ssid: "   " }]),
+    ).resolves.toMatchObject({ ok: false, status: 400 });
+  });
+
   it("SSID が無ければ何もしない", async () => {
     expect(await ensureNetworks(t.db, me, [])).toEqual(new Map());
   });
@@ -160,7 +187,6 @@ describe("listNetworksWithStats", () => {
       ["earlier", "2026-11-15T01:00:00.000Z"],
       ["old-empty", null],
     ]);
-    expect(networks[2]!.deviceCount).toBe(0);
   });
 });
 

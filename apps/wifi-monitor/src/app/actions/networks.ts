@@ -48,5 +48,7 @@ export async function renameNetworkAction(
   }
   revalidatePath("/");
   revalidatePath(`/networks/${parsed.data.id}`);
+  // 端末の画面にも今のネットワーク名を出している
+  revalidatePath("/devices/[id]", "page");
   return { status: "saved", name: parsed.data.name };
 }

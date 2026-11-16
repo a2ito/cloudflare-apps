@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
 import type { Db } from "./index";
 import {
   devices,
@@ -125,8 +125,17 @@ export async function touchDevice(
 /* ── networks ──────────────────────────────────────────────── */
 
 /**
+ * 1 文に入れるネットワークの行数。バインドされるのは 1 行 3 個（user_id・ssid・name）で、
+ * D1 の 1 文 100 個の上限から 33 行。
+ */
+const NETWORKS_PER_INSERT = 33;
+
+/**
  * SSID からネットワークの ID を引く。まだ無い SSID は、その名前のネットワークとして作る。
- * 受信のたびに呼ぶので、SSID の数にかかわらずクエリは 2 つ（まとめて作る・まとめて引く）にする。
+ *
+ * 移動しながら溜めた計測をまとめて送ると SSID が何十種類にもなるので、INSERT は分けて流し、
+ * 引く側は SSID を条件に並べず（バインドの上限に当たるため）持ち主のネットワークを全部引いて照合する。
+ * 1 回の受信の最大 300 件がすべて別の SSID でも、INSERT 10 文 + SELECT 1 文で済む。
  */
 export async function ensureNetworks(
   db: Db,
@@ -135,15 +144,24 @@ export async function ensureNetworks(
 ): Promise<Map<string, number>> {
   const unique = [...new Set(ssids)];
   if (unique.length === 0) return new Map();
-  await db
-    .insert(networks)
-    .values(unique.map((ssid) => ({ userId, ssid, name: ssid })))
-    .onConflictDoNothing();
+  for (let i = 0; i < unique.length; i += NETWORKS_PER_INSERT) {
+    await db
+      .insert(networks)
+      .values(
+        unique
+          .slice(i, i + NETWORKS_PER_INSERT)
+          .map((ssid) => ({ userId, ssid, name: ssid })),
+      )
+      .onConflictDoNothing();
+  }
+  const wanted = new Set(unique);
   const rows = await db
     .select({ id: networks.id, ssid: networks.ssid })
     .from(networks)
-    .where(and(eq(networks.userId, userId), inArray(networks.ssid, unique)));
-  return new Map(rows.map((r) => [r.ssid, r.id]));
+    .where(eq(networks.userId, userId));
+  return new Map(
+    rows.filter((r) => wanted.has(r.ssid)).map((r) => [r.ssid, r.id]),
+  );
 }
 
 /** 持ち主のネットワークだけ返す。他人のネットワークの ID なら null */
@@ -177,16 +195,23 @@ export async function renameNetwork(
 export type NetworkWithStats = Network & {
   /** 残っている計測のうち最新の計測時刻。保存期間を過ぎて計測が消えたら null */
   lastMeasuredAt: string | null;
-  /** このネットワークで計測した端末の数 */
-  deviceCount: number;
 };
 
-/** 持ち主のネットワークを、最近計測した順（計測の無いものは後ろ）に返す */
+/**
+ * 持ち主のネットワークを、最近計測した順（計測の無いものは後ろ）に返す。
+ *
+ * 最新の計測時刻はネットワークごとに (network_id, measured_at) の索引で 1 行だけ引く。
+ * 計測を結合して集計すると、ホームを開くたびに持ち主の 30 日分の計測をほぼ全部読むことになるため。
+ */
 export async function listNetworksWithStats(
   db: Db,
   userId: number,
 ): Promise<NetworkWithStats[]> {
-  const lastMeasuredAt = sql<string | null>`max(${samples.measuredAt})`;
+  // 列はテーブル名つきで書く。drizzle は 1 表のクエリでテーブル名を省くので、${networks.id} のままだと
+  // サブクエリの中で samples.id と取り違えられる
+  const lastMeasuredAt = sql<
+    string | null
+  >`(select s.measured_at from samples s where s.network_id = "networks"."id" order by s.measured_at desc limit 1)`;
   return db
     .select({
       id: networks.id,
@@ -194,16 +219,13 @@ export async function listNetworksWithStats(
       ssid: networks.ssid,
       name: networks.name,
       createdAt: networks.createdAt,
-      lastMeasuredAt,
-      deviceCount: sql<number>`count(distinct ${samples.deviceId})`,
+      lastMeasuredAt: lastMeasuredAt.as("last_measured_at"),
     })
     .from(networks)
-    .leftJoin(samples, eq(samples.networkId, networks.id))
     .where(eq(networks.userId, userId))
-    .groupBy(networks.id)
     .orderBy(
-      sql`${lastMeasuredAt} is null`,
-      desc(lastMeasuredAt),
+      sql`last_measured_at is null`,
+      sql`last_measured_at desc`,
       asc(networks.id),
     );
 }

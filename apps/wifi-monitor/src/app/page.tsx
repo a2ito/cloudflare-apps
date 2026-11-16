@@ -110,7 +110,7 @@ export default async function HomePage() {
                   </span>
                   <span className="shrink-0 text-right text-xs text-zinc-500">
                     {n.lastMeasuredAt
-                      ? `${formatAgo(new Date(n.lastMeasuredAt), now)} ・ 端末 ${n.deviceCount} 台`
+                      ? `最終計測 ${formatAgo(new Date(n.lastMeasuredAt), now)}`
                       : "計測なし"}
                   </span>
                 </Link>

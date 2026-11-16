@@ -59,7 +59,7 @@ describe("renameNetworkAction", () => {
       name: "自宅",
       ssid: "home-5G",
     });
-    expect(revalidated).toEqual(["/", `/networks/${mine}`]);
+    expect(revalidated).toEqual(["/", `/networks/${mine}`, "/devices/[id]"]);
   });
 
   it.each([

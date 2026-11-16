@@ -42,7 +42,10 @@ export function valueDomain(
     min = Math.min(min, 0);
     max = Math.max(max, 0);
   }
-  if (min === max) return [min - 1, max + 1];
+  if (min === max) {
+    // includeZero の量（損失率・速度）は負にならないので、全部 0 のときも 0 から上に幅を取る
+    return options.includeZero && min === 0 ? [0, 1] : [min - 1, max + 1];
+  }
   const pad = (max - min) * 0.1;
   return [
     options.includeZero && min === 0 ? 0 : min - pad,

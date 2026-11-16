@@ -185,7 +185,7 @@ describe("getSeries", () => {
     });
     const series = await getSeries(
       t.db,
-      deviceId,
+      { deviceId },
       "2026-11-15T01:00:00.000Z",
       300,
     );

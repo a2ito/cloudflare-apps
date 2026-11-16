@@ -1,10 +1,12 @@
-import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import type { Db } from "./index";
 import {
   devices,
+  networks,
   samples,
   users,
   type Device,
+  type Network,
   type Sample,
   type User,
 } from "./schema";
@@ -120,15 +122,102 @@ export async function touchDevice(
     .where(eq(devices.id, deviceId));
 }
 
+/* ── networks ──────────────────────────────────────────────── */
+
+/**
+ * SSID からネットワークの ID を引く。まだ無い SSID は、その名前のネットワークとして作る。
+ * 受信のたびに呼ぶので、SSID の数にかかわらずクエリは 2 つ（まとめて作る・まとめて引く）にする。
+ */
+export async function ensureNetworks(
+  db: Db,
+  userId: number,
+  ssids: readonly string[],
+): Promise<Map<string, number>> {
+  const unique = [...new Set(ssids)];
+  if (unique.length === 0) return new Map();
+  await db
+    .insert(networks)
+    .values(unique.map((ssid) => ({ userId, ssid, name: ssid })))
+    .onConflictDoNothing();
+  const rows = await db
+    .select({ id: networks.id, ssid: networks.ssid })
+    .from(networks)
+    .where(and(eq(networks.userId, userId), inArray(networks.ssid, unique)));
+  return new Map(rows.map((r) => [r.ssid, r.id]));
+}
+
+/** 持ち主のネットワークだけ返す。他人のネットワークの ID なら null */
+export async function getNetwork(
+  db: Db,
+  userId: number,
+  id: number,
+): Promise<Network | null> {
+  const [row] = await db
+    .select()
+    .from(networks)
+    .where(and(eq(networks.id, id), eq(networks.userId, userId)));
+  return row ?? null;
+}
+
+/** 持ち主のものだけ名前を変える。変えられたら true */
+export async function renameNetwork(
+  db: Db,
+  userId: number,
+  id: number,
+  name: string,
+): Promise<boolean> {
+  const updated = await db
+    .update(networks)
+    .set({ name })
+    .where(and(eq(networks.id, id), eq(networks.userId, userId)))
+    .returning({ id: networks.id });
+  return updated.length > 0;
+}
+
+export type NetworkWithStats = Network & {
+  /** 残っている計測のうち最新の計測時刻。保存期間を過ぎて計測が消えたら null */
+  lastMeasuredAt: string | null;
+  /** このネットワークで計測した端末の数 */
+  deviceCount: number;
+};
+
+/** 持ち主のネットワークを、最近計測した順（計測の無いものは後ろ）に返す */
+export async function listNetworksWithStats(
+  db: Db,
+  userId: number,
+): Promise<NetworkWithStats[]> {
+  const lastMeasuredAt = sql<string | null>`max(${samples.measuredAt})`;
+  return db
+    .select({
+      id: networks.id,
+      userId: networks.userId,
+      ssid: networks.ssid,
+      name: networks.name,
+      createdAt: networks.createdAt,
+      lastMeasuredAt,
+      deviceCount: sql<number>`count(distinct ${samples.deviceId})`,
+    })
+    .from(networks)
+    .leftJoin(samples, eq(samples.networkId, networks.id))
+    .where(eq(networks.userId, userId))
+    .groupBy(networks.id)
+    .orderBy(
+      sql`${lastMeasuredAt} is null`,
+      desc(lastMeasuredAt),
+      asc(networks.id),
+    );
+}
+
 /* ── samples ───────────────────────────────────────────────── */
 
 export type SampleRow = Omit<typeof samples.$inferInsert, "id" | "deviceId">;
 
 /**
- * D1 は 1 文のバインド変数が 100 個までなので、列数（9）から 1 文に入る行数を決める。
- * 1 行 9 個 × 10 行 = 90 個。
+ * D1 は 1 文のバインド変数が 100 個までなので、列数から 1 文に入る行数を決める。
+ * 1 行 10 個（device_id と計測値 9 列）× 9 行 = 90 個。ちょうど 100 は上限の解釈に頼るので避ける。
+ * 1 回の受信（300 件）で 34 文になり、Free プランの 1 起動あたりのクエリ数（50）に収まる
  */
-const ROWS_PER_INSERT = 10;
+const ROWS_PER_INSERT = 9;
 
 /** 計測値を入れる。同じ端末・同じ計測時刻のものは既にあれば飛ばす。入った件数を返す */
 export async function insertSamples(
@@ -192,16 +281,20 @@ export type SeriesPoint = {
   txRateMbps: number | null;
 };
 
+/** グラフにする計測の範囲。端末単位か、ネットワーク単位（複数の端末の計測をまとめる） */
+export type SeriesTarget = { deviceId: number } | { networkId: number };
+
 /**
  * グラフ用に、計測値を bucketSeconds ごとの平均にまとめて返す。
  *
  * 1 分ごとの計測を 7 日分そのまま返すと 1 万点を超え、描いても潰れて見えないため。
  * 計測の無い区間は行が無い（グラフでは線を切って、途切れたことが分かるようにする）。
- * 端末が持ち主のものかは呼び出し側（getDevice）で確かめておく。
+ * 端末・ネットワークが持ち主のものかは呼び出し側（getDevice / getNetwork）で確かめておく。
+ * ネットワークの計測は、持ち主の端末から届いたものしか付かない（ensureNetworks は端末の持ち主で作る）。
  */
 export async function getSeries(
   db: Db,
-  deviceId: number,
+  target: SeriesTarget,
   since: string,
   bucketSeconds: number,
 ): Promise<SeriesPoint[]> {
@@ -223,7 +316,14 @@ export async function getSeries(
       txRateMbps: sql<number | null>`avg(${samples.txRateMbps})`,
     })
     .from(samples)
-    .where(and(eq(samples.deviceId, deviceId), gte(samples.measuredAt, since)))
+    .where(
+      and(
+        "deviceId" in target
+          ? eq(samples.deviceId, target.deviceId)
+          : eq(samples.networkId, target.networkId),
+        gte(samples.measuredAt, since),
+      ),
+    )
     .groupBy(sql`t`)
     .orderBy(sql`t`);
 }

@@ -51,6 +51,10 @@ describe("valueDomain", () => {
     expect(valueDomain([-50, -50])).toEqual([-51, -49]);
   });
 
+  it("includeZero で全部 0 なら、負の側に幅を取らない", () => {
+    expect(valueDomain([0, 0], { includeZero: true })).toEqual([0, 1]);
+  });
+
   it("includeZero なら 0 から始める", () => {
     expect(valueDomain([10, 20], { includeZero: true })).toEqual([0, 22]);
   });

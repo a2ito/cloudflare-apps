@@ -1,6 +1,7 @@
 import type { Db } from "@/db";
 import type { Device } from "@/db/schema";
 import {
+  ensureNetworks,
   findDeviceByTokenHash,
   insertSamples,
   pruneSamples,
@@ -96,7 +97,18 @@ export async function ingestSamples(
     .map((s) => toRow(s, input.now, cutoff))
     .filter((r): r is SampleRow => r !== null);
 
-  const accepted = await insertSamples(db, device.id, rows);
+  // 初めて見た SSID はネットワークとして自動で作り、計測をひも付ける
+  const networkIds = await ensureNetworks(
+    db,
+    device.userId,
+    rows.flatMap((r) => (r.ssid ? [r.ssid] : [])),
+  );
+  const withNetwork = rows.map((r) => ({
+    ...r,
+    networkId: r.ssid ? (networkIds.get(r.ssid) ?? null) : null,
+  }));
+
+  const accepted = await insertSamples(db, device.id, withNetwork);
   // 全件が飛ばされても更新する。エージェントは動いているので「オンライン」で正しい
   await touchDevice(db, device.id, input.now.toISOString());
   // 古い計測は受信のついでに消す。Cron を持たずに済み、端末の索引で引くので軽い。

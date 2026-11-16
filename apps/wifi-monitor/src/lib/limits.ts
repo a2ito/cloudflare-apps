@@ -12,6 +12,7 @@ export const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 export const MAX_DEVICES_PER_USER = 20;
 export const MAX_DEVICE_NAME_LENGTH = 40;
+export const MAX_NETWORK_NAME_LENGTH = 40;
 
 /** 受信 API が受け付ける本文の上限（300 件 × 1 件 250 バイト程度に余裕を持たせる） */
 export const MAX_REQUEST_BYTES = 256 * 1024;

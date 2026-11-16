@@ -2,7 +2,7 @@ import Link from "next/link";
 import { DeviceForm } from "@/components/device-form";
 import { StatusBadge } from "@/components/status-badge";
 import { getDb } from "@/db";
-import { listDevicesWithLatest } from "@/db/queries";
+import { listDevicesWithLatest, listNetworksWithStats } from "@/db/queries";
 import { requireUser } from "@/lib/auth";
 import { getEnv, requireEnvString } from "@/lib/cloudflare";
 import { isOnline } from "@/lib/status";
@@ -23,8 +23,10 @@ function fmt(v: number | null, unit: string, digits = 0): string {
 
 export default async function HomePage() {
   const user = await requireUser();
-  const [devices, env] = await Promise.all([
-    getDb().then((db) => listDevicesWithLatest(db, user.id)),
+  const db = await getDb();
+  const [devices, networks, env] = await Promise.all([
+    listDevicesWithLatest(db, user.id),
+    listNetworksWithStats(db, user.id),
     getEnv(),
   ]);
   const now = new Date();
@@ -75,6 +77,42 @@ export default async function HomePage() {
                       />
                     </dl>
                   )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold">ネットワーク</h2>
+        {networks.length === 0 ? (
+          <p className="text-sm text-zinc-500">
+            端末が SSID 付きの計測を送ると、ここにネットワークが自動で増えます。
+          </p>
+        ) : (
+          <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">
+            {networks.map((n) => (
+              <li key={n.id}>
+                <Link
+                  href={`/networks/${n.id}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">
+                      {n.name}
+                    </span>
+                    {n.name !== n.ssid && (
+                      <span className="block truncate text-xs text-zinc-500">
+                        SSID {n.ssid}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-right text-xs text-zinc-500">
+                    {n.lastMeasuredAt
+                      ? `${formatAgo(new Date(n.lastMeasuredAt), now)} ・ 端末 ${n.deviceCount} 台`
+                      : "計測なし"}
+                  </span>
                 </Link>
               </li>
             ))}

@@ -34,6 +34,7 @@ export async function createTestEnv() {
       await d1.batch([
         d1.prepare("DELETE FROM samples"),
         d1.prepare("DELETE FROM devices"),
+        d1.prepare("DELETE FROM networks"),
         d1.prepare("DELETE FROM users"),
         d1.prepare("DELETE FROM sqlite_sequence"),
       ]);

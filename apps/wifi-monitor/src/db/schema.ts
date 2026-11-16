@@ -49,6 +49,26 @@ export const devices = sqliteTable(
 );
 
 /**
+ * 計測したネットワーク。SSID ごとに 1 件で、持ち主の端末が初めて送ってきた SSID から自動で作る。
+ *
+ * 端末は持ち歩くとネットワークが変わるので、端末とは別にネットワーク単位でも計測を見られるようにする。
+ * name は表示名で、最初は SSID と同じ。画面で「自宅」などに付け替える。
+ */
+export const networks = sqliteTable(
+  "networks",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    ssid: text("ssid").notNull(),
+    name: text("name").notNull(),
+    createdAt: text("created_at").notNull().default(now),
+  },
+  (t) => [uniqueIndex("networks_user_ssid_idx").on(t.userId, t.ssid)],
+);
+
+/**
  * 計測値 1 件。
  *
  * Wi-Fi の情報（SSID・RSSI など）は OS や権限によって取れないことがあるので、すべて null を許す。
@@ -76,14 +96,25 @@ export const samples = sqliteTable(
     packetLossPct: real("packet_loss_pct"),
     /** ダウンロード速度（Mbps）。重いので低頻度でしか計測しない */
     downloadMbps: real("download_mbps"),
+    /**
+     * 計測したときのネットワーク（networks.id）。SSID が取れなかった計測は null。
+     *
+     * 外部キーは付けない。既存の表への列の追加は ALTER TABLE になり、drizzle-kit がそこで
+     * ON DELETE を落とすため（付けると networks を消せなくなる）。ネットワークを消す操作は無く、
+     * ユーザを消すときは devices 経由で計測も消えるので、宙に浮いた ID は残らない
+     */
+    networkId: integer("network_id"),
   },
   (t) => [
     // 同じ計測を再送しても二重にならないようにする（送信が途中で切れたら丸ごと送り直すため）。
     // 期間で絞るグラフの読み出しと、古い計測の削除もこの索引で引く
     uniqueIndex("samples_device_measured_at_idx").on(t.deviceId, t.measuredAt),
+    // ネットワーク単位のグラフを期間で絞って引く
+    index("samples_network_measured_at_idx").on(t.networkId, t.measuredAt),
   ],
 );
 
 export type User = typeof users.$inferSelect;
 export type Device = typeof devices.$inferSelect;
 export type Sample = typeof samples.$inferSelect;
+export type Network = typeof networks.$inferSelect;

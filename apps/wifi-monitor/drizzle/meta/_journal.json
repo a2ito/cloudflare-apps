@@ -8,6 +8,13 @@
       "when": 1794723906198,
       "tag": "0000_sour_nekra",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1794787137672,
+      "tag": "0001_condemned_skin",
+      "breakpoints": true
     }
   ]
 }

@@ -39,7 +39,9 @@ npm run lint && npm run typecheck && npm test
 - **トークンは保存しない**。DB にはハッシュ（`hashToken`）だけを書き、平文は発行した応答で 1 回だけ返す
 - **計測時刻（`measured_at`）は UTC の ISO 文字列**（`toISOString()` の形）。文字列のまま比較・並べ替えするので、
   形をそろえずに入れると順序が狂う
-- **受信 API の形は `src/lib/sample-schema.ts`**。エージェントも同じものを使うので、変えるときは後方互換に
+- **受信 API の形は `src/lib/sample-schema.ts`**。エージェント（`agent/`）も同じものを使う。配った端末のエージェントは
+  すぐには更新されないので、変えるときは後方互換にする（項目を足すなら省略可にする）
+- **エージェントのテストの fixture に本物の SSID・BSSID を書かない**（リポジトリは公開）
 - **D1 の 1 文のバインド変数は 100 個まで**。`samples` の一括挿入は `insertSamples` が 9 行ずつに分けている。
   列を足したら `ROWS_PER_INSERT` と、1 回の受信のクエリ数（Free プランは 1 起動 50 まで）を見直す
 - **D1 は JS の数値を REAL で渡す**。SQL で整数の割り算をしたい値はバインドせず埋める（`getSeries` の区間幅）

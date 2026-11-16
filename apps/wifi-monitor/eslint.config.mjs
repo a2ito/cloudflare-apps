@@ -8,6 +8,7 @@ export default defineConfig([
     ".cloudflare/**",
     ".vinext/**",
     "dist/**",
+    "agent/dist/**",
     "next-env.d.ts",
   ]),
   ...nextVitals,

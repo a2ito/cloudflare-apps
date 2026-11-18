@@ -254,9 +254,16 @@ type Params = Record<string, string | string[] | undefined>;
  * 最安値は項目の定義より先に決めるので、parseCompareQuery とは別に読めるようにしている
  */
 export function parseIncludeUsed(params: Params): boolean {
-  const used = params.used;
-  if (used === undefined) return true;
-  return [used].flat().includes("1");
+  return checkedByDefault(params.used);
+}
+
+/**
+ * 既定でオンのチェックボックス。外すと <name>=0 だけが届き、付けると <name>=0&<name>=1 が届く
+ * （フォームはチェックボックスの前に <name>=0 の hidden を置く）。1 が 1 つでもあればオン
+ */
+function checkedByDefault(value: string | string[] | undefined): boolean {
+  if (value === undefined) return true;
+  return [value].flat().includes("1");
 }
 
 /**
@@ -337,7 +344,8 @@ export function parseCompareQuery(
     costFieldId: validCost,
     includeUsed: parseIncludeUsed(params),
     showHidden: params.hidden === "1",
-    showSoldOut: params.soldOut === "1",
+    // 既定で出す。過去にいくらで出ていたかを相場として並べて見たいため。外すときは ?soldOut=0
+    showSoldOut: checkedByDefault(params.soldOut),
     favoritesOnly: params.fav === "1",
   };
 }
@@ -654,14 +662,17 @@ export function compare(
   weights?: ScoreWeights,
 ) {
   const filtered = items.filter((i) => matches(i, query));
+  // 売り切れは相場を見るために並べるだけで、今は買えない。一番良い値の色と総合スコアは
+  // 買える商品の中で決める（売り切れの安値に色が付いたり、スコアの基準になったりしないように）
+  const available = filtered.filter((i) => !i.soldOut);
   const scores =
     weights && hasScore(fields, weights)
-      ? scoreItems(filtered, fields, weights)
+      ? scoreItems(available, fields, weights)
       : undefined;
   const rows = sortItems(filtered, query, scores);
   return {
     rows,
-    best: bestValues(rows, fields, query.costFieldId, scores),
+    best: bestValues(available, fields, query.costFieldId, scores),
     scores,
     ranks: scores ? scoreRanks(scores) : undefined,
   };

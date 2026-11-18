@@ -282,7 +282,7 @@ function FilterForm({
     (query.maxPrice !== undefined ? 1 : 0) +
     (query.includeUsed ? 0 : 1) +
     (query.showHidden ? 1 : 0) +
-    (query.showSoldOut ? 1 : 0) +
+    (query.showSoldOut ? 0 : 1) +
     (query.favoritesOnly ? 1 : 0) +
     query.textIn.length +
     query.numIn.length +
@@ -353,6 +353,8 @@ function FilterForm({
             非表示の商品も表示
           </label>
           <label className="flex items-center gap-2 self-end py-2 text-sm">
+            {/* 既定でオンなので、外したことを soldOut=0 で伝える */}
+            <input type="hidden" name="soldOut" value="0" />
             <input
               type="checkbox"
               name="soldOut"
@@ -498,8 +500,12 @@ export default async function ComparePage({
   const costField = fields.find((f) => f.id === query.costFieldId);
   const base = `/categories/${id}`;
   const quickFieldIds = fields.filter((f) => f.quickFilter).map((f) => f.id);
-  const isBest = (key: HighlightKey, v: number | null | undefined) =>
-    v !== null && v !== undefined && best.get(key) === v;
+  // 売り切れは一番良い値と同じ値でも色を付けない（best は買える商品だけで決めている）
+  const isBest = (
+    item: CompareItem,
+    key: HighlightKey,
+    v: number | null | undefined,
+  ) => !item.soldOut && v !== null && v !== undefined && best.get(key) === v;
 
   return (
     <div className="space-y-4">
@@ -759,19 +765,26 @@ export default async function ComparePage({
                           <td
                             data-col="score"
                             className={cellClass(
-                              isBest("score", scores.get(item.id)),
+                              isBest(item, "score", scores.get(item.id)),
                             )}
                           >
-                            {formatNumber(scores.get(item.id) ?? 0, 0)} 点
-                            <span className="block text-xs font-normal text-zinc-500">
-                              {ranks?.get(item.id)} 位
-                            </span>
+                            {scores.has(item.id) ? (
+                              <>
+                                {formatNumber(scores.get(item.id) ?? 0, 0)} 点
+                                <span className="block text-xs font-normal text-zinc-500">
+                                  {ranks?.get(item.id)} 位
+                                </span>
+                              </>
+                            ) : (
+                              // 売り切れはスコアの対象外
+                              <span className="text-zinc-400">—</span>
+                            )}
                           </td>
                         )}
                         <td
                           data-col="price"
                           className={cellClass(
-                            isBest("price", item.best?.price),
+                            isBest(item, "price", item.best?.price),
                           )}
                         >
                           {item.best ? (
@@ -809,7 +822,7 @@ export default async function ComparePage({
                         {costField && (
                           <td
                             data-col="cost"
-                            className={cellClass(isBest("cost", cost))}
+                            className={cellClass(isBest(item, "cost", cost))}
                           >
                             {cost === null ? (
                               <span className="text-zinc-400">—</span>
@@ -825,7 +838,7 @@ export default async function ComparePage({
                               key={f.id}
                               data-col={`f${f.id}`}
                               className={cellClass(
-                                isBest(f.id, item.specs[f.id]?.num),
+                                isBest(item, f.id, item.specs[f.id]?.num),
                               )}
                             >
                               {text ?? <span className="text-zinc-400">—</span>}

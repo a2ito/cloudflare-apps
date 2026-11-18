@@ -164,6 +164,8 @@ describe("parseCompareQuery", () => {
       ...baseQuery,
       maxPrice: undefined,
       costFieldId: undefined,
+      // 売り切れは既定で並べる
+      showSoldOut: true,
     });
   });
 
@@ -198,7 +200,7 @@ describe("parseCompareQuery", () => {
       costFieldId: 2,
       includeUsed: true,
       showHidden: false,
-      showSoldOut: false,
+      showSoldOut: true,
       favoritesOnly: false,
       textIn: [],
       numIn: [],
@@ -425,6 +427,14 @@ describe("matches", () => {
     expect(parseCompareQuery({ soldOut: "1" }, FIELDS).showSoldOut).toBe(true);
   });
 
+  it("売り切れは既定で出し、soldOut=0 のときだけ外す（チェックを付けて送ると 0 と 1 が届く）", () => {
+    expect(parseCompareQuery({}, FIELDS).showSoldOut).toBe(true);
+    expect(parseCompareQuery({ soldOut: "0" }, FIELDS).showSoldOut).toBe(false);
+    expect(parseCompareQuery({ soldOut: ["0", "1"] }, FIELDS).showSoldOut).toBe(
+      true,
+    );
+  });
+
   it("メーカーは複数選べ、どれかに一致すれば通す。メーカー未入力は外す", () => {
     const q = parseCompareQuery({ maker: ["lenovo", "Apple"] }, FIELDS);
     expect(q.makers).toEqual(["lenovo", "Apple"]);
@@ -573,6 +583,36 @@ describe("compare", () => {
     expect(rows.map((r) => r.id)).toEqual([1, 2]);
     expect(best.get(2)).toBe(16);
   });
+
+  it("売り切れは行に並べるが、最良値は買える商品だけで決める", () => {
+    const items = [
+      { ...item(1, 80000, { 2: 64 }), soldOut: true },
+      item(2, 120000, { 2: 16 }),
+      item(3, 200000, { 2: 32 }),
+    ];
+    const { rows, best } = compare(items, FIELDS, {
+      ...baseQuery,
+      showSoldOut: true,
+    });
+    expect(rows.map((r) => r.id)).toEqual([1, 2, 3]);
+    expect(best.get("price")).toBe(120000);
+    expect(best.get(2)).toBe(32);
+  });
+
+  it("売り切れはコスパの最良値にもならない", () => {
+    const items = [
+      // 1GB あたり 1,250 円で一番良いが、売り切れ
+      { ...item(1, 80000, { 2: 64 }), soldOut: true },
+      item(2, 120000, { 2: 16 }),
+      item(3, 200000, { 2: 32 }),
+    ];
+    const { best } = compare(items, FIELDS, {
+      ...baseQuery,
+      showSoldOut: true,
+      costFieldId: 2,
+    });
+    expect(best.get("cost")).toBe(6250);
+  });
 });
 
 describe("hasScore", () => {
@@ -691,6 +731,27 @@ describe("総合スコアでの並べ替え", () => {
     expect(
       compare(items, FIELDS, query, weights).rows.map((r) => r.id),
     ).toEqual([1, 3, 2]);
+  });
+  it("売り切れはスコアを付けず、スコア順では末尾に並べる", () => {
+    const withSoldOut = [
+      ...items,
+      { ...item(4, 50, { 2: 64 }), soldOut: true },
+    ];
+    const query = {
+      ...parseCompareQuery({}, FIELDS, null, true),
+      showSoldOut: true,
+    };
+    const { rows, scores, ranks } = compare(
+      withSoldOut,
+      FIELDS,
+      query,
+      weights,
+    );
+    expect(rows.map((r) => r.id)).toEqual([2, 3, 1, 4]);
+    expect(scores?.has(4)).toBe(false);
+    // 売り切れを母数に入れないので、買える 3 つのスコアは売り切れが無いときと同じ
+    expect(scores?.get(2)).toBeCloseTo(75);
+    expect(ranks?.get(2)).toBe(1);
   });
   it("重みが無ければスコアも順位も出さない", () => {
     const { scores, ranks } = compare(items, FIELDS, baseQuery, {

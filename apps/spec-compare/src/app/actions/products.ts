@@ -239,7 +239,7 @@ export async function setProductHidden(formData: FormData): Promise<void> {
   revalidatePath(`/products/${parsed.data.id}`);
 }
 
-/** 売り切れにする・戻す。非表示と同じく比較表から外すが、候補から外したのとは分けて持つ */
+/** 売り切れにする・戻す。比較表には相場として薄く並べるので、候補から外す非表示とは分けて持つ */
 export async function setProductSoldOut(formData: FormData): Promise<void> {
   await requireUser();
   const parsed = parseForm(

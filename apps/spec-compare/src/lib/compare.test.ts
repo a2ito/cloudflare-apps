@@ -598,6 +598,21 @@ describe("compare", () => {
     expect(best.get("price")).toBe(120000);
     expect(best.get(2)).toBe(32);
   });
+
+  it("売り切れはコスパの最良値にもならない", () => {
+    const items = [
+      // 1GB あたり 1,250 円で一番良いが、売り切れ
+      { ...item(1, 80000, { 2: 64 }), soldOut: true },
+      item(2, 120000, { 2: 16 }),
+      item(3, 200000, { 2: 32 }),
+    ];
+    const { best } = compare(items, FIELDS, {
+      ...baseQuery,
+      showSoldOut: true,
+      costFieldId: 2,
+    });
+    expect(best.get("cost")).toBe(6250);
+  });
 });
 
 describe("hasScore", () => {

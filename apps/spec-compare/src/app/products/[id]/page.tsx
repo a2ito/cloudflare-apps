@@ -48,7 +48,8 @@ export default async function ProductPage({
     listStores(db),
   ]);
   const self = items.find((i) => i.id === id);
-  // 順位は比較表に出ている商品の中で数える。非表示・売り切れの商品は比較表から外したものなので入れない
+  // 順位は買える候補の中で数える。非表示は候補から外したもの、売り切れは今は買えないものなので入れない
+  // （その商品自身は、非表示・売り切れでも自分の順位が分かるように入れる）
   const ranked = items.filter((i) => (!i.hidden && !i.soldOut) || i.id === id);
   const bestId = self?.best?.id;
 

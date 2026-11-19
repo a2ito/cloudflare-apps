@@ -229,6 +229,13 @@ describe("parseCompareQuery", () => {
     expect(q.costFieldId).toBeUndefined();
   });
 
+  it("あり／なしの条件は 1 が届いたときだけ付ける（フォームは外した印に 0 を送る）", () => {
+    expect(parseCompareQuery({ has_4: "0" }, FIELDS).required).toEqual([]);
+    expect(parseCompareQuery({ has_4: ["0", "1"] }, FIELDS).required).toEqual([
+      4,
+    ]);
+  });
+
   it("中古は既定で含め、used=0 のときだけ外す", () => {
     expect(parseCompareQuery({}, FIELDS).includeUsed).toBe(true);
     expect(parseCompareQuery({ used: "1" }, FIELDS).includeUsed).toBe(true);

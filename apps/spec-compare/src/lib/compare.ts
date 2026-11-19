@@ -323,7 +323,9 @@ export function parseCompareQuery(
       if (min !== undefined || max !== undefined)
         ranges.push({ fieldId: field.id, min, max });
     } else if (field.kind === "bool") {
-      if (params[`has_${field.id}`] === "1") required.push(field.id);
+      // フォームは外したことを伝えるため has_<id>=0 を先に送り、付けると 0 と 1 の両方が届く
+      if (listParam(params[`has_${field.id}`]).includes("1"))
+        required.push(field.id);
     } else {
       const text = stringParam(params[`q_${field.id}`]);
       if (text !== undefined) contains.push({ fieldId: field.id, text });

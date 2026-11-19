@@ -62,6 +62,15 @@ function hrefWith(base: string, params: Params, overrides: Params): string {
   return s ? `${base}?${s}` : base;
 }
 
+/** 検索パラメータを並び順ごと 1 つの文字列にする。URL が変わったかを見分けるのに使う */
+function searchKey(params: Params): string {
+  return new URLSearchParams(
+    Object.entries(params).flatMap(([k, v]) =>
+      [v ?? []].flat().map((s): [string, string] => [k, s]),
+    ),
+  ).toString();
+}
+
 /** 列を初めて押したときの向き。良い順に並ぶようにする（登録日は新しい順） */
 function defaultDir(key: SortKey, fields: readonly FieldDef[]): SortDir {
   if (key === "score" || key === "created") return "desc";
@@ -305,7 +314,9 @@ function FilterForm({
         )}
       </summary>
       {/* 条件は URL に載せる。共有やブラウザの戻るで同じ表に戻れるように */}
-      <form className="mt-3 space-y-3">
+      {/* 欄は defaultValue なので、チップや覚えておいた条件の復元で URL が変わったら作り直して合わせる。
+          古い値のまま適用すると、その条件を黙って消してしまう */}
+      <form key={searchKey(params)} className="mt-3 space-y-3">
         <input type="hidden" name="sort" value={query.sort} />
         <input type="hidden" name="dir" value={query.dir} />
         {/* 簡易フィルタで選んだ値はフォームに欄が無いので、適用しても消えないよう引き継ぐ */}
@@ -429,11 +440,13 @@ function FilterForm({
                   key={f.id}
                   className="flex items-center gap-2 self-end py-2 text-sm"
                 >
+                  {/* 外したときもキーが届くようにする。届かないと、覚えておいた条件が戻ってしまう */}
+                  <input type="hidden" name={`has_${f.id}`} value="0" />
                   <input
                     type="checkbox"
                     name={`has_${f.id}`}
                     value="1"
-                    defaultChecked={value(`has_${f.id}`) === "1"}
+                    defaultChecked={query.required.includes(f.id)}
                   />
                   {f.name}あり
                 </label>

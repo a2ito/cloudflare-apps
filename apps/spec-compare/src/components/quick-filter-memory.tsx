@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import {
+  hasQuickKeys,
   parseSavedQuickParams,
   pickQuickParams,
   withQuickParams,
@@ -30,13 +31,12 @@ export function QuickFilterMemory({
   const restored = useRef(false);
 
   useEffect(() => {
-    const current = pickQuickParams(
-      new URLSearchParams(searchParams.toString()),
-      fieldIds,
-    );
+    const search = new URLSearchParams(searchParams.toString());
+    const current = pickQuickParams(search, fieldIds);
     if (!restored.current) {
       restored.current = true;
-      if (current.length === 0) {
+      // 空の値で外した条件も指定のうち。戻すのは簡易フィルタの条件が URL に一つも無いときだけ
+      if (!hasQuickKeys(search, fieldIds)) {
         let saved: [string, string][] = [];
         try {
           saved = parseSavedQuickParams(
@@ -47,10 +47,9 @@ export function QuickFilterMemory({
         }
         const valid = pickQuickParams(new URLSearchParams(saved), fieldIds);
         if (valid.length > 0) {
-          router.replace(
-            `${pathname}?${withQuickParams(new URLSearchParams(searchParams.toString()), valid)}`,
-            { scroll: false },
-          );
+          router.replace(`${pathname}?${withQuickParams(search, valid)}`, {
+            scroll: false,
+          });
           return;
         }
       }

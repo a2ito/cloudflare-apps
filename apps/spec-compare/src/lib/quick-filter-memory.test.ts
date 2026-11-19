@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasQuickKeys,
   parseQuickFiltersOpen,
   parseSavedQuickParams,
   pickQuickParams,
@@ -17,6 +18,26 @@ describe("pickQuickParams", () => {
       ["min_2", "32"],
       ["maker", "ASUS"],
     ]);
+  });
+
+  it("真偽値の項目は、外した印の 0 を除いて付けた 1 だけを残す", () => {
+    const search = new URLSearchParams("has_5=0&has_6=0&has_6=1");
+    expect(pickQuickParams(search, [5, 6])).toEqual([["has_6", "1"]]);
+  });
+});
+
+describe("hasQuickKeys", () => {
+  it("空の値で外した条件も、指定したとみなす", () => {
+    expect(hasQuickKeys(new URLSearchParams("sort=f2&max_4="), [4])).toBe(true);
+    expect(hasQuickKeys(new URLSearchParams("maker="), [4])).toBe(true);
+    expect(hasQuickKeys(new URLSearchParams("has_5=0"), [5])).toBe(true);
+  });
+
+  it("簡易フィルタの項目でない条件だけなら、指定していないとみなす", () => {
+    expect(hasQuickKeys(new URLSearchParams("sort=f2&max_9=1"), [4])).toBe(
+      false,
+    );
+    expect(hasQuickKeys(new URLSearchParams(""), [4])).toBe(false);
   });
 });
 

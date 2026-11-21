@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { Fragment, Suspense } from "react";
 import { moveField } from "@/app/actions/fields";
+import { setRecordSoldOut } from "@/app/actions/records";
 import {
   deleteProduct,
   setProductHidden,
@@ -39,6 +40,7 @@ import {
   type CompareQuery,
   type FieldDef,
   type HighlightKey,
+  type Listing,
   type ScoreWeights,
   type SortDir,
   type SortKey,
@@ -162,9 +164,14 @@ function RowActions({ item }: { item: CompareItem }) {
     <span className="flex justify-end gap-1">
       <form action={setProductSoldOut}>
         <input type="hidden" name="id" value={item.id} />
-        <input type="hidden" name="soldOut" value={item.soldOut ? "0" : "1"} />
+        {/* 出品が全部売れて売り切れに見えているときも、押すのは商品そのものの印 */}
+        <input
+          type="hidden"
+          name="soldOut"
+          value={item.markedSoldOut ? "0" : "1"}
+        />
         <button type="submit" className={`${rowButton} text-zinc-500`}>
-          {item.soldOut ? "在庫あり" : "売り切れ"}
+          {item.markedSoldOut ? "在庫あり" : "売り切れ"}
         </button>
       </form>
       <form action={setProductHidden}>
@@ -193,6 +200,71 @@ function RowActions({ item }: { item: CompareItem }) {
 /** 左に固定した列の右端に引く線。固定した列の下を他の列がくぐるので、境目が分かるようにする */
 const frozenEdge =
   "data-[frozen=last]:shadow-[inset_-1px_0_0_var(--color-zinc-300)] dark:data-[frozen=last]:shadow-[inset_-1px_0_0_var(--color-zinc-700)]";
+
+/** 1 つの製品の下に並べる出品の数。多すぎると表が縦に伸びるので、残りは商品ページで見る */
+const MAX_LISTING_ROWS = 5;
+
+/** 出品の価格と、お店のページへのリンク */
+function ListingPrice({ listing }: { listing: Listing }) {
+  return (
+    <>
+      {listing.used && <UsedBadge />}
+      {formatYen(listing.price)}
+      {/* 比較表から買いに行けるよう、記録したお店のページへ飛べるようにする */}
+      {/* 店名は列の幅に合わせて 1 行で省く。w-0 min-w-full で、店名の長さが列の幅を広げないようにする */}
+      {isSafeExternalUrl(listing.url) ? (
+        <a
+          href={listing.url ?? undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={listing.store}
+          className="flex w-0 min-w-full justify-end gap-0.5 text-xs font-normal text-indigo-700 hover:underline dark:text-indigo-400"
+        >
+          <span className="min-w-0 truncate">{listing.store}</span>
+          <span className="flex-none">↗</span>
+        </a>
+      ) : (
+        <span
+          title={listing.store}
+          className="block w-0 min-w-full truncate text-xs font-normal text-zinc-500"
+        >
+          {listing.store}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** 出品ごとの売り切れの印。商品の「売り切れ」と違い、その出品だけを最安値の候補から外す */
+function ListingSoldOutButton({
+  productId,
+  listing,
+}: {
+  productId: number;
+  listing: Listing;
+}) {
+  return (
+    <form action={setRecordSoldOut}>
+      <input type="hidden" name="id" value={listing.id} />
+      <input type="hidden" name="productId" value={productId} />
+      <input type="hidden" name="soldOut" value={listing.soldOut ? "0" : "1"} />
+      <button
+        type="submit"
+        title={
+          listing.soldOut
+            ? "この出品を在庫ありに戻す"
+            : "この出品だけを売り切れにする"
+        }
+        className={`${rowButton} text-zinc-500`}
+      >
+        {listing.soldOut ? "出品を戻す" : "出品が売れた"}
+      </button>
+    </form>
+  );
+}
+
+/** 出品の行のセル。製品の行より詰め、固定した列は下をくぐる列が透けないよう背景を塗る */
+const listingCell = `whitespace-nowrap px-3 py-1 text-right tabular-nums ${frozenEdge} data-[frozen]:bg-white dark:data-[frozen]:bg-zinc-950`;
 
 function cellClass(isBest: boolean): string {
   // 固定した列は下をくぐる列が透けないよう背景を塗る（一番良い値の色はそのまま）
@@ -727,144 +799,201 @@ export default async function ComparePage({
                     const cost = costField
                       ? costPer(item.best?.price, item.specs[costField.id]?.num)
                       : null;
+                    const listings = item.otherListings.slice(
+                      0,
+                      MAX_LISTING_ROWS,
+                    );
+                    const moreListings =
+                      item.otherListings.length - listings.length;
                     return (
-                      <tr
-                        key={item.id}
-                        className={
-                          item.hidden || item.soldOut ? "opacity-50" : undefined
-                        }
-                      >
-                        <td
-                          data-col="name"
-                          className={`sticky left-0 z-10 bg-white px-3 py-2 dark:bg-zinc-950 ${frozenEdge}`}
+                      <Fragment key={item.id}>
+                        <tr
+                          className={
+                            item.hidden || item.soldOut
+                              ? "opacity-50"
+                              : undefined
+                          }
                         >
-                          {/* 商品名は 1 行で省くので、セルの幅ではなく --col-w（列幅を変えたときの幅）から左右の余白を引いた幅に収める。
+                          <td
+                            data-col="name"
+                            className={`sticky left-0 z-10 bg-white px-3 py-2 dark:bg-zinc-950 ${frozenEdge}`}
+                          >
+                            {/* 商品名は 1 行で省くので、セルの幅ではなく --col-w（列幅を変えたときの幅）から左右の余白を引いた幅に収める。
                               スマホでは既定を細くし、固定した商品の列が画面を埋めないようにする */}
-                          <span className="flex max-w-[calc(var(--col-w,10rem)-1.5rem)] items-center gap-1 sm:max-w-[calc(var(--col-w,17.5rem)-1.5rem)]">
-                            <FavoriteButton
-                              id={item.id}
-                              favorite={item.favorite}
-                            />
-                            <Link
-                              href={`/products/${item.id}`}
-                              className="flex min-w-0 items-center gap-2 hover:underline"
-                            >
-                              {/* 狭い画面では名前の幅を優先し、画像は出さない */}
-                              <span className="hidden h-10 w-10 flex-none overflow-hidden rounded bg-zinc-100 sm:block dark:bg-zinc-800">
-                                {item.imageKey && (
-                                  <img
-                                    src={imageUrl(item.imageKey)}
-                                    alt=""
-                                    className="h-full w-full object-contain"
-                                    loading="lazy"
-                                  />
-                                )}
-                              </span>
-                              <span className="min-w-0">
-                                <span className="block truncate font-medium">
-                                  {item.soldOut && <SoldOutBadge />}
-                                  {item.name}
+                            <span className="flex max-w-[calc(var(--col-w,10rem)-1.5rem)] items-center gap-1 sm:max-w-[calc(var(--col-w,17.5rem)-1.5rem)]">
+                              <FavoriteButton
+                                id={item.id}
+                                favorite={item.favorite}
+                              />
+                              <Link
+                                href={`/products/${item.id}`}
+                                className="flex min-w-0 items-center gap-2 hover:underline"
+                              >
+                                {/* 狭い画面では名前の幅を優先し、画像は出さない */}
+                                <span className="hidden h-10 w-10 flex-none overflow-hidden rounded bg-zinc-100 sm:block dark:bg-zinc-800">
+                                  {item.imageKey && (
+                                    <img
+                                      src={imageUrl(item.imageKey)}
+                                      alt=""
+                                      className="h-full w-full object-contain"
+                                      loading="lazy"
+                                    />
+                                  )}
                                 </span>
-                                {item.maker && (
-                                  <span className="block truncate text-xs text-zinc-500">
-                                    {item.maker}
+                                <span className="min-w-0">
+                                  <span className="block truncate font-medium">
+                                    {item.soldOut && <SoldOutBadge />}
+                                    {item.name}
                                   </span>
-                                )}
-                              </span>
-                            </Link>
-                          </span>
-                        </td>
-                        {scores && (
-                          <td
-                            data-col="score"
-                            className={cellClass(
-                              isBest(item, "score", scores.get(item.id)),
-                            )}
-                          >
-                            {scores.has(item.id) ? (
-                              <>
-                                {formatNumber(scores.get(item.id) ?? 0, 0)} 点
-                                <span className="block text-xs font-normal text-zinc-500">
-                                  {ranks?.get(item.id)} 位
+                                  {item.maker && (
+                                    <span className="block truncate text-xs text-zinc-500">
+                                      {item.maker}
+                                    </span>
+                                  )}
                                 </span>
-                              </>
-                            ) : (
-                              // 売り切れはスコアの対象外
-                              <span className="text-zinc-400">—</span>
-                            )}
+                              </Link>
+                            </span>
                           </td>
-                        )}
-                        <td
-                          data-col="price"
-                          className={cellClass(
-                            isBest(item, "price", item.best?.price),
-                          )}
-                        >
-                          {item.best ? (
-                            <>
-                              {item.best.used && <UsedBadge />}
-                              {formatYen(item.best.price)}
-                              {/* 比較表から買いに行けるよう、最安値を記録したお店のページへ飛べるようにする */}
-                              {/* 店名は列の幅に合わせて 1 行で省く。w-0 min-w-full で、店名の長さが列の幅を広げないようにする */}
-                              {isSafeExternalUrl(item.best.url) ? (
-                                <a
-                                  href={item.best.url ?? undefined}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title={item.best.store}
-                                  className="flex w-0 min-w-full justify-end gap-0.5 text-xs font-normal text-indigo-700 hover:underline dark:text-indigo-400"
-                                >
-                                  <span className="min-w-0 truncate">
-                                    {item.best.store}
-                                  </span>
-                                  <span className="flex-none">↗</span>
-                                </a>
-                              ) : (
-                                <span
-                                  title={item.best.store}
-                                  className="block w-0 min-w-full truncate text-xs font-normal text-zinc-500"
-                                >
-                                  {item.best.store}
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            <span className="text-zinc-400">—</span>
-                          )}
-                        </td>
-                        {costField && (
-                          <td
-                            data-col="cost"
-                            className={cellClass(isBest(item, "cost", cost))}
-                          >
-                            {cost === null ? (
-                              <span className="text-zinc-400">—</span>
-                            ) : (
-                              formatYen(cost, cost < 100 ? 2 : 0)
-                            )}
-                          </td>
-                        )}
-                        {fields.map((f) => {
-                          const text = formatSpec(f, item.specs[f.id]);
-                          return (
+                          {scores && (
                             <td
-                              key={f.id}
-                              data-col={`f${f.id}`}
+                              data-col="score"
                               className={cellClass(
-                                isBest(item, f.id, item.specs[f.id]?.num),
+                                isBest(item, "score", scores.get(item.id)),
                               )}
                             >
-                              {text ?? <span className="text-zinc-400">—</span>}
+                              {scores.has(item.id) ? (
+                                <>
+                                  {formatNumber(scores.get(item.id) ?? 0, 0)} 点
+                                  <span className="block text-xs font-normal text-zinc-500">
+                                    {ranks?.get(item.id)} 位
+                                  </span>
+                                </>
+                              ) : (
+                                // 売り切れはスコアの対象外
+                                <span className="text-zinc-400">—</span>
+                              )}
                             </td>
-                          );
-                        })}
-                        <td data-col="created" className={cellClass(false)}>
-                          {item.createdAt}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <RowActions item={item} />
-                        </td>
-                      </tr>
+                          )}
+                          <td
+                            data-col="price"
+                            className={cellClass(
+                              isBest(item, "price", item.best?.price),
+                            )}
+                          >
+                            {item.best ? (
+                              <ListingPrice listing={item.best} />
+                            ) : (
+                              <span className="text-zinc-400">—</span>
+                            )}
+                          </td>
+                          {costField && (
+                            <td
+                              data-col="cost"
+                              className={cellClass(isBest(item, "cost", cost))}
+                            >
+                              {cost === null ? (
+                                <span className="text-zinc-400">—</span>
+                              ) : (
+                                formatYen(cost, cost < 100 ? 2 : 0)
+                              )}
+                            </td>
+                          )}
+                          {fields.map((f) => {
+                            const text = formatSpec(f, item.specs[f.id]);
+                            return (
+                              <td
+                                key={f.id}
+                                data-col={`f${f.id}`}
+                                className={cellClass(
+                                  isBest(item, f.id, item.specs[f.id]?.num),
+                                )}
+                              >
+                                {text ?? (
+                                  <span className="text-zinc-400">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td data-col="created" className={cellClass(false)}>
+                            {item.createdAt}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <span className="flex justify-end gap-1">
+                              {item.best && (
+                                <ListingSoldOutButton
+                                  productId={item.id}
+                                  listing={item.best}
+                                />
+                              )}
+                              <RowActions item={item} />
+                            </span>
+                          </td>
+                        </tr>
+                        {/* 最安値のほかの出品。最安の出品が売れても、ほかに買える出品があると分かるようにする */}
+                        {listings.map((l) => (
+                          <tr
+                            key={`l${l.id}`}
+                            className={`text-xs text-zinc-600 dark:text-zinc-400 ${
+                              item.hidden || item.soldOut || l.soldOut
+                                ? "opacity-50"
+                                : ""
+                            }`}
+                          >
+                            <td
+                              data-col="name"
+                              className={`sticky left-0 z-10 bg-white px-3 py-1 dark:bg-zinc-950 ${frozenEdge}`}
+                            >
+                              <span className="block max-w-[calc(var(--col-w,10rem)-1.5rem)] truncate pl-8 sm:max-w-[calc(var(--col-w,17.5rem)-1.5rem)]">
+                                └ {l.soldOut && <SoldOutBadge />}
+                                {l.store}
+                                <span className="ml-1 text-zinc-400">
+                                  {l.recordedAt}
+                                </span>
+                              </span>
+                            </td>
+                            {scores && (
+                              <td data-col="score" className={listingCell} />
+                            )}
+                            <td data-col="price" className={listingCell}>
+                              <ListingPrice listing={l} />
+                            </td>
+                            {costField && (
+                              <td data-col="cost" className={listingCell} />
+                            )}
+                            {fields.map((f) => (
+                              <td
+                                key={f.id}
+                                data-col={`f${f.id}`}
+                                className={listingCell}
+                              />
+                            ))}
+                            <td data-col="created" className={listingCell} />
+                            <td className="px-3 py-1 whitespace-nowrap">
+                              <span className="flex justify-end">
+                                <ListingSoldOutButton
+                                  productId={item.id}
+                                  listing={l}
+                                />
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {moreListings > 0 && (
+                          <tr className="text-xs">
+                            <td
+                              data-col="name"
+                              className={`sticky left-0 z-10 bg-white px-3 py-1 dark:bg-zinc-950 ${frozenEdge}`}
+                            >
+                              <Link
+                                href={`/products/${item.id}`}
+                                className="block pl-8 text-indigo-700 hover:underline dark:text-indigo-400"
+                              >
+                                └ ほか {moreListings} 件 →
+                              </Link>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>

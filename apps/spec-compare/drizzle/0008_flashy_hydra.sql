@@ -1,0 +1,1 @@
+ALTER TABLE `price_records` ADD `sold_out` integer DEFAULT false NOT NULL;

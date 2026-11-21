@@ -12,10 +12,13 @@ export type FieldDef = {
 /** 1 つのスペック値。number / bool は num、text は text に入る */
 export type SpecCell = { num: number | null; text: string | null };
 
-export type BestPrice = Pick<
+/** 比較表に出す出品。同じ URL の記録は最新の 1 件を出品とみなす */
+export type Listing = Pick<
   PriceRecord,
-  "id" | "store" | "price" | "used" | "recordedAt" | "url"
+  "id" | "store" | "price" | "used" | "recordedAt" | "url" | "soldOut"
 >;
+
+export type BestPrice = Listing;
 
 export type CompareItem = {
   id: number;
@@ -25,10 +28,14 @@ export type CompareItem = {
   /** fieldId → 値。未入力の項目はキーを持たない */
   specs: Record<number, SpecCell>;
   best: BestPrice | null;
+  /** 最安値のほかの出品。売れていないものを安い順に並べ、その後に売り切れを並べる */
+  otherListings: Listing[];
   /** 候補から外して比較表に出さない商品 */
   hidden: boolean;
-  /** 売り切れて比較表に出さない商品 */
+  /** 今は買えない商品。売り切れの印を付けたか、出品が全部売り切れた */
   soldOut: boolean;
+  /** 商品そのものに売り切れの印を付けたか（ボタンの表示に使う） */
+  markedSoldOut: boolean;
   favorite: boolean;
   /** 商品を登録した日（日本時間の YYYY-MM-DD） */
   createdAt: string;
@@ -68,10 +75,15 @@ export type CompareQuery = {
   favoritesOnly: boolean;
 };
 
-type PriceCandidate = Pick<PriceRecord, "id" | "price" | "used" | "recordedAt">;
+type PriceCandidate = Pick<
+  PriceRecord,
+  "id" | "price" | "used" | "recordedAt"
+> &
+  Partial<Pick<PriceRecord, "soldOut">>;
 
 /**
  * 価格の記録から最安値を選ぶ。同額なら新しい記録を優先する。
+ * 売り切れの記録は、売れていない記録が 1 件も無いときだけ相場として選ぶ。
  * 中古は状態が新品と違い同じ物の値段として比べられないので、新品の記録があれば新品だけから選ぶ。
  * 新品の記録が無ければ（もう新品が売っていない機種など）中古から選ぶ。includeUsed なら新品と中古をまとめて比べる
  */
@@ -79,8 +91,68 @@ export function pickBest<T extends PriceCandidate>(
   records: readonly T[],
   includeUsed = false,
 ): T | null {
+  const available = records.filter((r) => !r.soldOut);
+  return pickBestOf(available.length > 0 ? available : records, includeUsed);
+}
+
+function pickBestOf<T extends PriceCandidate>(
+  records: readonly T[],
+  includeUsed: boolean,
+): T | null {
   if (includeUsed) return cheapest(records);
   return cheapest(records.filter((r) => !r.used)) ?? cheapest(records);
+}
+
+/** a が b より新しい記録か。記録日が同じなら後から足した方を新しいとみなす */
+function isNewer(a: PriceCandidate, b: PriceCandidate): boolean {
+  return (
+    a.recordedAt > b.recordedAt ||
+    (a.recordedAt === b.recordedAt && a.id > b.id)
+  );
+}
+
+/**
+ * 同じ出品の記録を最新の 1 件にまとめる。
+ * 同じ URL（URL が無ければ同じ店名）で新品・中古の別も同じなら、同じ出品の値段を記録し直したものとみなす
+ */
+export function latestListings<
+  T extends PriceCandidate & Pick<PriceRecord, "store" | "url">,
+>(records: readonly T[]): T[] {
+  const latest = new Map<string, T>();
+  for (const r of records) {
+    const key = `${r.used ? "used" : "new"}:${r.url ? `url:${r.url}` : `store:${r.store}`}`;
+    const current = latest.get(key);
+    if (!current || isNewer(r, current)) latest.set(key, r);
+  }
+  return [...latest.values()];
+}
+
+/** 売れていない出品を安い順に、その後に売り切れを安い順に並べる */
+function byAvailabilityAndPrice(a: PriceCandidate, b: PriceCandidate): number {
+  if (a.soldOut !== b.soldOut) return a.soldOut ? 1 : -1;
+  if (a.price !== b.price) return a.price - b.price;
+  return isNewer(a, b) ? -1 : 1;
+}
+
+/**
+ * 商品の出品をまとめ、最安値・ほかの出品・全部売り切れたかを返す。
+ * includeUsed でないときに最安値が新品なら、ほかの出品にも中古を出さない（比較表の見方をそろえる）
+ */
+export function summarizeListings<T extends Listing>(
+  records: readonly T[],
+  includeUsed: boolean,
+): { best: T | null; others: T[]; allSoldOut: boolean } {
+  const listings = latestListings(records);
+  const best = pickBest(listings, includeUsed);
+  const hideUsed = !includeUsed && best !== null && !best.used;
+  const others = listings
+    .filter((l) => l !== best && !(hideUsed && l.used))
+    .sort(byAvailabilityAndPrice);
+  return {
+    best,
+    others,
+    allSoldOut: listings.length > 0 && listings.every((l) => l.soldOut),
+  };
 }
 
 function cheapest<T extends PriceCandidate>(records: readonly T[]): T | null {
@@ -89,9 +161,7 @@ function cheapest<T extends PriceCandidate>(records: readonly T[]): T | null {
     if (
       best === null ||
       r.price < best.price ||
-      (r.price === best.price &&
-        (r.recordedAt > best.recordedAt ||
-          (r.recordedAt === best.recordedAt && r.id > best.id)))
+      (r.price === best.price && isNewer(r, best))
     ) {
       best = r;
     }

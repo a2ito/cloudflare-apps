@@ -138,6 +138,8 @@ export const priceRecords = sqliteTable(
     /** 商品ページへのリンク（http/https のみ） */
     url: text("url"),
     memo: text("memo"),
+    /** この出品が売れた・在庫が切れたか。最安値は売れていない記録から選び、売れた記録は相場として残す */
+    soldOut: integer("sold_out", { mode: "boolean" }).notNull().default(false),
     createdAt: timestamp("created_at"),
   },
   (t) => [index("price_records_product_idx").on(t.productId)],

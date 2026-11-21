@@ -8,6 +8,7 @@ import {
   makerChips,
   matches,
   parseCompareQuery,
+  latestListings,
   pickBest,
   quickFilterChips,
   rankIn,
@@ -15,6 +16,7 @@ import {
   scoreItems,
   scoreRanks,
   sortItems,
+  summarizeListings,
   type CompareItem,
   type CompareQuery,
   type FieldDef,
@@ -78,9 +80,12 @@ function item(
             used: false,
             recordedAt: "2026-10-12",
             url: null,
+            soldOut: false,
           },
+    otherListings: [],
     hidden: false,
     soldOut: false,
+    markedSoldOut: false,
     favorite: false,
     createdAt: `2026-10-${String(id).padStart(2, "0")}`,
   };
@@ -135,6 +140,190 @@ describe("pickBest", () => {
       { id: 4, price: 500, used: true, recordedAt: "2026-10-01" },
     ];
     expect(pickBest(records)?.id).toBe(4);
+  });
+});
+
+describe("pickBest と売り切れ", () => {
+  it("売り切れの記録は、売れていない記録があれば選ばない", () => {
+    const records = [
+      {
+        id: 1,
+        price: 500,
+        used: false,
+        recordedAt: "2026-10-01",
+        soldOut: true,
+      },
+      {
+        id: 2,
+        price: 900,
+        used: false,
+        recordedAt: "2026-10-01",
+        soldOut: false,
+      },
+    ];
+    expect(pickBest(records)?.id).toBe(2);
+  });
+  it("全部売り切れなら、一番安い記録を相場として選ぶ", () => {
+    const records = [
+      {
+        id: 1,
+        price: 500,
+        used: false,
+        recordedAt: "2026-10-01",
+        soldOut: true,
+      },
+      {
+        id: 2,
+        price: 900,
+        used: false,
+        recordedAt: "2026-10-01",
+        soldOut: true,
+      },
+    ];
+    expect(pickBest(records)?.id).toBe(1);
+  });
+  it("新品が全部売れたら、売れていない中古から選ぶ", () => {
+    const records = [
+      {
+        id: 1,
+        price: 900,
+        used: false,
+        recordedAt: "2026-10-01",
+        soldOut: true,
+      },
+      {
+        id: 2,
+        price: 700,
+        used: true,
+        recordedAt: "2026-10-01",
+        soldOut: false,
+      },
+    ];
+    expect(pickBest(records)?.id).toBe(2);
+  });
+});
+
+const listing = (
+  id: number,
+  price: number,
+  extra: Partial<{
+    used: boolean;
+    soldOut: boolean;
+    url: string | null;
+    store: string;
+    recordedAt: string;
+  }> = {},
+) => ({
+  id,
+  price,
+  used: false,
+  soldOut: false,
+  url: null,
+  store: `店${id}`,
+  recordedAt: "2026-11-01",
+  ...extra,
+});
+
+describe("latestListings", () => {
+  it("同じ URL の記録は最新の 1 件にまとめ、URL が無ければ店名でまとめる", () => {
+    const records = [
+      listing(1, 900, { url: "https://a.example/1", recordedAt: "2026-10-01" }),
+      listing(2, 950, { url: "https://a.example/1", recordedAt: "2026-11-01" }),
+      listing(3, 800, { store: "店X", recordedAt: "2026-11-01" }),
+      listing(4, 700, { store: "店X", recordedAt: "2026-10-01" }),
+      listing(5, 600, { url: "https://a.example/1", used: true }),
+    ];
+    expect(
+      latestListings(records)
+        .map((r) => r.id)
+        .sort(),
+    ).toEqual([2, 3, 5]);
+  });
+});
+
+describe("summarizeListings", () => {
+  it("最安値のほかの出品を、売れていないものを安い順、その後に売り切れの順で返す", () => {
+    const { best, others, allSoldOut } = summarizeListings(
+      [
+        listing(1, 41800, { soldOut: true, used: true }),
+        listing(2, 47080, { used: true }),
+        listing(3, 44726, { used: true }),
+        listing(4, 51980, { used: true }),
+        listing(5, 59800, { soldOut: true }),
+      ],
+      true,
+    );
+    expect(best?.id).toBe(3);
+    expect(others.map((l) => l.id)).toEqual([2, 4, 1, 5]);
+    expect(allSoldOut).toBe(false);
+  });
+
+  it("中古を含めないとき、最安値が新品ならほかの出品にも中古を出さない", () => {
+    const records = [
+      listing(1, 900),
+      listing(2, 1000),
+      listing(3, 500, { used: true }),
+    ];
+    expect(summarizeListings(records, false).others.map((l) => l.id)).toEqual([
+      2,
+    ]);
+    // 新品が全部売れて中古が最安値になったら、中古も並べる
+    const soldNew = [
+      listing(1, 900, { soldOut: true }),
+      listing(3, 500, { used: true }),
+      listing(4, 600, { used: true }),
+    ];
+    const s = summarizeListings(soldNew, false);
+    expect(s.best?.id).toBe(3);
+    expect(s.others.map((l) => l.id)).toEqual([4, 1]);
+  });
+
+  it("出品が全部売れたら allSoldOut。記録が無ければ false", () => {
+    expect(
+      summarizeListings([listing(1, 900, { soldOut: true })], true).allSoldOut,
+    ).toBe(true);
+    expect(summarizeListings([], true)).toEqual({
+      best: null,
+      others: [],
+      allSoldOut: false,
+    });
+  });
+
+  it("古い記録に売り切れの印が付いていても、最新の記録が売れていなければ買える", () => {
+    const s = summarizeListings(
+      [
+        listing(1, 900, {
+          url: "https://a.example/1",
+          recordedAt: "2026-10-01",
+          soldOut: true,
+        }),
+        listing(2, 950, {
+          url: "https://a.example/1",
+          recordedAt: "2026-11-01",
+        }),
+      ],
+      true,
+    );
+    expect(s.best?.id).toBe(2);
+    expect(s.allSoldOut).toBe(false);
+  });
+
+  it("同じ URL の古い記録は最安値にも出品にも使わない", () => {
+    const s = summarizeListings(
+      [
+        listing(1, 207432, {
+          url: "https://kakaku.example/1",
+          recordedAt: "2026-10-24",
+        }),
+        listing(2, 211967, {
+          url: "https://kakaku.example/1",
+          recordedAt: "2026-11-20",
+        }),
+      ],
+      true,
+    );
+    expect(s.best?.id).toBe(2);
+    expect(s.others).toEqual([]);
   });
 });
 
@@ -619,6 +808,28 @@ describe("compare", () => {
       costFieldId: 2,
     });
     expect(best.get("cost")).toBe(6250);
+  });
+});
+
+describe("出品が全部売れた商品", () => {
+  it("売り切れとして扱い、一番良い値と総合スコアから外す", () => {
+    const sold = { ...item(1, 100, { 2: 64 }), soldOut: true };
+    const items = [sold, item(2, 200, { 2: 32 }), item(3, 300, { 2: 16 })];
+    const query = { ...baseQuery, showSoldOut: true };
+    const { rows, best, scores } = compare(items, [MEMORY], query, {
+      price: 0,
+      fields: { 2: 1 },
+    });
+    expect(rows.map((r) => r.id)).toEqual([1, 2, 3]);
+    // 一番良い値は買える商品だけで決める
+    expect(best.get("price")).toBe(200);
+    expect(best.get(2)).toBe(32);
+    expect(scores?.has(1)).toBe(false);
+    expect(
+      compare(items, [MEMORY], { ...query, showSoldOut: false }).rows.map(
+        (r) => r.id,
+      ),
+    ).toEqual([2, 3]);
   });
 });
 

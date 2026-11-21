@@ -57,6 +57,13 @@
       "when": 1793408393477,
       "tag": "0007_misty_mindworm",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795292903255,
+      "tag": "0008_flashy_hydra",
+      "breakpoints": true
     }
   ]
 }

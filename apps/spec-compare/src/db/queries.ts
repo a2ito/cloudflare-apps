@@ -1,5 +1,9 @@
 import { asc, count, desc, eq, isNotNull } from "drizzle-orm";
-import { pickBest, type CompareItem, type SpecCell } from "@/lib/compare";
+import {
+  summarizeListings,
+  type CompareItem,
+  type SpecCell,
+} from "@/lib/compare";
 import { jstDateOf } from "@/lib/date";
 import type { Db } from "./index";
 import {
@@ -108,6 +112,7 @@ export async function listCompareItems(
         used: priceRecords.used,
         recordedAt: priceRecords.recordedAt,
         url: priceRecords.url,
+        soldOut: priceRecords.soldOut,
       })
       .from(priceRecords)
       .innerJoin(products, eq(products.id, priceRecords.productId))
@@ -123,25 +128,24 @@ export async function listCompareItems(
   const recordsByProduct = Map.groupBy(records, (r) => r.productId);
 
   return rows.map((p) => {
-    const best = pickBest(recordsByProduct.get(p.id) ?? [], includeUsed);
+    const { best, others, allSoldOut } = summarizeListings(
+      recordsByProduct.get(p.id) ?? [],
+      includeUsed,
+    );
     return {
       id: p.id,
       name: p.name,
       maker: p.maker,
       imageKey: p.imageKey,
       hidden: p.hidden,
-      soldOut: p.soldOut,
+      // 出品が全部売れたら、商品に印を付けていなくても今は買えない
+      soldOut: p.soldOut || allSoldOut,
+      markedSoldOut: p.soldOut,
       favorite: p.favorite,
       createdAt: jstDateOf(p.createdAt),
       specs: specsByProduct.get(p.id) ?? {},
-      best: best && {
-        id: best.id,
-        store: best.store,
-        price: best.price,
-        used: best.used,
-        recordedAt: best.recordedAt,
-        url: best.url,
-      },
+      best,
+      otherListings: others,
     };
   });
 }

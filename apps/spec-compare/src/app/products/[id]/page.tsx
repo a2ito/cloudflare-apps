@@ -6,7 +6,11 @@ import {
   setProductSoldOut,
 } from "@/app/actions/products";
 import { FavoriteButton } from "@/components/favorite-button";
-import { createRecord, deleteRecord } from "@/app/actions/records";
+import {
+  createRecord,
+  deleteRecord,
+  setRecordSoldOut,
+} from "@/app/actions/records";
 import { RecordForm } from "@/components/record-form";
 import {
   ConfirmForm,
@@ -24,7 +28,7 @@ import {
   listStores,
 } from "@/db/queries";
 import { requireUser } from "@/lib/auth";
-import { formatSpec, formatYen, rankIn } from "@/lib/compare";
+import { formatSpec, formatYen, rankIn, latestListings } from "@/lib/compare";
 import { today } from "@/lib/date";
 import { imageUrl } from "@/lib/images";
 import { parseId } from "@/lib/params";
@@ -52,6 +56,8 @@ export default async function ProductPage({
   // （その商品自身は、非表示・売り切れでも自分の順位が分かるように入れる）
   const ranked = items.filter((i) => (!i.hidden && !i.soldOut) || i.id === id);
   const bestId = self?.best?.id;
+  // 同じ出品（同じ URL・店名）の記録は最新の 1 件だけが比較表に効く。古い記録には売り切れの印を付けさせない
+  const latestIds = new Set(latestListings(records).map((r) => r.id));
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -78,7 +84,8 @@ export default async function ProductPage({
           </Link>
           <h1 className="flex flex-wrap items-center gap-x-1 text-2xl font-bold">
             <FavoriteButton id={id} favorite={product.favorite} />
-            {product.soldOut && <SoldOutBadge />}
+            {/* 出品が全部売れたときも売り切れと出す */}
+            {(self?.soldOut ?? product.soldOut) && <SoldOutBadge />}
             {product.name}
             {product.hidden && (
               <span className="ml-2 rounded bg-zinc-200 px-1.5 align-middle text-xs font-normal text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
@@ -202,7 +209,8 @@ export default async function ProductPage({
                   className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm"
                 >
                   <div className="min-w-0">
-                    <p>
+                    <p className={r.soldOut ? "opacity-50" : undefined}>
+                      {r.soldOut && <SoldOutBadge />}
                       {r.used && <UsedBadge />}
                       <span
                         className={`font-semibold ${r.id === bestId ? "text-indigo-700 dark:text-indigo-400" : ""}`}
@@ -232,6 +240,36 @@ export default async function ProductPage({
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* 売れた出品は消さずに印を付ける。相場として残し、最安値の候補からだけ外す */}
+                    {latestIds.has(r.id) ? (
+                      <form action={setRecordSoldOut}>
+                        <input type="hidden" name="id" value={r.id} />
+                        <input type="hidden" name="productId" value={id} />
+                        <input
+                          type="hidden"
+                          name="soldOut"
+                          value={r.soldOut ? "0" : "1"}
+                        />
+                        <button
+                          type="submit"
+                          title={
+                            r.soldOut
+                              ? "この出品を在庫ありに戻す"
+                              : "この出品だけを売り切れにする（商品全体の売り切れは上のボタン）"
+                          }
+                          className="text-zinc-500 hover:underline"
+                        >
+                          {r.soldOut ? "在庫ありに戻す" : "出品が売れた"}
+                        </button>
+                      </form>
+                    ) : (
+                      <span
+                        title="同じ出品の新しい記録があるので、比較表には使っていません"
+                        className="text-xs text-zinc-400"
+                      >
+                        以前の記録
+                      </span>
+                    )}
                     <Link
                       href={`/products/${id}/records/${r.id}/edit`}
                       className="text-zinc-500 hover:underline"

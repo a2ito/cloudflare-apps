@@ -63,6 +63,7 @@ export async function createRecord(
     .limit(1);
   if (product.length === 0) return { error: "商品が見つかりません" };
 
+  // 売り切れの印は付けない。売れた出品に新しい値段を記録したら、また売り出されたものとして最新の記録が効く
   await db.insert(priceRecords).values({
     productId: parsed.data.productId,
     store: parsed.data.store,
@@ -127,5 +128,35 @@ export async function deleteRecord(formData: FormData): Promise<void> {
         eq(priceRecords.productId, parsed.data.productId),
       ),
     );
+  await revalidateProduct(parsed.data.productId);
+}
+
+/** 出品が売れた・在庫が切れたときに印を付ける（外せば戻る）。記録は相場として残し、最安値の候補からだけ外す */
+export async function setRecordSoldOut(formData: FormData): Promise<void> {
+  await requireUser();
+  const parsed = parseForm(
+    z.object({
+      id: idFromForm,
+      productId: idFromForm,
+      soldOut: z.enum(["0", "1"]),
+    }),
+    formData,
+  );
+  if (!parsed.ok) throw new Error(parsed.error);
+
+  const db = await getDb();
+  // 別の商品の記録を書き換えさせない
+  const updated = await db
+    .update(priceRecords)
+    .set({ soldOut: parsed.data.soldOut === "1" })
+    .where(
+      and(
+        eq(priceRecords.id, parsed.data.id),
+        eq(priceRecords.productId, parsed.data.productId),
+      ),
+    )
+    .returning({ id: priceRecords.id });
+  if (updated.length === 0) throw new Error("価格の記録が見つかりません");
+
   await revalidateProduct(parsed.data.productId);
 }

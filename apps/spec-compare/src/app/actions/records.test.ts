@@ -29,7 +29,8 @@ vi.mock("next/navigation", async () => {
     },
   };
 });
-const { createRecord, deleteRecord, updateRecord } = await import("./records");
+const { createRecord, deleteRecord, setRecordSoldOut, updateRecord } =
+  await import("./records");
 
 beforeAll(async () => {
   t = await createTestEnv();
@@ -162,5 +163,43 @@ describe("deleteRecord", () => {
     expect(await listRecords(t.db, 1)).toHaveLength(1);
     await deleteRecord(formData({ id: 1, productId: 1 }));
     expect(await listRecords(t.db, 1)).toEqual([]);
+  });
+});
+
+describe("setRecordSoldOut", () => {
+  it("売れた出品を最安値から外し、次に安い出品を出す。全部売れたら商品も売り切れ扱い", async () => {
+    await createRecord({}, record({ store: "メルカリ", price: 40000 }));
+    await createRecord({}, record({ store: "ゲオ", price: 45000 }));
+
+    await setRecordSoldOut(formData({ id: 1, productId: 1, soldOut: "1" }));
+    let [a] = await listCompareItems(t.db, 1);
+    expect(a.best).toMatchObject({ store: "ゲオ", price: 45000 });
+    expect(a.otherListings).toMatchObject([
+      { store: "メルカリ", soldOut: true },
+    ]);
+    expect(a.soldOut).toBe(false);
+    expect(revalidated).toEqual(
+      expect.arrayContaining(["/products/1", "/categories/1"]),
+    );
+
+    await setRecordSoldOut(formData({ id: 2, productId: 1, soldOut: "1" }));
+    [a] = await listCompareItems(t.db, 1);
+    // 全部売れたら、一番安かった値段を相場として出す
+    expect(a.best).toMatchObject({ store: "メルカリ", soldOut: true });
+    expect(a.soldOut).toBe(true);
+    expect(a.markedSoldOut).toBe(false);
+
+    await setRecordSoldOut(formData({ id: 1, productId: 1, soldOut: "0" }));
+    [a] = await listCompareItems(t.db, 1);
+    expect(a.best).toMatchObject({ store: "メルカリ", soldOut: false });
+    expect(a.soldOut).toBe(false);
+  });
+
+  it("別の商品の記録は書き換えない", async () => {
+    await createRecord({}, record());
+    await expect(
+      setRecordSoldOut(formData({ id: 1, productId: 2, soldOut: "1" })),
+    ).rejects.toThrow("価格の記録が見つかりません");
+    expect((await listRecords(t.db, 1))[0].soldOut).toBe(false);
   });
 });

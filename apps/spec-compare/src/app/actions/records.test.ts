@@ -187,7 +187,6 @@ describe("setRecordSoldOut", () => {
     // 全部売れたら、一番安かった値段を相場として出す
     expect(a.best).toMatchObject({ store: "メルカリ", soldOut: true });
     expect(a.soldOut).toBe(true);
-    expect(a.markedSoldOut).toBe(false);
 
     await setRecordSoldOut(formData({ id: 1, productId: 1, soldOut: "0" }));
     [a] = await listCompareItems(t.db, 1);

@@ -3,11 +3,7 @@ import { notFound } from "next/navigation";
 import { Fragment, Suspense } from "react";
 import { moveField } from "@/app/actions/fields";
 import { setRecordSoldOut } from "@/app/actions/records";
-import {
-  deleteProduct,
-  setProductHidden,
-  setProductSoldOut,
-} from "@/app/actions/products";
+import { deleteProduct, setProductHidden } from "@/app/actions/products";
 import { FavoriteButton } from "@/components/favorite-button";
 import { ColumnResizer } from "@/components/column-resizer";
 import { FrozenColumns, PinButton } from "@/components/frozen-columns";
@@ -158,22 +154,10 @@ function MoveButtons({
 const rowButton =
   "rounded px-1.5 py-0.5 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800";
 
-/** 行ごとの操作。非表示・売り切れは消さずに比較表から外すだけ、削除は価格の記録や画像まで消す */
+/** 行ごとの操作。非表示は消さずに比較表から外すだけ、削除は価格の記録や画像まで消す。売り切れは出品ごとに付ける */
 function RowActions({ item }: { item: CompareItem }) {
   return (
     <span className="flex justify-end gap-1">
-      <form action={setProductSoldOut}>
-        <input type="hidden" name="id" value={item.id} />
-        {/* 出品が全部売れて売り切れに見えているときも、押すのは商品そのものの印 */}
-        <input
-          type="hidden"
-          name="soldOut"
-          value={item.markedSoldOut ? "0" : "1"}
-        />
-        <button type="submit" className={`${rowButton} text-zinc-500`}>
-          {item.markedSoldOut ? "在庫あり" : "売り切れ"}
-        </button>
-      </form>
       <form action={setProductHidden}>
         <input type="hidden" name="id" value={item.id} />
         <input type="hidden" name="hidden" value={item.hidden ? "0" : "1"} />
@@ -235,7 +219,7 @@ function ListingPrice({ listing }: { listing: Listing }) {
   );
 }
 
-/** 出品ごとの売り切れの印。商品の「売り切れ」と違い、その出品だけを最安値の候補から外す */
+/** 出品ごとの売り切れの印。その出品を最安値の候補から外し、全部売れたら商品が売り切れになる */
 function ListingSoldOutButton({
   productId,
   listing,

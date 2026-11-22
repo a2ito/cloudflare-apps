@@ -64,6 +64,13 @@
       "when": 1795292903255,
       "tag": "0008_flashy_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1795307423349,
+      "tag": "0009_move_product_sold_out_to_listings",
+      "breakpoints": true
     }
   ]
 }

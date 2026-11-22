@@ -138,9 +138,7 @@ export async function listCompareItems(
       maker: p.maker,
       imageKey: p.imageKey,
       hidden: p.hidden,
-      // 出品が全部売れたら、商品に印を付けていなくても今は買えない
-      soldOut: p.soldOut || allSoldOut,
-      markedSoldOut: p.soldOut,
+      soldOut: allSoldOut,
       favorite: p.favorite,
       createdAt: jstDateOf(p.createdAt),
       specs: specsByProduct.get(p.id) ?? {},

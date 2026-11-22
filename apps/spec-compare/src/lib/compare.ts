@@ -71,6 +71,8 @@ export type CompareQuery = {
   /** 売り切れの商品も出すか */
   showSoldOut: boolean;
   favoritesOnly: boolean;
+  /** 最安値のほかの出品も製品の行の下に並べるか。既定は最安値だけ */
+  showListings: boolean;
 };
 
 type PriceCandidate = Pick<
@@ -417,6 +419,7 @@ export function parseCompareQuery(
     // 既定で出す。過去にいくらで出ていたかを相場として並べて見たいため。外すときは ?soldOut=0
     showSoldOut: checkedByDefault(params.soldOut),
     favoritesOnly: params.fav === "1",
+    showListings: params.listings === "1",
   };
 }
 

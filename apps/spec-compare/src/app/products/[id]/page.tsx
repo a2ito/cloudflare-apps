@@ -1,10 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  deleteProduct,
-  setProductHidden,
-  setProductSoldOut,
-} from "@/app/actions/products";
+import { deleteProduct, setProductHidden } from "@/app/actions/products";
 import { FavoriteButton } from "@/components/favorite-button";
 import {
   createRecord,
@@ -84,8 +80,8 @@ export default async function ProductPage({
           </Link>
           <h1 className="flex flex-wrap items-center gap-x-1 text-2xl font-bold">
             <FavoriteButton id={id} favorite={product.favorite} />
-            {/* 出品が全部売れたときも売り切れと出す */}
-            {(self?.soldOut ?? product.soldOut) && <SoldOutBadge />}
+            {/* 出品が全部売れたら売り切れ */}
+            {self?.soldOut && <SoldOutBadge />}
             {product.name}
             {product.hidden && (
               <span className="ml-2 rounded bg-zinc-200 px-1.5 align-middle text-xs font-normal text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
@@ -126,20 +122,6 @@ export default async function ProductPage({
                 className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
               >
                 {product.hidden ? "比較表に戻す" : "比較表から隠す"}
-              </button>
-            </form>
-            <form action={setProductSoldOut}>
-              <input type="hidden" name="id" value={id} />
-              <input
-                type="hidden"
-                name="soldOut"
-                value={product.soldOut ? "0" : "1"}
-              />
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-              >
-                {product.soldOut ? "在庫ありに戻す" : "売り切れにする"}
               </button>
             </form>
             <ConfirmForm
@@ -255,7 +237,7 @@ export default async function ProductPage({
                           title={
                             r.soldOut
                               ? "この出品を在庫ありに戻す"
-                              : "この出品だけを売り切れにする（商品全体の売り切れは上のボタン）"
+                              : "この出品だけを売り切れにする（全部売れたら商品が売り切れになる）"
                           }
                           className="text-zinc-500 hover:underline"
                         >

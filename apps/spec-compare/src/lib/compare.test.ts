@@ -85,7 +85,6 @@ function item(
     otherListings: [],
     hidden: false,
     soldOut: false,
-    markedSoldOut: false,
     favorite: false,
     createdAt: `2026-10-${String(id).padStart(2, "0")}`,
   };

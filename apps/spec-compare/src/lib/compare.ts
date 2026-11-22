@@ -32,10 +32,8 @@ export type CompareItem = {
   otherListings: Listing[];
   /** 候補から外して比較表に出さない商品 */
   hidden: boolean;
-  /** 今は買えない商品。売り切れの印を付けたか、出品が全部売り切れた */
+  /** 今は買えない商品。出品が全部売り切れた */
   soldOut: boolean;
-  /** 商品そのものに売り切れの印を付けたか（ボタンの表示に使う） */
-  markedSoldOut: boolean;
   favorite: boolean;
   /** 商品を登録した日（日本時間の YYYY-MM-DD） */
   createdAt: string;

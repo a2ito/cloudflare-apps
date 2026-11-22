@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Fragment, Suspense } from "react";
+import { Suspense } from "react";
 import { moveField } from "@/app/actions/fields";
 import { setRecordSoldOut } from "@/app/actions/records";
 import { deleteProduct, setProductHidden } from "@/app/actions/products";
 import { FavoriteButton } from "@/components/favorite-button";
 import { ColumnResizer } from "@/components/column-resizer";
 import { FrozenColumns, PinButton } from "@/components/frozen-columns";
+import {
+  ListingsGroup,
+  ListingsToggle,
+  ListingsWhenOpen,
+} from "@/components/listings-toggle";
 import { QuickFilterMemory } from "@/components/quick-filter-memory";
 import { QuickFiltersPanel } from "@/components/quick-filters-panel";
 import {
@@ -793,15 +798,20 @@ export default async function ComparePage({
                     const cost = costField
                       ? costPer(item.best?.price, item.specs[costField.id]?.num)
                       : null;
-                    // 既定では最安値だけ。「ほかの出品も表示」のときに製品の行の下へ並べる
-                    const listings = query.showListings
-                      ? item.otherListings.slice(0, MAX_LISTING_ROWS)
-                      : [];
-                    const moreListings = query.showListings
-                      ? item.otherListings.length - listings.length
-                      : 0;
+                    const listings = item.otherListings.slice(
+                      0,
+                      MAX_LISTING_ROWS,
+                    );
+                    const moreListings =
+                      item.otherListings.length - listings.length;
+                    // 既定では最安値だけ。製品ごとの「ほか N 件」で、その製品の下に並べる。
+                    // 「ほかの出品も表示」のときは全部開いた状態で始める
                     return (
-                      <Fragment key={item.id}>
+                      // 「ほかの出品も表示」を切り替えたら開閉も初期値からやり直す
+                      <ListingsGroup
+                        key={`${item.id}:${query.showListings}`}
+                        defaultOpen={query.showListings}
+                      >
                         <tr
                           className={
                             item.hidden || item.soldOut
@@ -880,6 +890,11 @@ export default async function ComparePage({
                             ) : (
                               <span className="text-zinc-400">—</span>
                             )}
+                            {item.otherListings.length > 0 && (
+                              <ListingsToggle
+                                count={item.otherListings.length}
+                              />
+                            )}
                           </td>
                           {costField && (
                             <td
@@ -925,70 +940,72 @@ export default async function ComparePage({
                           </td>
                         </tr>
                         {/* 最安値のほかの出品。最安の出品が売れても、ほかに買える出品があると分かるようにする */}
-                        {listings.map((l) => (
-                          <tr
-                            key={`l${l.id}`}
-                            className={`text-xs text-zinc-600 dark:text-zinc-400 ${
-                              item.hidden || item.soldOut || l.soldOut
-                                ? "opacity-50"
-                                : ""
-                            }`}
-                          >
-                            <td
-                              data-col="name"
-                              className={`sticky left-0 z-10 bg-white px-3 py-1 dark:bg-zinc-950 ${frozenEdge}`}
+                        <ListingsWhenOpen>
+                          {listings.map((l) => (
+                            <tr
+                              key={`l${l.id}`}
+                              className={`text-xs text-zinc-600 dark:text-zinc-400 ${
+                                item.hidden || item.soldOut || l.soldOut
+                                  ? "opacity-50"
+                                  : ""
+                              }`}
                             >
-                              <span className="block max-w-[calc(var(--col-w,10rem)-1.5rem)] truncate pl-8 sm:max-w-[calc(var(--col-w,17.5rem)-1.5rem)]">
-                                └ {l.soldOut && <SoldOutBadge />}
-                                {l.store}
-                                <span className="ml-1 text-zinc-400">
-                                  {l.recordedAt}
-                                </span>
-                              </span>
-                            </td>
-                            {scores && (
-                              <td data-col="score" className={listingCell} />
-                            )}
-                            <td data-col="price" className={listingCell}>
-                              <ListingPrice listing={l} />
-                            </td>
-                            {costField && (
-                              <td data-col="cost" className={listingCell} />
-                            )}
-                            {fields.map((f) => (
                               <td
-                                key={f.id}
-                                data-col={`f${f.id}`}
-                                className={listingCell}
-                              />
-                            ))}
-                            <td data-col="created" className={listingCell} />
-                            <td className="px-3 py-1 whitespace-nowrap">
-                              <span className="flex justify-end">
-                                <ListingSoldOutButton
-                                  productId={item.id}
-                                  listing={l}
-                                />
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                        {moreListings > 0 && (
-                          <tr className="text-xs">
-                            <td
-                              data-col="name"
-                              className={`sticky left-0 z-10 bg-white px-3 py-1 dark:bg-zinc-950 ${frozenEdge}`}
-                            >
-                              <Link
-                                href={`/products/${item.id}`}
-                                className="block pl-8 text-indigo-700 hover:underline dark:text-indigo-400"
+                                data-col="name"
+                                className={`sticky left-0 z-10 bg-white px-3 py-1 dark:bg-zinc-950 ${frozenEdge}`}
                               >
-                                └ ほか {moreListings} 件 →
-                              </Link>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
+                                <span className="block max-w-[calc(var(--col-w,10rem)-1.5rem)] truncate pl-8 sm:max-w-[calc(var(--col-w,17.5rem)-1.5rem)]">
+                                  └ {l.soldOut && <SoldOutBadge />}
+                                  {l.store}
+                                  <span className="ml-1 text-zinc-400">
+                                    {l.recordedAt}
+                                  </span>
+                                </span>
+                              </td>
+                              {scores && (
+                                <td data-col="score" className={listingCell} />
+                              )}
+                              <td data-col="price" className={listingCell}>
+                                <ListingPrice listing={l} />
+                              </td>
+                              {costField && (
+                                <td data-col="cost" className={listingCell} />
+                              )}
+                              {fields.map((f) => (
+                                <td
+                                  key={f.id}
+                                  data-col={`f${f.id}`}
+                                  className={listingCell}
+                                />
+                              ))}
+                              <td data-col="created" className={listingCell} />
+                              <td className="px-3 py-1 whitespace-nowrap">
+                                <span className="flex justify-end">
+                                  <ListingSoldOutButton
+                                    productId={item.id}
+                                    listing={l}
+                                  />
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {moreListings > 0 && (
+                            <tr className="text-xs">
+                              <td
+                                data-col="name"
+                                className={`sticky left-0 z-10 bg-white px-3 py-1 dark:bg-zinc-950 ${frozenEdge}`}
+                              >
+                                <Link
+                                  href={`/products/${item.id}`}
+                                  className="block pl-8 text-indigo-700 hover:underline dark:text-indigo-400"
+                                >
+                                  └ 残り {moreListings} 件は商品ページで →
+                                </Link>
+                              </td>
+                            </tr>
+                          )}
+                        </ListingsWhenOpen>
+                      </ListingsGroup>
                     );
                   })}
                 </tbody>

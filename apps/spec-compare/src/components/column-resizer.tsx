@@ -80,7 +80,14 @@ export function ColumnResizer({
   useEffect(() => {
     const table = ref.current?.closest("table");
     const width = loadWidths(categoryId)[column];
-    if (table && width !== undefined) applyWidth(table, column, width);
+    if (!table || width === undefined) return;
+    const apply = () => applyWidth(table, column, width);
+    apply();
+    // 製品ごとに開くほかの出品の行は後から入るので、行が増えたら幅を付け直す
+    // （見るのは行の出入りだけ。applyWidth が書く style には反応しない）
+    const mutation = new MutationObserver(apply);
+    mutation.observe(table, { childList: true, subtree: true });
+    return () => mutation.disconnect();
   }, [categoryId, column]);
 
   const onPointerDown = (e: PointerEvent<HTMLSpanElement>) => {

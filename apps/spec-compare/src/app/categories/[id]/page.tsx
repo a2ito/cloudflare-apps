@@ -349,6 +349,7 @@ function FilterForm({
     (query.showHidden ? 1 : 0) +
     (query.showSoldOut ? 0 : 1) +
     (query.favoritesOnly ? 1 : 0) +
+    (query.showListings ? 1 : 0) +
     query.textIn.length +
     query.numIn.length +
     (query.makers.length > 0 ? 1 : 0);
@@ -438,6 +439,15 @@ function FilterForm({
               defaultChecked={query.favoritesOnly}
             />
             お気に入りだけ表示
+          </label>
+          <label className="flex items-center gap-2 self-end py-2 text-sm">
+            <input
+              type="checkbox"
+              name="listings"
+              value="1"
+              defaultChecked={query.showListings}
+            />
+            ほかの出品も表示
           </label>
           {costFields.length > 0 && (
             <label className="block space-y-1 text-sm">
@@ -783,12 +793,13 @@ export default async function ComparePage({
                     const cost = costField
                       ? costPer(item.best?.price, item.specs[costField.id]?.num)
                       : null;
-                    const listings = item.otherListings.slice(
-                      0,
-                      MAX_LISTING_ROWS,
-                    );
-                    const moreListings =
-                      item.otherListings.length - listings.length;
+                    // 既定では最安値だけ。「ほかの出品も表示」のときに製品の行の下へ並べる
+                    const listings = query.showListings
+                      ? item.otherListings.slice(0, MAX_LISTING_ROWS)
+                      : [];
+                    const moreListings = query.showListings
+                      ? item.otherListings.length - listings.length
+                      : 0;
                     return (
                       <Fragment key={item.id}>
                         <tr

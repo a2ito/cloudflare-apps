@@ -100,6 +100,7 @@ const baseQuery: CompareQuery = {
   showHidden: false,
   showSoldOut: false,
   favoritesOnly: false,
+  showListings: false,
   textIn: [],
   numIn: [],
   makers: [],
@@ -390,6 +391,7 @@ describe("parseCompareQuery", () => {
       showHidden: false,
       showSoldOut: true,
       favoritesOnly: false,
+      showListings: false,
       textIn: [],
       numIn: [],
       makers: [],
@@ -645,6 +647,13 @@ describe("matches", () => {
     expect(matches(fav, { ...baseQuery, favoritesOnly: true })).toBe(true);
     expect(matches(pc, baseQuery)).toBe(true);
     expect(parseCompareQuery({ fav: "1" }, FIELDS).favoritesOnly).toBe(true);
+  });
+
+  it("ほかの出品は ?listings=1 のときだけ並べる", () => {
+    expect(parseCompareQuery({}, FIELDS).showListings).toBe(false);
+    expect(parseCompareQuery({ listings: "1" }, FIELDS).showListings).toBe(
+      true,
+    );
   });
   it("bool は「あり」だけ通す", () => {
     expect(matches(pc, { ...baseQuery, required: [4] })).toBe(true);

@@ -12,6 +12,7 @@ import {
   MAX_NOTE,
   MAX_PERSON_NAME,
 } from "@/lib/constants";
+import { DateField } from "./date-field";
 import {
   FormMessage,
   inputClass,
@@ -96,29 +97,21 @@ export function PersonForm({
         </select>
       </label>
       <div className="grid grid-cols-2 gap-2">
-        <label className="block space-y-1">
-          <span className="text-xs text-zinc-500">生年月日</span>
-          <input
-            name="birthDate"
-            placeholder="1950-04-01"
-            maxLength={10}
-            defaultValue={person?.birthDate ?? ""}
-            className={inputClass}
-          />
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs text-zinc-500">没年月日</span>
-          <input
-            name="deathDate"
-            placeholder="2020"
-            maxLength={10}
-            defaultValue={person?.deathDate ?? ""}
-            className={inputClass}
-          />
-        </label>
+        <DateField
+          name="birthDate"
+          label="生年月日"
+          placeholder="1950-04-01"
+          defaultValue={person?.birthDate ?? ""}
+        />
+        <DateField
+          name="deathDate"
+          label="没年月日"
+          placeholder="2020"
+          defaultValue={person?.deathDate ?? ""}
+        />
       </div>
       <p className="text-[11px] text-zinc-500">
-        日付は「1950」「1950-04」のように年や年月だけでも入れられます
+        横のボタンでカレンダーから選べます。「1950」「1950-04」のように年や年月だけでも入れられます
       </p>
       <label className="block space-y-1">
         <span className="text-xs text-zinc-500">メモ</span>

@@ -4,6 +4,7 @@ import {
   isFuzzyDate,
   isLifespanOrdered,
   lifespanLabel,
+  pickerStartDate,
 } from "./fuzzy-date";
 
 describe("isFuzzyDate", () => {
@@ -58,5 +59,18 @@ describe("lifespanLabel", () => {
     expect(lifespanLabel("1950-04-01", "2020")).toBe("1950–2020");
     expect(lifespanLabel("1950", null)).toBe("1950–");
     expect(lifespanLabel(null, null)).toBeNull();
+  });
+});
+
+describe("pickerStartDate", () => {
+  it("年月日がそろっていればそのまま使う", () => {
+    expect(pickerStartDate(" 1950-04-15 ")).toBe("1950-04-15");
+  });
+  it("年だけ・年月だけ・読めない値は空にする", () => {
+    expect(pickerStartDate("1950")).toBe("");
+    expect(pickerStartDate("1950-04")).toBe("");
+    expect(pickerStartDate("")).toBe("");
+    expect(pickerStartDate("昭和25")).toBe("");
+    expect(pickerStartDate("1950-02-30")).toBe("");
   });
 });

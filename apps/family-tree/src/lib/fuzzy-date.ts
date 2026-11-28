@@ -62,3 +62,13 @@ export function lifespanLabel(
   if (!birth && !death) return null;
   return `${year(birth)}–${year(death)}`;
 }
+
+/**
+ * カレンダーを開くときの初期値。年月日がそろっているときだけ入れる。
+ * 年だけ・年月だけを月日で埋めると、その埋めた日をそのまま選んだときに値が変わらず
+ * change が起きないので、選んだのに反映されない。読めない値・欠けた値は空（今日から開く）
+ */
+export function pickerStartDate(value: string): string {
+  const v = value.trim();
+  return v.length === 10 && isFuzzyDate(v) ? v : "";
+}

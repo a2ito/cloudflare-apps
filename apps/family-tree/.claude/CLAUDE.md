@@ -41,6 +41,10 @@ npm run lint && npm run typecheck && npm test
 - **D1 は 1 文 100 バインドまで**。`inArray` に件数の読めない配列を渡さない（Miniflare では落ちない）
 - **React Flow の nodes は `useNodesState` で持つ**。作り直した配列を直接渡すと、測ったノードの大きさが
   捨てられ、更新のあとに線が一部描かれなくなる
+- **入力欄の多いフォームは `submitKeepingValues`（`src/components/ui.tsx`）で送る**。`<form action>` のままだと、
+  エラーを返したときも入力が初期値に戻る
+- **親子・配偶者の INSERT は、親の人数と重複を SQL の中でも確かめる**（`addParentLink` / `createRelative`）。
+  同時に操作されると、アプリ側で確かめた時点の状態が古くなる
 - **`"use server"` のファイルからは非同期関数しか export できない**。クライアントと
   共有する定数は `src/lib/constants.ts` に置く
 

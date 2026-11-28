@@ -321,3 +321,76 @@ describe("deletePersonAction", () => {
     expect(family.partners).toHaveLength(0);
   });
 });
+
+describe("同時に操作されたとき", () => {
+  it("親が 2 人そろった後に古い画面から「＋親」を送っても、3 人目は作らず人物も残さない", async () => {
+    const { createRelative, addParentLink } = await import("@/db/queries");
+    const taro = await add("太郎");
+    await add("父", { relativeOf: taro, kind: "parent" });
+    const mother = await add("母");
+    // 別の人が先に母をつないだ（アプリ側の人数確認をすり抜けた状況を DB の関数で直接作る）
+    expect(await addParentLink(t.db, tree.id, mother, taro)).toBe("added");
+
+    const input = {
+      name: "3 人目",
+      kana: null,
+      gender: "unknown" as const,
+      birthDate: null,
+      deathDate: null,
+      note: null,
+    };
+    expect(
+      await createRelative(t.db, tree.id, taro, "parent", input),
+    ).toBeNull();
+    const family = await loadFamily(t.db, tree.id);
+    expect(family.persons.map((p) => p.name)).not.toContain("3 人目");
+    expect(family.parents.filter((l) => l.childId === taro)).toHaveLength(2);
+  });
+
+  it("二重のつながりや 3 人目の親は、DB の段階でも入らない", async () => {
+    const { addParentLink, addPartnerLink } = await import("@/db/queries");
+    const taro = await add("太郎");
+    const a = await add("A");
+    const b = await add("B");
+    const c = await add("C");
+    expect(await addParentLink(t.db, tree.id, a, taro)).toBe("added");
+    expect(await addParentLink(t.db, tree.id, a, taro)).toBe("duplicate");
+    expect(await addParentLink(t.db, tree.id, b, taro)).toBe("added");
+    expect(await addParentLink(t.db, tree.id, c, taro)).toBe(
+      "too_many_parents",
+    );
+    expect(await addPartnerLink(t.db, tree.id, a, b)).toBe("added");
+    expect(await addPartnerLink(t.db, tree.id, b, a)).toBe("duplicate");
+  });
+
+  it("別の家系図の人物とのつながりは、DB の外部キーでも弾く", async () => {
+    const taro = await add("太郎");
+    const other = await createTree(t.db, OWNER, "別の家");
+    const saved = await savePersonAction(
+      {},
+      formData({ treeId: other.id, name: "よその人" }),
+    );
+    await expect(
+      t.d1
+        .prepare(
+          "INSERT INTO parent_child (tree_id, parent_id, child_id) VALUES (?, ?, ?)",
+        )
+        .bind(tree.id, saved.personId, taro)
+        .run(),
+    ).rejects.toThrow(/FOREIGN KEY/);
+  });
+});
+
+describe("メモの改行", () => {
+  it("\\r\\n は 1 文字として数え、\\n にそろえて保存する", async () => {
+    const note = "あ\r\n".repeat(250).trimEnd(); // \n にすると 499 文字
+    const result = await savePersonAction(
+      {},
+      formData({ treeId: tree.id, name: "太郎", note }),
+    );
+    expect(result).toHaveProperty("success");
+    const [p] = (await loadFamily(t.db, tree.id)).persons;
+    expect(p.note).not.toContain("\r");
+    expect(p.note?.length).toBe(499);
+  });
+});

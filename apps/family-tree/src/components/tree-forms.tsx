@@ -15,6 +15,7 @@ import {
   FormMessage,
   inputClass,
   primaryButtonClass,
+  submitKeepingValues,
 } from "./ui";
 
 export function CreateTreeForm() {
@@ -58,7 +59,7 @@ export function RenameTreeForm({
     initialActionState,
   );
   return (
-    <form action={action} className="space-y-2">
+    <form onSubmit={submitKeepingValues(action)} className="space-y-2">
       <input type="hidden" name="treeId" value={treeId} />
       <div className="flex gap-2">
         <input
@@ -88,7 +89,7 @@ export function AddMemberForm({ treeId }: { treeId: number }) {
     initialActionState,
   );
   return (
-    <form action={action} className="space-y-2">
+    <form onSubmit={submitKeepingValues(action)} className="space-y-2">
       <input type="hidden" name="treeId" value={treeId} />
       <div className="flex gap-2">
         <input

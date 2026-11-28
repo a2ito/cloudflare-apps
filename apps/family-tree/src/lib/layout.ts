@@ -13,7 +13,7 @@ import type { ParentLink, PartnerLink } from "./relations";
 
 export const PERSON_WIDTH = 168;
 export const PERSON_HEIGHT = 60;
-const UNION_SIZE = 10;
+export const UNION_SIZE = 10;
 
 export type LayoutPerson = { id: number };
 

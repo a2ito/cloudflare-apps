@@ -17,7 +17,12 @@ import "@xyflow/react/dist/style.css";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import type { ParentChild, Partnership, Person } from "@/db/schema";
 import { lifespanLabel } from "@/lib/fuzzy-date";
-import { layoutFamily, PERSON_HEIGHT, PERSON_WIDTH } from "@/lib/layout";
+import {
+  layoutFamily,
+  PERSON_HEIGHT,
+  PERSON_WIDTH,
+  UNION_SIZE,
+} from "@/lib/layout";
 
 type PersonNodeData = { person: Person; selected: boolean };
 type PersonNodeType = Node<PersonNodeData, "person">;
@@ -142,6 +147,8 @@ function Graph({
               position: { x: n.x, y: n.y },
               data: {},
               selectable: false,
+              width: UNION_SIZE,
+              height: UNION_SIZE,
             },
           ];
         }
@@ -167,13 +174,21 @@ function Graph({
   const [nodes, setNodes, onNodesChange] = useNodesState(computedNodes);
   useEffect(() => setNodes(computedNodes), [computedNodes, setNodes]);
 
-  // 人やつながりが増減したら、全体が収まるように表示し直す（選択の切り替えでは動かさない）
+  // 人やつながりが増減したときだけ、全体が収まるように表示し直す。名前やメモを直しただけでも
+  // 配列は作り直されるので、layout ではなくノードと線の ID の並びで変化を見る
   const { fitView } = useReactFlow();
   const prefersDark = usePrefersDark();
+  const structure = useMemo(
+    () =>
+      [...layout.nodes.map((n) => n.id), ...layout.edges.map((e) => e.id)]
+        .sort()
+        .join(","),
+    [layout],
+  );
   useEffect(() => {
     const id = requestAnimationFrame(() => void fitView(FIT_VIEW_OPTIONS));
     return () => cancelAnimationFrame(id);
-  }, [layout, fitView]);
+  }, [structure, fitView]);
 
   const edges = useMemo(
     (): Edge[] =>

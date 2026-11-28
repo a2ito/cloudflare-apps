@@ -4,8 +4,8 @@ CREATE TABLE `parent_child` (
 	`child_id` integer NOT NULL,
 	PRIMARY KEY(`parent_id`, `child_id`),
 	FOREIGN KEY (`tree_id`) REFERENCES `trees`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`parent_id`) REFERENCES `persons`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`child_id`) REFERENCES `persons`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`tree_id`,`parent_id`) REFERENCES `persons`(`tree_id`,`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`tree_id`,`child_id`) REFERENCES `persons`(`tree_id`,`id`) ON UPDATE no action ON DELETE cascade,
 	CONSTRAINT "parent_child_not_self" CHECK("parent_child"."parent_id" <> "parent_child"."child_id")
 );
 --> statement-breakpoint
@@ -17,8 +17,8 @@ CREATE TABLE `partnerships` (
 	`person_b_id` integer NOT NULL,
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
 	FOREIGN KEY (`tree_id`) REFERENCES `trees`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`person_a_id`) REFERENCES `persons`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`person_b_id`) REFERENCES `persons`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`tree_id`,`person_a_id`) REFERENCES `persons`(`tree_id`,`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`tree_id`,`person_b_id`) REFERENCES `persons`(`tree_id`,`id`) ON UPDATE no action ON DELETE cascade,
 	CONSTRAINT "partnerships_ordered" CHECK("partnerships"."person_a_id" < "partnerships"."person_b_id")
 );
 --> statement-breakpoint
@@ -37,7 +37,7 @@ CREATE TABLE `persons` (
 	FOREIGN KEY (`tree_id`) REFERENCES `trees`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE INDEX `persons_tree_idx` ON `persons` (`tree_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `persons_tree_id_idx` ON `persons` (`tree_id`,`id`);--> statement-breakpoint
 CREATE TABLE `tree_members` (
 	`tree_id` integer NOT NULL,
 	`email` text NOT NULL,

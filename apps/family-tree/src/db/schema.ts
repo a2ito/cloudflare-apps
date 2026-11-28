@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnySQLiteColumn,
   check,
+  foreignKey,
   index,
   integer,
   primaryKey,
@@ -73,8 +75,19 @@ export const persons = sqliteTable(
     note: text("note"),
     createdAt: text("created_at").notNull().default(now),
   },
-  (t) => [index("persons_tree_idx").on(t.treeId)],
+  // つながりの表が (tree_id, id) を外部キーで指すために一意にしておく
+  (t) => [uniqueIndex("persons_tree_id_idx").on(t.treeId, t.id)],
 );
+
+/**
+ * つながりの両端が、つながりと同じ家系図の人物であることを DB でも保証する。
+ * アプリでも確かめているが、確認を忘れたクエリが増えても別の家系図の人物と結べないように
+ */
+const samePerson = (treeId: AnySQLiteColumn, personId: AnySQLiteColumn) =>
+  foreignKey({
+    columns: [treeId, personId],
+    foreignColumns: [persons.treeId, persons.id],
+  }).onDelete("cascade");
 
 /** 親子。子 1 人につき親は 2 人まで（アプリ側で確かめる） */
 export const parentChild = sqliteTable(
@@ -83,15 +96,13 @@ export const parentChild = sqliteTable(
     treeId: integer("tree_id")
       .notNull()
       .references(() => trees.id, { onDelete: "cascade" }),
-    parentId: integer("parent_id")
-      .notNull()
-      .references(() => persons.id, { onDelete: "cascade" }),
-    childId: integer("child_id")
-      .notNull()
-      .references(() => persons.id, { onDelete: "cascade" }),
+    parentId: integer("parent_id").notNull(),
+    childId: integer("child_id").notNull(),
   },
   (t) => [
     primaryKey({ columns: [t.parentId, t.childId] }),
+    samePerson(t.treeId, t.parentId),
+    samePerson(t.treeId, t.childId),
     index("parent_child_tree_idx").on(t.treeId),
     check("parent_child_not_self", sql`${t.parentId} <> ${t.childId}`),
   ],
@@ -108,16 +119,14 @@ export const partnerships = sqliteTable(
     treeId: integer("tree_id")
       .notNull()
       .references(() => trees.id, { onDelete: "cascade" }),
-    personAId: integer("person_a_id")
-      .notNull()
-      .references(() => persons.id, { onDelete: "cascade" }),
-    personBId: integer("person_b_id")
-      .notNull()
-      .references(() => persons.id, { onDelete: "cascade" }),
+    personAId: integer("person_a_id").notNull(),
+    personBId: integer("person_b_id").notNull(),
     createdAt: text("created_at").notNull().default(now),
   },
   (t) => [
     uniqueIndex("partnerships_pair_idx").on(t.personAId, t.personBId),
+    samePerson(t.treeId, t.personAId),
+    samePerson(t.treeId, t.personBId),
     index("partnerships_tree_idx").on(t.treeId),
     check("partnerships_ordered", sql`${t.personAId} < ${t.personBId}`),
   ],

@@ -1,6 +1,6 @@
 import { and, asc, count, eq, sql } from "drizzle-orm";
 import type { MemberRole } from "@/lib/constants";
-import { orderPair } from "@/lib/relations";
+import { MAX_PARENTS, orderPair } from "@/lib/relations";
 import type { Db } from "./index";
 import {
   parentChild,
@@ -243,7 +243,10 @@ export type RelativeKind = "parent" | "child" | "partner";
 
 /**
  * 新しい人物を作り、既存の人物（relativeOf）とつなぐ。kind は新しい人物から見た続柄。
- * つながりの無い人物が残らないよう 1 つの batch で入れる。
+ * つながりの無い人物が残らないよう 1 つの batch（トランザクション）で入れる。
+ *
+ * 親として足すときは、同時に別の人が親を足していても 3 人目にならないよう、batch の中で
+ * 人数を確かめる。超えていたら作った人物も消して null を返す。
  */
 export async function createRelative(
   db: Db,
@@ -251,7 +254,52 @@ export async function createRelative(
   relativeOf: number,
   kind: RelativeKind,
   input: PersonInput,
-): Promise<Person> {
+): Promise<Person | null> {
+  if (kind === "parent") {
+    // 条件付きの INSERT は drizzle の batch に混ぜられない（生の SQL を渡すと落ちる）ので、D1 の batch を直接使う
+    const d1 = db.$client;
+    // batch の中なので、この家系図で一番大きい id がいま作った人物になる
+    const newest = "(SELECT max(id) FROM persons WHERE tree_id = ?1)";
+    const [inserted] = await d1.batch([
+      d1
+        .prepare(
+          `INSERT INTO persons (tree_id, name, kana, gender, birth_date, death_date, note)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) RETURNING id`,
+        )
+        .bind(
+          treeId,
+          input.name,
+          input.kana,
+          input.gender,
+          input.birthDate,
+          input.deathDate,
+          input.note,
+        ),
+      d1
+        .prepare(
+          `INSERT INTO parent_child (tree_id, parent_id, child_id)
+           SELECT ?1, last_insert_rowid(), ?2
+           WHERE (SELECT count(*) FROM parent_child WHERE child_id = ?2) < ?3`,
+        )
+        .bind(treeId, relativeOf, MAX_PARENTS),
+      d1
+        .prepare(
+          `DELETE FROM persons WHERE id = ${newest}
+           AND NOT EXISTS (SELECT 1 FROM parent_child WHERE parent_id = ${newest})`,
+        )
+        .bind(treeId),
+    ]);
+    const row: unknown = inserted?.results[0];
+    if (
+      typeof row !== "object" ||
+      row === null ||
+      !("id" in row) ||
+      typeof row.id !== "number"
+    )
+      throw new Error("人物の保存に失敗しました");
+    return findPerson(db, treeId, row.id);
+  }
+
   const created = sql`last_insert_rowid()`;
   const link =
     kind === "partner"
@@ -261,11 +309,7 @@ export async function createRelative(
           .values({ treeId, personAId: relativeOf, personBId: created })
       : db
           .insert(parentChild)
-          .values(
-            kind === "parent"
-              ? { treeId, parentId: created, childId: relativeOf }
-              : { treeId, parentId: relativeOf, childId: created },
-          );
+          .values({ treeId, parentId: relativeOf, childId: created });
   const [[row]] = await db.batch([
     db
       .insert(persons)
@@ -304,13 +348,35 @@ export async function deletePerson(
   return deleted.length > 0;
 }
 
+export type LinkResult = "added" | "duplicate" | "too_many_parents";
+
+/**
+ * 親子をつなぐ。
+ *
+ * 呼ぶ側は先に relations.ts で確かめているが、2 人が同時に操作すると確かめた時点の状態が古くなる。
+ * 親の人数と重複だけは INSERT の中でも確かめ、3 人目の親や二重のつながりができないようにする
+ * （一周しないかどうかは SQL では確かめられないので、アプリ側の確認だけに頼る）。
+ */
 export async function addParentLink(
   db: Db,
   treeId: number,
   parentId: number,
   childId: number,
-): Promise<void> {
-  await db.insert(parentChild).values({ treeId, parentId, childId });
+): Promise<LinkResult> {
+  const result = await db.run(sql`
+    INSERT INTO parent_child (tree_id, parent_id, child_id)
+    SELECT ${treeId}, ${parentId}, ${childId}
+    WHERE (SELECT count(*) FROM parent_child WHERE child_id = ${childId}) < ${MAX_PARENTS}
+    ON CONFLICT DO NOTHING
+  `);
+  if (result.meta.changes > 0) return "added";
+  const [existing] = await db
+    .select({ childId: parentChild.childId })
+    .from(parentChild)
+    .where(
+      and(eq(parentChild.parentId, parentId), eq(parentChild.childId, childId)),
+    );
+  return existing ? "duplicate" : "too_many_parents";
 }
 
 export async function removeParentLink(
@@ -337,9 +403,15 @@ export async function addPartnerLink(
   treeId: number,
   a: number,
   b: number,
-): Promise<void> {
+): Promise<Exclude<LinkResult, "too_many_parents">> {
   const [personAId, personBId] = orderPair(a, b);
-  await db.insert(partnerships).values({ treeId, personAId, personBId });
+  // 同時に同じ 2 人を結ばれても、一意インデックスの違反で落とさずに重複として返す
+  const inserted = await db
+    .insert(partnerships)
+    .values({ treeId, personAId, personBId })
+    .onConflictDoNothing()
+    .returning({ id: partnerships.id });
+  return inserted.length > 0 ? "added" : "duplicate";
 }
 
 export async function removePartnerLink(

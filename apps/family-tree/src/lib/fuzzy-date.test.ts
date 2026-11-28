@@ -21,6 +21,8 @@ describe("isFuzzyDate", () => {
     "2027-02-29",
     "1950/04/01",
     "0000",
+    "0000-01",
+    "0000-01-01",
   ])("%s は弾く", (v) => expect(isFuzzyDate(v)).toBe(false));
 });
 

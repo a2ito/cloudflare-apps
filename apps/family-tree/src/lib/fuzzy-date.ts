@@ -10,7 +10,8 @@ export function isFuzzyDate(value: string): boolean {
   const m = PATTERN.exec(value);
   if (!m) return false;
   const year = Number(m[1]);
-  if (m[2] === undefined) return year >= 1;
+  if (year < 1) return false;
+  if (m[2] === undefined) return true;
   const month = Number(m[2]);
   if (month < 1 || month > 12) return false;
   if (m[3] === undefined) return true;

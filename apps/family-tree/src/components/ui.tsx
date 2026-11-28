@@ -1,4 +1,17 @@
+import { type FormEvent, startTransition } from "react";
 import type { ActionState } from "@/lib/form";
+
+/**
+ * React 19 の <form action> は、アクションが終わると入力欄を初期値に戻す。エラーを返したときも
+ * 戻るため、直したい値まで消えてしまう。onSubmit で自分で送り、入力をそのまま残す
+ */
+export function submitKeepingValues(action: (formData: FormData) => void) {
+  return (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => action(formData));
+  };
+}
 
 export const inputClass =
   "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";

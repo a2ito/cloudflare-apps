@@ -17,6 +17,7 @@ import {
   inputClass,
   primaryButtonClass,
   secondaryButtonClass,
+  submitKeepingValues,
 } from "./ui";
 
 type Mode =
@@ -304,7 +305,7 @@ function LinkForm({
     return <p className="text-sm text-zinc-500">ほかに人物がいません</p>;
   return (
     <form
-      action={action}
+      onSubmit={submitKeepingValues(action)}
       className="space-y-2 rounded-md bg-zinc-100 p-3 dark:bg-zinc-900"
     >
       <input type="hidden" name="treeId" value={treeId} />

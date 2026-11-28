@@ -40,7 +40,8 @@ const optionalText = (max: number, message: string) =>
   z
     .string()
     .optional()
-    .transform((s) => (s ?? "").trim())
+    // ブラウザは改行を \r\n で送るが、maxLength は 1 文字と数える。数え方を揃えるため \n にする
+    .transform((s) => (s ?? "").replace(/\r\n?/g, "\n").trim())
     .pipe(z.string().max(max, message))
     .transform((s) => (s === "" ? null : s));
 
@@ -124,6 +125,7 @@ export async function savePersonAction(
         return { error: `親は ${MAX_PARENTS} 人までです` };
     }
     const person = await createRelative(db, tree.id, relativeOf, kind, input);
+    if (!person) return { error: `親は ${MAX_PARENTS} 人までです` };
     revalidateTree(tree.id);
     return { success: `${input.name} を追加しました`, personId: person.id };
   }
@@ -187,7 +189,8 @@ export async function linkPersonsAction(
       otherId,
     );
     if (!check.ok) return { error: check.error };
-    await addPartnerLink(db, tree.id, personId, otherId);
+    if ((await addPartnerLink(db, tree.id, personId, otherId)) === "duplicate")
+      return { error: "すでに配偶者としてつながっています" };
   } else {
     const [parentId, childId] =
       kind === "parent" ? [otherId, personId] : [personId, otherId];
@@ -198,7 +201,11 @@ export async function linkPersonsAction(
       childId,
     );
     if (!check.ok) return { error: check.error };
-    await addParentLink(db, tree.id, parentId, childId);
+    const added = await addParentLink(db, tree.id, parentId, childId);
+    if (added === "duplicate")
+      return { error: "すでに親子としてつながっています" };
+    if (added === "too_many_parents")
+      return { error: `親は ${MAX_PARENTS} 人までです` };
   }
   revalidateTree(tree.id);
   return { success: "つなぎました", personId };

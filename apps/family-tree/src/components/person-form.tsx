@@ -12,7 +12,12 @@ import {
   MAX_NOTE,
   MAX_PERSON_NAME,
 } from "@/lib/constants";
-import { FormMessage, inputClass, primaryButtonClass } from "./ui";
+import {
+  FormMessage,
+  inputClass,
+  primaryButtonClass,
+  submitKeepingValues,
+} from "./ui";
 
 const initial: PersonActionState = {};
 
@@ -47,7 +52,7 @@ export function PersonForm({
   );
 
   return (
-    <form action={action} className="space-y-3">
+    <form onSubmit={submitKeepingValues(action)} className="space-y-3">
       <input type="hidden" name="treeId" value={treeId} />
       {person && <input type="hidden" name="personId" value={person.id} />}
       {relativeOf !== undefined && kind && (

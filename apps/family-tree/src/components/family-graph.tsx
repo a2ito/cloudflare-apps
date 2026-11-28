@@ -2,8 +2,10 @@
 
 import {
   Background,
+  BaseEdge,
   Controls,
   type Edge,
+  type EdgeProps,
   Handle,
   type Node,
   type NodeProps,
@@ -21,12 +23,13 @@ import {
   layoutFamily,
   PERSON_HEIGHT,
   PERSON_WIDTH,
-  UNION_SIZE,
+  type Point,
+  polylinePath,
 } from "@/lib/layout";
 
 type PersonNodeData = { person: Person; selected: boolean };
 type PersonNodeType = Node<PersonNodeData, "person">;
-type UnionNodeType = Node<Record<string, never>, "union">;
+type FamilyEdgeType = Edge<{ points: Point[] }, "family">;
 
 const GENDER_STYLES: Record<Person["gender"], string> = {
   male: "border-sky-400 bg-sky-50 dark:border-sky-600 dark:bg-sky-950",
@@ -69,21 +72,17 @@ function PersonNode({ data }: NodeProps<PersonNodeType>) {
   );
 }
 
-/** 夫婦の間の点。2 人の線がここで合流し、子へ下りる */
-function UnionNode() {
-  return (
-    <div className="h-2.5 w-2.5 rounded-full bg-zinc-400 dark:bg-zinc-500">
-      <Handle type="target" position={Position.Top} className={hiddenHandle} />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className={hiddenHandle}
-      />
-    </div>
-  );
+/**
+ * 家系図の線。形は layoutFamily が直角の折れ線として決めているので、その点をなぞるだけにする。
+ * React Flow 標準の線は端点どうしを自動で曲げて結ぶため、夫婦の横線や兄弟の横線が揃わない
+ */
+function FamilyEdge({ data, style }: EdgeProps<FamilyEdgeType>) {
+  if (!data) return null;
+  return <BaseEdge path={polylinePath(data.points)} style={style} />;
 }
 
-const nodeTypes = { person: PersonNode, union: UnionNode };
+const nodeTypes = { person: PersonNode };
+const edgeTypes = { family: FamilyEdge };
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
@@ -137,21 +136,8 @@ function Graph({
   const byId = useMemo(() => new Map(persons.map((p) => [p.id, p])), [persons]);
 
   const computedNodes = useMemo(
-    (): (PersonNodeType | UnionNodeType)[] =>
-      layout.nodes.flatMap((n): (PersonNodeType | UnionNodeType)[] => {
-        if (n.kind === "union") {
-          return [
-            {
-              id: n.id,
-              type: "union",
-              position: { x: n.x, y: n.y },
-              data: {},
-              selectable: false,
-              width: UNION_SIZE,
-              height: UNION_SIZE,
-            },
-          ];
-        }
+    (): PersonNodeType[] =>
+      layout.nodes.flatMap((n): PersonNodeType[] => {
         const person = byId.get(n.personId);
         if (!person) return [];
         return [
@@ -191,12 +177,16 @@ function Graph({
   }, [structure, fitView]);
 
   const edges = useMemo(
-    (): Edge[] =>
+    (): FamilyEdgeType[] =>
       layout.edges.map((e) => ({
         id: e.id,
         source: e.source,
         target: e.target,
-        type: "smoothstep",
+        type: "family",
+        data: { points: e.points },
+        // 兄弟への線は根元が重なっていて、どれを選んだか分からないので選ばせない
+        selectable: false,
+        interactionWidth: 0,
         style:
           e.kind === "partner"
             ? { stroke: "#f59e0b", strokeWidth: 2 }
@@ -211,6 +201,7 @@ function Graph({
       edges={edges}
       onNodesChange={onNodesChange}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       colorMode={prefersDark ? "dark" : "light"}
       fitView
       fitViewOptions={FIT_VIEW_OPTIONS}
@@ -220,7 +211,7 @@ function Graph({
       nodesConnectable={false}
       edgesFocusable={false}
       onNodeClick={(_, node) => {
-        if (node.type === "person") onSelect(Number(node.id.slice(1)));
+        onSelect(Number(node.id.slice(1)));
       }}
       onPaneClick={() => onSelect(null)}
     >

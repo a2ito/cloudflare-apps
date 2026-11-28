@@ -30,6 +30,12 @@ locals {
       build_caching_enabled = false
       trigger_uuid          = "ba910802-7cb2-4d5a-b18c-aa1b1ce0e4c3"
     }
+    "family-tree" = {
+      secrets               = local.google_login_secrets
+      build_variables       = ["APP_HOSTNAME", "D1_DATABASE_ID"]
+      build_token_uuid      = local.build_tokens.cloudflare_apps
+      build_caching_enabled = true
+    }
     "flash-english" = {
       secrets               = local.google_login_secrets
       build_variables       = ["APP_HOSTNAME", "D1_DATABASE_ID"]
@@ -132,6 +138,7 @@ locals {
   # 載せていないアプリの D1 は手で作ったもので、一部は cloud-management の cloudflare/ が持っている。
   # ここに載せる D1 の ID は Build variables の D1_DATABASE_ID と同じものを指す（imports.tf）。
   d1_databases = {
+    "family-tree"  = "family-tree-db"
     "spec-compare" = "spec-compare-db"
     "wifi-monitor" = "wifi-monitor-db"
   }

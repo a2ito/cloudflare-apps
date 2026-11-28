@@ -21,6 +21,12 @@ secrets = {
     AUTH_GOOGLE_SECRET = "FILL_ME"
     AUTH_SECRET        = "FILL_ME"
   }
+  "family-tree" = {
+    ALLOWED_EMAILS     = "FILL_ME"
+    AUTH_GOOGLE_ID     = "FILL_ME"
+    AUTH_GOOGLE_SECRET = "FILL_ME"
+    AUTH_SECRET        = "FILL_ME"
+  }
   "flash-english" = {
     ALLOWED_EMAILS     = "FILL_ME"
     AUTH_GOOGLE_ID     = "FILL_ME"
@@ -98,6 +104,12 @@ build_variables = {
   }
   "exam-lab" = {
     APP_HOSTNAME = "FILL_ME"
+  }
+  "family-tree" = {
+    APP_HOSTNAME = "FILL_ME"
+    # Terraform が D1 を作るまで ID は無い。初回の apply は仮の値で通し、
+    # terraform state show 'cloudflare_d1_database.app["family-tree"]' の id に書き換えてもう一度 apply する
+    D1_DATABASE_ID = "FILL_ME"
   }
   "flash-english" = {
     APP_HOSTNAME   = "FILL_ME"
